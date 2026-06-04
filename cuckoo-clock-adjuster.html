@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Cuckoo Clock Adjuster</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Courier+Prime:wght@400;700&display=swap');
+
+  :root {
+    --bg:        #f5f0e8;
+    --bg2:       #fffdf8;
+    --bg3:       #f0ebe0;
+    --border:    #d4c8a8;
+    --gold:      #8a6820;
+    --gold-lt:   #a07828;
+    --gold-dim:  #a0782840;
+    --cream:     #2c2010;
+    --text:      #3a2e1a;
+    --text-dim:  #8a7a60;
+    --red:       #b03020;
+    --green:     #3a7040;
+    --amber:     #c07010;
+    --tick-col:  #7a5010;
+    --tock-col:  #5a7030;
+    --wood:      repeating-linear-gradient(
+                   92deg,
+                   transparent 0px, transparent 22px,
+                   rgba(160,120,40,0.06) 22px, rgba(160,120,40,0.06) 23px
+                 ),
+                 linear-gradient(180deg, #f8f2e4 0%, #f0ebe0 100%);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    background-image: var(--wood);
+    color: var(--text);
+    font-family: 'Courier Prime', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 40px;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 200;
+    opacity: 0.5;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 620px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Header ── */
+  header {
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 14px;
+  }
+
+  .ornament {
+    font-size: 1rem;
+    color: var(--gold);
+    letter-spacing: 0.5em;
+    opacity: 0.5;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.6rem, 6vw, 2.4rem);
+    color: var(--gold-lt);
+    letter-spacing: 0.05em;
+    text-shadow: 0 1px 6px rgba(160,120,40,0.2);
+    line-height: 1.15;
+  }
+
+  h1 span {
+    display: block;
+    font-size: 0.48em;
+    font-family: 'Courier Prime', monospace;
+    font-weight: 400;
+    color: var(--text-dim);
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+
+  .byline {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    margin-top: 6px;
+    font-style: italic;
+  }
+
+  .status-badge {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 0.62rem;
+    letter-spacing: 0.25em;
+    padding: 3px 12px;
+    border: 1px solid currentColor;
+    border-radius: 1px;
+    text-transform: uppercase;
+    transition: all 0.3s;
+  }
+  .status-badge.idle      { color: var(--border); }
+  .status-badge.listening { color: var(--gold); animation: pulse 1.5s infinite; }
+  .status-badge.locked    { color: var(--green); }
+  @keyframes pulse { 50% { opacity: 0.3; } }
+
+  /* ── Pendulum panel ── */
+  .pendulum-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    box-shadow: 0 1px 4px rgba(160,120,40,0.08);
+  }
+
+  .pendulum-visual {
+    position: relative;
+    width: 120px;
+    height: 120px;
+  }
+
+  .pendulum-arc {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px dashed var(--border);
+  }
+
+  .pendulum-pivot {
+    position: absolute;
+    top: 8px; left: 50%;
+    transform: translateX(-50%);
+    width: 8px; height: 8px;
+    background: var(--gold);
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(160,120,40,0.4);
+  }
+
+  .pendulum-rod {
+    position: absolute;
+    top: 12px; left: 50%;
+    width: 2px; height: 68px;
+    background: linear-gradient(180deg, var(--gold) 0%, var(--gold-lt) 100%);
+    transform-origin: top center;
+    transform: translateX(-50%) rotate(0deg);
+    transition: transform 0.15s ease-out;
+    border-radius: 1px;
+  }
+
+  .pendulum-bob {
+    position: absolute;
+    bottom: -8px; left: 50%;
+    transform: translateX(-50%);
+    width: 20px; height: 20px;
+    background: radial-gradient(circle at 35% 35%, #e0c070, var(--gold) 60%, #6a4a10);
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(160,120,40,0.35);
+  }
+
+  .swing-labels {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+    padding: 0 2px;
+  }
+  .swing-label {
+    font-size: 0.55rem;
+    letter-spacing: 0.12em;
+    opacity: 0.25;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .swing-label.active { opacity: 1; }
+  .swing-label.tick { color: var(--tick-col); }
+  .swing-label.tock { color: var(--tock-col); }
+
+  /* ── Tick/Tock cards ── */
+  .tt-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .tt-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .tt-card.flash-tick { border-color: var(--tick-col); box-shadow: 0 0 10px rgba(122,80,16,0.15); }
+  .tt-card.flash-tock { border-color: var(--tock-col); box-shadow: 0 0 10px rgba(90,112,48,0.15); }
+
+  .tt-label {
+    font-size: 0.58rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  .tt-label.tick { color: var(--tick-col); opacity: 0.8; }
+  .tt-label.tock { color: var(--tock-col); opacity: 0.8; }
+
+  .tt-ms {
+    font-size: clamp(1.8rem, 7vw, 2.6rem);
+    font-family: 'Playfair Display', serif;
+    line-height: 1;
+  }
+  .tick .tt-ms { color: var(--tick-col); }
+  .tock .tt-ms { color: var(--tock-col); }
+
+  .tt-pct {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+  }
+
+  /* ── Swing sync button ── */
+  .sync-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .sync-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .sync-btn {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    background: var(--bg3);
+    cursor: pointer;
+  }
+
+  .sync-opt {
+    padding: 8px 16px;
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .sync-opt:first-child { border-right: 1px solid var(--border); }
+
+  .sync-opt.selected-tick {
+    background: var(--tick-col);
+    color: #fff;
+  }
+  .sync-opt.selected-tock {
+    background: var(--tock-col);
+    color: #fff;
+  }
+
+  /* ── Balance bar ── */
+  .balance-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .balance-label-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.58rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    opacity: 0.7;
+  }
+
+  .balance-track {
+    height: 20px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+  .balance-track::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0; left: 50%;
+    width: 1px;
+    background: var(--border);
+    z-index: 2;
+  }
+
+  .balance-fill-tick {
+    position: absolute;
+    top: 0; bottom: 0; right: 50%;
+    background: var(--tick-col);
+    opacity: 0.3;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+  .balance-fill-tock {
+    position: absolute;
+    top: 0; bottom: 0; left: 50%;
+    background: var(--tock-col);
+    opacity: 0.3;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+  .balance-needle {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: var(--gold);
+    left: 50%;
+    transform: translateX(-50%);
+    transition: left 0.3s ease;
+    z-index: 3;
+    box-shadow: 0 0 4px rgba(160,120,40,0.4);
+  }
+
+  .balance-reading {
+    text-align: center;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    height: 1.2em;
+    transition: color 0.3s;
+    color: var(--text-dim);
+  }
+
+  /* ── Beat panel ── */
+  .beat-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 1px 4px rgba(160,120,40,0.06);
+  }
+
+  .beat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .beat-item-label {
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .beat-item-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: var(--gold-lt);
+    line-height: 1;
+  }
+  .beat-divider { width: 1px; height: 40px; background: var(--border); flex-shrink: 0; }
+
+  /* ── Audio section ── */
+  .vu-section {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 1px 4px rgba(160,120,40,0.06);
+  }
+
+  .section-title {
+    font-size: 0.58rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.7;
+  }
+
+  /* Frequency spectrum canvas wrapper */
+  .freq-wrap {
+    position: relative;
+    height: 80px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 1px;
+    overflow: visible;   /* must be visible so handles aren't clipped */
+    touch-action: none;
+  }
+  #freqCanvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 1px; }
+
+  /* Band overlay — the active passband highlight */
+  #bandOverlay {
+    position: absolute;
+    top: 0; bottom: 0;
+    background: rgba(138,104,32,0.13);
+    border-left:  2px solid rgba(138,104,32,0.75);
+    border-right: 2px solid rgba(138,104,32,0.75);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* Drag handles — tall touch targets sitting on top of freq-wrap */
+  .band-handle {
+    position: absolute;
+    top: -6px; bottom: -6px;   /* extend above/below for bigger tap area */
+    width: 44px;               /* wide enough for a finger */
+    cursor: ew-resize;
+    z-index: 20;
+    touch-action: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* centre the 44px hit area over the band edge */
+    transform: translateX(-50%);
+  }
+  /* Visible pip inside the handle */
+  .band-handle::after {
+    content: '';
+    width: 12px;
+    height: 100%;
+    max-height: 80px;
+    background: rgba(138,104,32,0.18);
+    border: 2px solid var(--gold);
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  }
+  /* Arrow labels */
+  .band-handle::before {
+    content: '◀▶';
+    position: absolute;
+    bottom: -18px;
+    font-size: 0.45rem;
+    color: var(--gold);
+    letter-spacing: -0.1em;
+    opacity: 0.7;
+    white-space: nowrap;
+  }
+
+  .freq-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.52rem;
+    color: var(--border);
+    letter-spacing: 0.04em;
+    margin-top: 1px;
+  }
+
+  .band-info {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+  .band-info span { color: var(--gold-lt); }
+
+  /* Simple VU strip below spectrum */
+  .vu-strip-wrap {
+    position: relative;
+  }
+  .vu-track {
+    height: 14px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 1px;
+    overflow: visible;
+    position: relative;
+  }
+  .vu-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #5a8a30, #98b840, #d4a020, #b03020);
+    transition: width 0.04s linear;
+    border-radius: 1px;
+  }
+  /* threshold marker on vu strip */
+  #vuThreshLine {
+    position: absolute;
+    top: -3px; bottom: -3px;
+    width: 2px;
+    background: var(--gold);
+    opacity: 0.9;
+    pointer-events: none;
+    border-radius: 1px;
+  }
+  .vu-ticks {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.52rem;
+    color: var(--border);
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+  }
+
+  /* ── Waveform ── */
+  .wave-section {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 4px rgba(160,120,40,0.06);
+  }
+
+  canvas { width: 100%; display: block; border-radius: 1px; }
+  #waveCanvas { height: 80px; }
+
+  /* ── History ── */
+  .history-section {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 4px rgba(160,120,40,0.06);
+  }
+
+  .history-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+
+  .history-row {
+    display: grid;
+    grid-template-columns: 1.2rem 1fr 1fr 1fr;
+    gap: 8px;
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    opacity: 0.5;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 3px;
+    align-items: center;
+  }
+  .history-row:first-child { opacity: 1; }
+  .history-row .hi { color: var(--tick-col); }
+  .history-row .ho { color: var(--tock-col); }
+  .history-empty { font-size: 0.62rem; color: var(--text-dim); opacity: 0.5; letter-spacing: 0.15em; text-align: center; padding: 8px 0; }
+
+  /* ── Buttons ── */
+  .btn {
+    background: transparent;
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.82rem;
+    letter-spacing: 0.2em;
+    padding: 15px 32px;
+    cursor: pointer;
+    text-transform: uppercase;
+    border-radius: 2px;
+    transition: all 0.2s;
+    width: 100%;
+    min-height: 50px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active { opacity: 0.6; }
+  .btn.active { border-color: var(--red); color: var(--red); }
+
+  .perm-msg {
+    text-align: center;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    line-height: 1.6;
+    opacity: 0.7;
+  }
+  .perm-msg.error { color: var(--red); opacity: 1; }
+
+  .history-rows::-webkit-scrollbar { width: 4px; }
+  .history-rows::-webkit-scrollbar-track { background: transparent; }
+  .history-rows::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Threshold slider ── */
+  .threshold-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .threshold-row label {
+    font-size: 0.58rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .threshold-row input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  .threshold-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    border: 2px solid var(--bg2);
+    box-shadow: 0 1px 4px rgba(160,120,40,0.3);
+    cursor: pointer;
+  }
+  .threshold-row input[type=range]::-moz-range-thumb {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    border: 2px solid var(--bg2);
+    cursor: pointer;
+  }
+  .threshold-val {
+    font-size: 0.7rem;
+    font-family: 'Playfair Display', serif;
+    color: var(--gold-lt);
+    min-width: 3.2ch;
+    text-align: right;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <span class="ornament">— ✦ —</span>
+    <h1>Cuckoo Clock Adjuster<span>Pendulum Beat Analyser</span></h1>
+    <div class="byline">Duncan Johnson</div>
+    <div><span class="status-badge idle" id="statusBadge">Idle</span></div>
+  </header>
+
+  <div class="pendulum-panel">
+    <div style="display:flex;align-items:center;gap:28px;width:100%;justify-content:center;">
+      <div class="pendulum-visual">
+        <div class="pendulum-arc"></div>
+        <div class="swing-labels">
+          <span class="swing-label tick" id="lblTick">TICK ◀</span>
+          <span class="swing-label tock" id="lblTock">▶ TOCK</span>
+        </div>
+        <div class="pendulum-pivot"></div>
+        <div class="pendulum-rod" id="pendulumRod">
+          <div class="pendulum-bob"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tt-row">
+      <div class="tt-card" id="cardTick">
+        <div class="tt-label tick">Tick ←</div>
+        <div class="tt-ms tick" id="tickMs">---</div>
+        <div class="tt-pct" id="tickPct">-- %</div>
+      </div>
+      <div class="tt-card" id="cardTock">
+        <div class="tt-label tock">→ Tock</div>
+        <div class="tt-ms tock" id="tockMs">---</div>
+        <div class="tt-pct" id="tockPct">-- %</div>
+      </div>
+    </div>
+
+    <!-- Swing sync -->
+    <div class="sync-row">
+      <span class="sync-label">First beat is</span>
+      <div class="sync-btn">
+        <button class="sync-opt selected-tick" id="syncTick" onclick="setFirstBeat('tick')">← Tick</button>
+        <button class="sync-opt" id="syncTock" onclick="setFirstBeat('tock')">Tock →</button>
+      </div>
+    </div>
+
+    <!-- Balance bar -->
+    <div class="balance-section">
+      <div class="balance-label-row">
+        <span style="color:var(--tick-col)">◀ Tick heavy</span>
+        <span>Beat Error</span>
+        <span style="color:var(--tock-col)">Tock heavy ▶</span>
+      </div>
+      <div class="balance-track">
+        <div class="balance-fill-tick" id="balTick"></div>
+        <div class="balance-fill-tock" id="balTock"></div>
+        <div class="balance-needle" id="balNeedle"></div>
+      </div>
+      <div class="balance-reading" id="balReading">—</div>
+    </div>
+  </div>
+
+  <!-- Beat stats -->
+  <div class="beat-panel">
+    <div class="beat-item">
+      <div class="beat-item-label">BPM</div>
+      <div class="beat-item-value" id="bpm">--</div>
+    </div>
+    <div class="beat-divider"></div>
+    <div class="beat-item">
+      <div class="beat-item-label">Period (ms)</div>
+      <div class="beat-item-value" id="period">---</div>
+    </div>
+    <div class="beat-divider"></div>
+    <div class="beat-item">
+      <div class="beat-item-label">Beat Error</div>
+      <div class="beat-item-value" id="beatErr">--</div>
+    </div>
+    <div class="beat-divider"></div>
+    <div class="beat-item">
+      <div class="beat-item-label">Beats</div>
+      <div class="beat-item-value" id="beatCount">0</div>
+    </div>
+  </div>
+
+  <!-- Audio / Freq panel -->
+  <div class="vu-section">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;">
+      <div class="section-title">Frequency &amp; Level</div>
+      <div class="band-info">Band: <span id="bandLoHz">0</span> – <span id="bandHiHz">0</span> Hz</div>
+    </div>
+
+    <!-- Spectrum with draggable band handles -->
+    <div class="freq-wrap" id="freqWrap">
+      <canvas id="freqCanvas"></canvas>
+      <div id="bandOverlay"></div>
+      <div class="band-handle" id="handleLo"></div>
+      <div class="band-handle" id="handleHi"></div>
+    </div>
+    <div class="freq-labels">
+      <span>0</span><span>1k</span><span>2k</span><span>4k</span><span>8k</span><span>16k</span><span>22k</span>
+    </div>
+
+    <!-- VU strip -->
+    <div class="vu-strip-wrap">
+      <div class="vu-track">
+        <div class="vu-fill" id="vuFill"></div>
+        <div id="vuThreshLine" style="left:10%"></div>
+      </div>
+      <div class="vu-ticks">
+        <span>Quiet</span><span>-40</span><span>-30</span><span>-20</span><span>-10</span><span>Loud</span>
+      </div>
+    </div>
+
+    <!-- Threshold slider -->
+    <div class="threshold-row">
+      <label>Threshold</label>
+      <input type="range" id="threshSlider" min="0" max="1000" value="100" step="1">
+      <span class="threshold-val" id="threshVal">1.0%</span>
+    </div>
+  </div>
+
+  <!-- Waveform -->
+  <div class="wave-section">
+    <div class="section-title" style="margin-bottom:8px">Waveform</div>
+    <canvas id="waveCanvas"></canvas>
+  </div>
+
+  <!-- History -->
+  <div class="history-section">
+    <div class="section-title" style="margin-bottom:10px">Beat Log</div>
+    <div class="history-rows" id="historyRows">
+      <div class="history-empty" id="histEmpty">No beats detected yet</div>
+    </div>
+  </div>
+
+  <button class="btn" id="toggleBtn">▶ Start Listening</button>
+  <div class="perm-msg" id="permMsg">Tap above and allow microphone access · Place phone near clock</div>
+
+</div>
+<script>
+var audioCtx, analyser, micStream, animId;
+var isListening = false;
+
+// first-beat setting: 'tick' or 'tock'
+var firstBeat = 'tick';
+
+var lastBeatTime = null;
+var lastBeatType = null;
+var beatCount = 0;
+var historyLog = [];
+var MAX_HISTORY = 20;
+
+var THRESHOLD = 0.01;   // 1% default
+var MIN_BEAT_GAP = 150;
+var COOLDOWN = false;
+var cooldownTimer = null;
+
+// Band filter state (fraction of Nyquist, 0–1)
+var bandLo = 0.0;   // 0 Hz
+var bandHi = 1.0;   // Nyquist (≈22kHz at 44.1kHz SR)
+
+// ── Threshold slider (logarithmic) ──
+// Slider 0–1000 → THRESHOLD 0.001–1.0 (log scale, fine at low end)
+function sliderToThreshold(v) {
+  // v: 0–1000 → 10^(lerp(-3, 0, v/1000)) = 0.001 to 1.0
+  return Math.pow(10, -3 + 3 * (v / 1000));
+}
+function thresholdToSlider(t) {
+  return Math.round(((Math.log10(t) + 3) / 3) * 1000);
+}
+
+document.getElementById('threshSlider').addEventListener('input', function() {
+  THRESHOLD = sliderToThreshold(parseInt(this.value));
+  var pct = (THRESHOLD * 100);
+  document.getElementById('threshVal').textContent = pct < 1 ? pct.toFixed(2) + '%' : pct.toFixed(1) + '%';
+  updateThreshLine();
+});
+// Init display
+(function(){
+  THRESHOLD = sliderToThreshold(100);
+  var pct = THRESHOLD * 100;
+  document.getElementById('threshVal').textContent = pct.toFixed(2) + '%';
+  updateThreshLine();
+})();
+
+function updateThreshLine() {
+  // Map THRESHOLD (0–1 linear amplitude) to VU bar position
+  // VU bar represents -60dB to 0dB. Convert amplitude to dB.
+  var db = THRESHOLD > 0 ? 20 * Math.log10(THRESHOLD) : -60;
+  var pct = Math.max(0, Math.min(100, (db + 60) / 60 * 100));
+  document.getElementById('vuThreshLine').style.left = pct + '%';
+}
+
+// ── Frequency canvas + band drag ──
+var freqCanvas = document.getElementById('freqCanvas');
+var fCtx = freqCanvas.getContext('2d');
+var freqWrap = document.getElementById('freqWrap');
+
+function resizeFreqCanvas() {
+  var dpr = window.devicePixelRatio || 1;
+  freqCanvas.width  = freqWrap.offsetWidth * dpr;
+  freqCanvas.height = freqWrap.offsetHeight * dpr;
+}
+
+function updateBandOverlay() {
+  var w = freqWrap.offsetWidth;
+  var loX = bandLo * w;
+  var hiX = bandHi * w;
+  var ov = document.getElementById('bandOverlay');
+  ov.style.left  = loX + 'px';
+  ov.style.width = (hiX - loX) + 'px';
+  // Position handles independently (they live in freqWrap, not bandOverlay)
+  document.getElementById('handleLo').style.left = loX + 'px';
+  document.getElementById('handleHi').style.left = hiX + 'px';
+  // Hz labels
+  var nyquist = audioCtx ? audioCtx.sampleRate / 2 : 22050;
+  document.getElementById('bandLoHz').textContent = Math.round(bandLo * nyquist);
+  document.getElementById('bandHiHz').textContent = Math.round(bandHi * nyquist);
+}
+
+// Drag logic using Pointer Events (reliable on Android Chrome)
+function makeDraggable(handleEl, isLo) {
+  handleEl.addEventListener('pointerdown', function(e) {
+    e.preventDefault();
+    handleEl.setPointerCapture(e.pointerId);
+
+    function onMove(e2) {
+      var rect = freqWrap.getBoundingClientRect();
+      var frac = Math.max(0, Math.min(1, (e2.clientX - rect.left) / rect.width));
+      if (isLo) {
+        bandLo = Math.min(frac, bandHi - 0.03);
+      } else {
+        bandHi = Math.max(frac, bandLo + 0.03);
+      }
+      updateBandOverlay();
+    }
+    function onUp() {
+      handleEl.removeEventListener('pointermove', onMove);
+      handleEl.removeEventListener('pointerup',   onUp);
+    }
+    handleEl.addEventListener('pointermove', onMove);
+    handleEl.addEventListener('pointerup',   onUp);
+  });
+}
+makeDraggable(document.getElementById('handleLo'), true);
+makeDraggable(document.getElementById('handleHi'), false);
+
+// ── Band-filtered peak detection ──
+function getBandPeak() {
+  if (!analyser) return 0;
+  var buf = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(buf);
+  var lo  = Math.floor(bandLo * buf.length);
+  var hi  = Math.ceil(bandHi  * buf.length);
+  var max = 0;
+  for (var i = lo; i < hi; i++) {
+    if (buf[i] > max) max = buf[i];
+  }
+  return max / 255;
+}
+
+var tickBuf = [], tockBuf = [];
+var BUF_SIZE = 6;
+
+var waveCanvas = document.getElementById('waveCanvas');
+var wCtx = waveCanvas.getContext('2d');
+
+function resizeCanvas() {
+  var dpr = window.devicePixelRatio || 1;
+  waveCanvas.width  = waveCanvas.offsetWidth * dpr;
+  waveCanvas.height = 80 * dpr;
+  resizeFreqCanvas();
+  updateBandOverlay();
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+document.getElementById('toggleBtn').addEventListener('click', function() {
+  if (isListening) stopMic(); else startMic();
+});
+
+function setFirstBeat(which) {
+  firstBeat = which;
+  document.getElementById('syncTick').className = 'sync-opt' + (which === 'tick' ? ' selected-tick' : '');
+  document.getElementById('syncTock').className = 'sync-opt' + (which === 'tock' ? ' selected-tock' : '');
+  // If already running, reset beat phase so next detected beat is treated as the chosen type
+  if (isListening) {
+    lastBeatType = which === 'tick' ? 'tock' : 'tick'; // next beat will flip to chosen
+    tickBuf = []; tockBuf = [];
+    lastBeatTime = null;
+    setMsg('Phase synced — next beat treated as ' + which.toUpperCase());
+  }
+}
+
+function setMsg(t, err) {
+  var el = document.getElementById('permMsg');
+  el.textContent = t;
+  el.className = 'perm-msg' + (err ? ' error' : '');
+}
+
+function startMic() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    setMsg('Microphone not supported in this browser.', true); return;
+  }
+  setMsg('Requesting microphone access…');
+  navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    video: false
+  })
+  .then(function(stream) {
+    micStream = stream;
+    var AC = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AC();
+    var resume = audioCtx.state === 'suspended' ? audioCtx.resume() : Promise.resolve();
+    resume.then(function() {
+      var source = audioCtx.createMediaStreamSource(stream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.1;
+      source.connect(analyser);
+      updateBandOverlay();
+
+      isListening = true;
+      document.getElementById('toggleBtn').textContent = '■ Stop Listening';
+      document.getElementById('toggleBtn').classList.add('active');
+      document.getElementById('statusBadge').textContent = 'Listening';
+      document.getElementById('statusBadge').className = 'status-badge listening';
+      setMsg('Listening · Place phone near the clock · Use sync if swing direction is wrong');
+
+      resetState();
+      drawLoop();
+    });
+  })
+  .catch(function(err) {
+    if (err.name === 'NotAllowedError') setMsg('Microphone permission denied.', true);
+    else setMsg('Error: ' + err.name, true);
+  });
+}
+
+function stopMic() {
+  if (animId) cancelAnimationFrame(animId);
+  if (micStream) micStream.getTracks().forEach(function(t) { t.stop(); });
+  if (audioCtx) { try { audioCtx.close(); } catch(e) {} }
+  audioCtx = null; analyser = null; micStream = null; animId = null;
+  isListening = false;
+  document.getElementById('toggleBtn').textContent = '▶ Start Listening';
+  document.getElementById('toggleBtn').classList.remove('active');
+  document.getElementById('statusBadge').textContent = 'Idle';
+  document.getElementById('statusBadge').className = 'status-badge idle';
+  setMsg('Stopped.');
+  wCtx.clearRect(0, 0, waveCanvas.width, waveCanvas.height);
+  document.getElementById('vuFill').style.width = '0%';
+}
+
+function resetState() {
+  lastBeatTime = null;
+  // prime so first detected beat becomes the chosen firstBeat type
+  lastBeatType = firstBeat === 'tick' ? 'tock' : 'tick';
+  beatCount = 0; historyLog = [];
+  tickBuf = []; tockBuf = [];
+  COOLDOWN = false;
+  updateUI();
+  renderHistory();
+}
+
+function getPeak() {
+  // Full-range peak (used only for waveform colouring)
+  var buf = new Uint8Array(analyser.fftSize);
+  analyser.getByteTimeDomainData(buf);
+  var peak = 0;
+  for (var i = 0; i < buf.length; i++) {
+    var v = Math.abs(buf[i] - 128) / 128;
+    if (v > peak) peak = v;
+  }
+  return peak;
+}
+
+function getDb() {
+  var buf = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(buf);
+  var sum = 0;
+  for (var i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+  var rms = Math.sqrt(sum / buf.length);
+  if (rms === 0) return -Infinity;
+  return 20 * Math.log10(rms / 255);
+}
+
+function bufAvg(arr) {
+  if (!arr.length) return null;
+  var s = 0; for (var i = 0; i < arr.length; i++) s += arr[i];
+  return s / arr.length;
+}
+function pushBuf(arr, val) { arr.push(val); if (arr.length > BUF_SIZE) arr.shift(); }
+
+function onBeat(now) {
+  if (COOLDOWN) return;
+  COOLDOWN = true;
+  clearTimeout(cooldownTimer);
+  cooldownTimer = setTimeout(function() { COOLDOWN = false; }, MIN_BEAT_GAP);
+
+  beatCount++;
+  document.getElementById('beatCount').textContent = beatCount;
+
+  var dt = lastBeatTime ? (now - lastBeatTime) : null;
+  var type = (!lastBeatType || lastBeatType === 'tock') ? 'tick' : 'tock';
+
+  if (dt !== null) {
+    if (type === 'tick') pushBuf(tickBuf, dt);
+    else                 pushBuf(tockBuf, dt);
+  }
+
+  lastBeatTime = now;
+  lastBeatType = type;
+
+  animatePendulum(type);
+  flashCard(type);
+
+  if (dt !== null) {
+    historyLog.unshift({
+      n: beatCount, type: type, dt: Math.round(dt),
+      tick: bufAvg(tickBuf) ? Math.round(bufAvg(tickBuf)) : null,
+      tock: bufAvg(tockBuf) ? Math.round(bufAvg(tockBuf)) : null
+    });
+    if (historyLog.length > MAX_HISTORY) historyLog.pop();
+  }
+
+  updateUI();
+  renderHistory();
+}
+
+function animatePendulum(type) {
+  var rod = document.getElementById('pendulumRod');
+  var deg = type === 'tick' ? -22 : 22;
+  rod.style.transform = 'translateX(-50%) rotate(' + deg + 'deg)';
+  var lt = document.getElementById('lblTick');
+  var lo = document.getElementById('lblTock');
+  if (type === 'tick') { lt.classList.add('active'); lo.classList.remove('active'); }
+  else                 { lo.classList.add('active'); lt.classList.remove('active'); }
+}
+
+function flashCard(type) {
+  var card = document.getElementById(type === 'tick' ? 'cardTick' : 'cardTock');
+  card.classList.add('flash-' + type);
+  setTimeout(function() { card.classList.remove('flash-' + type); }, 300);
+}
+
+function updateUI() {
+  var tickAvg = bufAvg(tickBuf);
+  var tockAvg = bufAvg(tockBuf);
+
+  if (tickAvg !== null) document.getElementById('tickMs').textContent = Math.round(tickAvg);
+  if (tockAvg !== null) document.getElementById('tockMs').textContent = Math.round(tockAvg);
+
+  if (tickAvg !== null && tockAvg !== null) {
+    var total = tickAvg + tockAvg;
+    var tickPct = (tickAvg / total * 100).toFixed(1);
+    var tockPct = (tockAvg / total * 100).toFixed(1);
+    document.getElementById('tickPct').textContent = tickPct + '%';
+    document.getElementById('tockPct').textContent = tockPct + '%';
+    document.getElementById('period').textContent = Math.round(total);
+    document.getElementById('bpm').textContent = (60000 / total).toFixed(1);
+
+    var err = Math.abs(tickAvg - tockAvg);
+    document.getElementById('beatErr').textContent = Math.round(err) + 'ms';
+    document.getElementById('beatErr').style.color = err < 10 ? '#3a7040' : err < 30 ? '#c07010' : '#b03020';
+
+    document.getElementById('balNeedle').style.left = tickPct + '%';
+    document.getElementById('balTick').style.width = Math.max(0, 50 - parseFloat(tickPct)) + '%';
+    document.getElementById('balTock').style.width = Math.max(0, parseFloat(tockPct) - 50) + '%';
+
+    var reading, readColor;
+    if (err < 5)       { reading = 'In beat ✓';                            readColor = '#3a7040'; }
+    else if (err < 15) { reading = 'Good — ' + Math.round(err) + 'ms error'; readColor = '#5a8030'; }
+    else if (err < 35) { reading = 'Adjust needed — ' + Math.round(err) + 'ms error'; readColor = '#c07010'; }
+    else               { reading = 'Out of beat — ' + Math.round(err) + 'ms error';   readColor = '#b03020'; }
+
+    if (tickAvg > tockAvg) reading += ' (tick long)';
+    else if (tockAvg > tickAvg) reading += ' (tock long)';
+
+    document.getElementById('balReading').textContent = reading;
+    document.getElementById('balReading').style.color = readColor;
+  }
+}
+
+function renderHistory() {
+  var rows = document.getElementById('historyRows');
+  var empty = document.getElementById('histEmpty');
+  if (historyLog.length === 0) { if (empty) empty.style.display = 'block'; return; }
+  if (empty) empty.style.display = 'none';
+  rows.innerHTML = '';
+  historyLog.forEach(function(e) {
+    var row = document.createElement('div');
+    row.className = 'history-row';
+    var cls = e.type === 'tick' ? 'hi' : 'ho';
+    var label = e.type === 'tick' ? '←' : '→';
+    row.innerHTML =
+      '<span class="' + cls + '">' + label + '</span>' +
+      '<span>' + e.dt + ' ms</span>' +
+      '<span>' + (e.tick !== null ? 'T:' + e.tick : '') + '</span>' +
+      '<span>' + (e.tock !== null ? 'K:' + e.tock : '') + '</span>';
+    rows.appendChild(row);
+  });
+}
+
+function drawLoop() {
+  if (!analyser) return;
+  animId = requestAnimationFrame(drawLoop);
+  var dpr = window.devicePixelRatio || 1;
+  var peak     = getPeak();       // full-range, for waveform colour
+  var bandPeak = getBandPeak();   // band-filtered, for beat detection
+
+  if (bandPeak > THRESHOLD) onBeat(performance.now());
+
+  // VU strip — use overall RMS dB
+  var db = getDb();
+  var clampedDb = Math.max(-60, Math.min(0, db));
+  document.getElementById('vuFill').style.width = ((clampedDb + 60) / 60 * 100) + '%';
+
+  // ── Frequency spectrum canvas ──
+  var fW = freqCanvas.width, fH = freqCanvas.height;
+  var freqData = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(freqData);
+
+  fCtx.clearRect(0, 0, fW, fH);
+  var barCount = Math.min(128, freqData.length);
+  var barW = fW / barCount;
+  var loIdx = Math.floor(bandLo * freqData.length);
+  var hiIdx = Math.ceil(bandHi  * freqData.length);
+
+  for (var i = 0; i < barCount; i++) {
+    var idx = Math.floor(i * freqData.length / barCount);
+    var val = freqData[idx] / 255;
+    var bH  = val * fH;
+    var x   = i * barW;
+    var inBand = (idx >= loIdx && idx < hiIdx);
+    // In-band bars: gold/amber; out-of-band: muted brown
+    if (inBand) {
+      var hue = 45 - val * 30;
+      fCtx.fillStyle = 'hsl(' + hue + ',70%,' + (35 + val * 30) + '%)';
+    } else {
+      fCtx.fillStyle = 'rgba(160,130,80,' + (0.15 + val * 0.25) + ')';
+    }
+    fCtx.fillRect(x, fH - bH, Math.max(1, barW - 1), bH);
+  }
+
+  // ── Waveform ──
+  var wW = waveCanvas.width, wH = waveCanvas.height;
+  var timeData = new Uint8Array(analyser.fftSize);
+  analyser.getByteTimeDomainData(timeData);
+
+  wCtx.clearRect(0, 0, wW, wH);
+  wCtx.strokeStyle = '#e8e0cc'; wCtx.lineWidth = 1;
+  for (var g = 0; g <= 4; g++) {
+    wCtx.beginPath(); wCtx.moveTo(0, g/4*wH); wCtx.lineTo(wW, g/4*wH); wCtx.stroke();
+  }
+  wCtx.strokeStyle = '#d4c8a8'; wCtx.lineWidth = 1;
+  wCtx.beginPath(); wCtx.moveTo(0, wH/2); wCtx.lineTo(wW, wH/2); wCtx.stroke();
+
+  // Threshold lines on waveform
+  var threshY = THRESHOLD * (wH / 2);
+  wCtx.strokeStyle = 'rgba(160,120,40,0.45)';
+  wCtx.lineWidth = 1;
+  wCtx.setLineDash([4, 4]);
+  wCtx.beginPath(); wCtx.moveTo(0, wH/2 - threshY); wCtx.lineTo(wW, wH/2 - threshY); wCtx.stroke();
+  wCtx.beginPath(); wCtx.moveTo(0, wH/2 + threshY); wCtx.lineTo(wW, wH/2 + threshY); wCtx.stroke();
+  wCtx.setLineDash([]);
+
+  var wColor = bandPeak > THRESHOLD ? '#8a6820' : '#c8b880';
+  wCtx.lineWidth = 1.5 * dpr;
+  wCtx.strokeStyle = wColor;
+  wCtx.shadowBlur = bandPeak > THRESHOLD ? 6 * dpr : 0;
+  wCtx.shadowColor = '#a07828';
+  wCtx.beginPath();
+  var sw = wW / timeData.length;
+  for (var i = 0; i < timeData.length; i++) {
+    var v = timeData[i] / 128.0;
+    var y = (v * wH) / 2;
+    if (i === 0) wCtx.moveTo(0, y); else wCtx.lineTo(i * sw, y);
+  }
+  wCtx.stroke();
+  wCtx.shadowBlur = 0;
+}
+</script>
+</body>
+</html>
