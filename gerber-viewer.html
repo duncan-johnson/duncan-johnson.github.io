@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PCB Gerber Viewer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg:        #0a0c0f;
+    --panel:     #0f1318;
+    --border:    #1e2a35;
+    --accent:    #00d4aa;
+    --accent2:   #0080ff;
+    --warn:      #ffaa00;
+    --text:      #c8d8e8;
+    --muted:     #4a6070;
+    --pcb-green: #1a5c2a;
+    --pcb-copper:#c87941;
+    --pcb-silk:  #f0f0f0;
+    --pcb-mask:  #1a3a1a;
+
+    /* Layer colours */
+    --col-gtl: #c87941;   /* copper top */
+    --col-gbl: #d4a060;   /* copper bottom */
+    --col-gts: #8822cc;   /* soldermask top */
+    --col-gbs: #662299;   /* soldermask bottom */
+    --col-gto: #f0f0f0;   /* silkscreen top */
+    --col-gbo: #aaaaaa;   /* silkscreen bottom */
+    --col-gko: #ffff00;   /* board outline */
+    --col-gm1: #ff6600;   /* mech 1 */
+    --col-drl: #00ccff;   /* drill */
+    --col-gbr: #00ccff;   /* drill (alt) */
+    --col-xln: #00ccff;   /* excellon */
+    --col-default: #888888;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Rajdhani', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .6rem 1.4rem;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .logo {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.15rem;
+    color: var(--accent);
+    letter-spacing: .08em;
+  }
+  .logo span { color: var(--accent2); }
+  header h1 { font-size: 1rem; font-weight: 300; color: var(--muted); letter-spacing:.1em; flex: 1; }
+
+  /* ── Layout ── */
+  .workspace {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  aside {
+    width: 260px;
+    min-width: 220px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .drop-zone {
+    margin: .8rem;
+    border: 2px dashed var(--border);
+    border-radius: 6px;
+    padding: 1.2rem .8rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    flex-shrink: 0;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(0,212,170,.05);
+  }
+  .drop-zone .icon { font-size: 2rem; margin-bottom: .4rem; }
+  .drop-zone p { font-size: .8rem; color: var(--muted); line-height: 1.4; }
+  .drop-zone strong { color: var(--text); }
+  #file-input { display:none; }
+
+  .sidebar-section {
+    padding: .4rem .8rem .3rem;
+    font-size: .65rem;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--muted);
+    letter-spacing: .15em;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .layer-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: .3rem .5rem;
+  }
+  .layer-list::-webkit-scrollbar { width: 4px; }
+  .layer-list::-webkit-scrollbar-track { background: transparent; }
+  .layer-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .layer-item {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .35rem .5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background .15s;
+    user-select: none;
+  }
+  .layer-item:hover { background: rgba(255,255,255,.04); }
+  .layer-item.selected { background: rgba(0,212,170,.07); }
+
+  .layer-swatch {
+    width: 12px; height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,.15);
+  }
+  .layer-eye {
+    margin-left: auto;
+    font-size: .85rem;
+    color: var(--muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: color .15s;
+  }
+  .layer-eye:hover { color: var(--text); }
+  .layer-eye.hidden { color: var(--border); }
+  .layer-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .72rem;
+    color: var(--text);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .layer-ext {
+    font-size: .65rem;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .controls {
+    border-top: 1px solid var(--border);
+    padding: .6rem .8rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    flex-shrink: 0;
+  }
+  .controls label { font-size: .72rem; color: var(--muted); display: flex; justify-content: space-between; }
+  .controls input[type=range] {
+    width: 100%; height: 3px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .btn-row { display: flex; gap: .4rem; }
+  .btn {
+    flex: 1;
+    padding: .35rem .5rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    border-radius: 4px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .05em;
+    cursor: pointer;
+    transition: border-color .2s, color .2s, background .2s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { border-color: var(--accent); color: var(--accent); background: rgba(0,212,170,.08); }
+  .btn.primary:hover { background: rgba(0,212,170,.18); }
+
+  /* ── Canvas area ── */
+  main {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(0,212,170,.04) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(0,128,255,.04) 0%, transparent 55%),
+      var(--bg);
+  }
+
+  #pcb-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    cursor: grab;
+    image-rendering: pixelated;
+  }
+  #pcb-canvas:active { cursor: grabbing; }
+
+  .canvas-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+  }
+
+  /* Grid dots */
+  .canvas-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(255,255,255,.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .empty-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    color: var(--muted);
+    pointer-events: none;
+  }
+  .empty-state .big-icon { font-size: 4rem; opacity: .3; }
+  .empty-state p { font-size: .9rem; letter-spacing: .08em; }
+  .empty-state small { font-family: 'Share Tech Mono', monospace; font-size: .7rem; opacity: .5; }
+
+  /* Status bar */
+  .statusbar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: .3rem 1rem;
+    background: rgba(10,12,15,.8);
+    border-top: 1px solid var(--border);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .68rem;
+    color: var(--muted);
+    display: flex;
+    gap: 2rem;
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+  }
+  .statusbar span { color: var(--text); }
+
+  /* Zoom indicator */
+  .zoom-badge {
+    position: absolute;
+    top: .8rem;
+    right: .8rem;
+    background: rgba(15,19,24,.9);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: .3rem .6rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .72rem;
+    color: var(--accent);
+    pointer-events: none;
+    backdrop-filter: blur(4px);
+  }
+
+  /* Toast */
+  .toast {
+    position: absolute;
+    top: 1rem; left: 50%;
+    transform: translateX(-50%) translateY(-60px);
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: .4rem 1rem;
+    border-radius: 4px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: .75rem;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">PCB<span>&gt;</span>VIEW</div>
+  <h1>GERBER LAYER RENDERER</h1>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:.7rem;color:var(--muted);">RS-274X</div>
+</header>
+
+<div class="workspace">
+  <aside>
+    <div class="drop-zone" id="drop-zone">
+      <div class="icon">📂</div>
+      <p><strong>Drop Gerber files here</strong><br>or click to browse</p>
+      <p style="margin-top:.4rem;font-size:.68rem;">.gtl .gbl .gts .gbs .gto .gbo .gko .gm1 .drl .xln…</p>
+    </div>
+    <input type="file" id="file-input" multiple accept="*">
+
+    <div class="sidebar-section">LAYERS</div>
+    <div class="layer-list" id="layer-list">
+      <div style="font-size:.72rem;color:var(--muted);padding:.5rem;font-family:'Share Tech Mono',monospace;text-align:center;">
+        No layers loaded
+      </div>
+    </div>
+
+    <div class="controls">
+      <label>Opacity <span id="opacity-val">100%</span></label>
+      <input type="range" id="opacity-slider" min="10" max="100" value="100">
+
+      <label>Background</label>
+      <div class="btn-row" id="bg-btns">
+        <button class="btn primary" data-bg="#0a0c10">Dark</button>
+        <button class="btn" data-bg="#1a3a1a">PCB</button>
+        <button class="btn" data-bg="#f0f0f0">Light</button>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" id="fit-btn">Fit View</button>
+        <button class="btn" id="clear-btn">Clear</button>
+      </div>
+      <button class="btn primary" id="export-btn">Export PNG</button>
+    </div>
+  </aside>
+
+  <main id="main-view">
+    <canvas id="pcb-canvas"></canvas>
+    <div class="canvas-overlay"></div>
+    <div class="empty-state" id="empty-state">
+      <div class="big-icon">⬡</div>
+      <p>LOAD GERBER FILES TO BEGIN</p>
+      <small>Supports RS-274X extended Gerber format</small>
+    </div>
+    <div class="zoom-badge" id="zoom-badge">100%</div>
+    <div class="statusbar">
+      Cursor: <span id="stat-xy">—</span> &nbsp;|&nbsp;
+      Zoom: <span id="stat-zoom">1.00×</span> &nbsp;|&nbsp;
+      Layers: <span id="stat-layers">0</span> &nbsp;|&nbsp;
+      Bounds: <span id="stat-bounds">—</span>
+    </div>
+    <div class="toast" id="toast"></div>
+  </main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  Layer metadata by extension
+// ═══════════════════════════════════════════════════════════════
+const LAYER_META = {
+  gtl: { label:'Copper Top',        color:'#c87941', order:10, composite:'source-over' },
+  gbl: { label:'Copper Bottom',     color:'#d4a060', order:20, composite:'source-over' },
+  gts: { label:'Soldermask Top',    color:'#6622bb', order:30, composite:'multiply'    },
+  gbs: { label:'Soldermask Bottom', color:'#551a99', order:40, composite:'multiply'    },
+  gto: { label:'Silkscreen Top',    color:'#f0f0f0', order:50, composite:'source-over' },
+  gbo: { label:'Silkscreen Bottom', color:'#aaaaaa', order:60, composite:'source-over' },
+  gko: { label:'Board Outline',     color:'#ffff00', order: 5, composite:'source-over' },
+  gm1: { label:'Mech Layer 1',      color:'#ff6600', order: 6, composite:'source-over' },
+  gm2: { label:'Mech Layer 2',      color:'#ff8800', order: 7, composite:'source-over' },
+  drl: { label:'Drill',             color:'#00ccff', order:70, composite:'source-over' },
+  gbr: { label:'Drill',             color:'#00ccff', order:70, composite:'source-over' },
+  xln: { label:'Excellon Drill',    color:'#00ddff', order:71, composite:'source-over' },
+  ger: { label:'Gerber',            color:'#88aacc', order:80, composite:'source-over' },
+};
+
+function getLayerMeta(ext) {
+  return LAYER_META[ext.toLowerCase()] || { label: ext.toUpperCase(), color:'#888888', order:99, composite:'source-over' };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Gerber RS-274X Parser
+// ═══════════════════════════════════════════════════════════════
+class GerberParser {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.apertures   = {};
+    this.macros      = {};
+    this.primitives  = [];   // {type, ...}
+    this.curAp       = null;
+    this.curX        = 0;
+    this.curY        = 0;
+    this.unit        = 'MM';   // IN | MM
+    this.fmt         = { xi:2, xd:5, yi:2, yd:5 };
+    this.polarity    = 'C';    // C=clear  D=dark
+    this.regionMode  = false;
+    this.regionPath  = [];
+    this.stepRepeat  = null;
+    this.interpolation = 'L'; // L=linear  CW=arc CW  CCW=arc CCW
+    this.quadrantMode  = 'S'; // S=single  M=multi
+    this.inPoly      = false;
+    this.bounds      = { minX:Infinity, minY:Infinity, maxX:-Infinity, maxY:-Infinity };
+  }
+
+  expandCoord(s) {
+    if (s === undefined || s === null || s === '') return 0;
+    // Handle sign
+    const sign = s[0] === '-' ? -1 : 1;
+    const digits = s.replace(/^-/, '');
+    const total = this.fmt.xi + this.fmt.xd; // reuse same for both axes (simplified)
+    const padded = digits.padStart(total, '0');
+    const int_part = padded.slice(0, -this.fmt.xd) || '0';
+    const frac_part = padded.slice(-this.fmt.xd);
+    return sign * parseFloat(int_part + '.' + frac_part);
+  }
+
+  expandY(s) {
+    if (s === undefined || s === null || s === '') return 0;
+    const sign = s[0] === '-' ? -1 : 1;
+    const digits = s.replace(/^-/, '');
+    const total = this.fmt.yi + this.fmt.yd;
+    const padded = digits.padStart(total, '0');
+    const int_part = padded.slice(0, -this.fmt.yd) || '0';
+    const frac_part = padded.slice(-this.fmt.yd);
+    return sign * parseFloat(int_part + '.' + frac_part);
+  }
+
+  addBounds(x, y, r = 0) {
+    this.bounds.minX = Math.min(this.bounds.minX, x - r);
+    this.bounds.minY = Math.min(this.bounds.minY, y - r);
+    this.bounds.maxX = Math.max(this.bounds.maxX, x + r);
+    this.bounds.maxY = Math.max(this.bounds.maxY, y + r);
+  }
+
+  parse(src) {
+    this.reset();
+    // Normalise line endings, join G04 comments etc.
+    const text = src.replace(/\r\n?/g, '\n');
+    // Split into blocks (asterisk-terminated)
+    const blocks = text.split('*').map(b => b.trim()).filter(Boolean);
+
+    let i = 0;
+    while (i < blocks.length) {
+      const block = blocks[i];
+
+      // ── Extended parameter blocks %...%
+      if (block.startsWith('%')) {
+        // Collect until closing %
+        let param = block.slice(1);
+        while (!param.endsWith('%') && i < blocks.length - 1) {
+          i++;
+          param += '*' + blocks[i];
+        }
+        param = param.replace(/%$/, '');
+        this.parseParam(param);
+        i++;
+        continue;
+      }
+
+      this.parseBlock(block);
+      i++;
+    }
+
+    return this.primitives;
+  }
+
+  parseParam(p) {
+    // FS – Format Spec
+    if (p.startsWith('FS')) {
+      const m = p.match(/FS[LT]A?X(\d)(\d)Y(\d)(\d)/i);
+      if (m) {
+        this.fmt = { xi:+m[1], xd:+m[2], yi:+m[3], yd:+m[4] };
+      }
+      return;
+    }
+    // MO – Mode
+    if (p.startsWith('MO')) {
+      this.unit = p.slice(2, 4).toUpperCase() === 'IN' ? 'IN' : 'MM';
+      return;
+    }
+    // LP – Layer Polarity
+    if (p.startsWith('LP')) {
+      this.polarity = p[2] === 'C' ? 'C' : 'D';
+      return;
+    }
+    // AD – Aperture Definition
+    if (p.startsWith('AD')) {
+      this.parseAD(p.slice(2));
+      return;
+    }
+    // AM – Aperture Macro (simplified, skip body)
+    if (p.startsWith('AM')) {
+      // ignore macro body for now
+      return;
+    }
+    // SR – Step-Repeat
+    if (p.startsWith('SR')) {
+      const m = p.match(/SRX(\d+)Y(\d+)I([0-9.+-]+)J([0-9.+-]+)/);
+      if (m) this.stepRepeat = { nx:+m[1], ny:+m[2], dx:+m[3], dy:+m[4] };
+      else   this.stepRepeat = null;
+      return;
+    }
+  }
+
+  parseAD(s) {
+    // e.g. D10C,0.1 | D11R,0.2X0.3 | D12O,0.5X0.5
+    const m = s.match(/^D(\d+)([A-Z0-9_]+),?(.*)$/i);
+    if (!m) return;
+    const id   = +m[1];
+    const type = m[2].toUpperCase();
+    const params = m[3] ? m[3].split('X').map(Number) : [];
+    this.apertures[id] = { type, params };
+  }
+
+  parseBlock(block) {
+    // ── G-codes
+    if (block === 'G36') { this.regionMode = true;  this.regionPath = []; return; }
+    if (block === 'G37') {
+      if (this.regionPath.length > 1) {
+        this.primitives.push({ type:'region', path:[...this.regionPath], polarity:this.polarity });
+        this.regionPath.forEach(pt => this.addBounds(pt.x, pt.y));
+      }
+      this.regionMode = false; this.regionPath = []; return;
+    }
+    if (block === 'G70') { this.unit = 'IN'; return; }
+    if (block === 'G71') { this.unit = 'MM'; return; }
+    if (block === 'G74') { this.quadrantMode = 'S'; return; }
+    if (block === 'G75') { this.quadrantMode = 'M'; return; }
+    if (block.startsWith('G04')) return; // comment
+    if (block === 'M02' || block === 'M00') return; // end of file
+
+    // ── G01/G02/G03 interpolation mode
+    const gm = block.match(/^G0*([123])/);
+    if (gm) {
+      const g = +gm[1];
+      if (g === 1) this.interpolation = 'L';
+      if (g === 2) this.interpolation = 'CW';
+      if (g === 3) this.interpolation = 'CCW';
+      // may continue with D code in same block
+    }
+
+    // ── Aperture select
+    const dsel = block.match(/^D(\d+)$/);
+    if (dsel && +dsel[1] >= 10) {
+      this.curAp = +dsel[1];
+      return;
+    }
+
+    // ── Coordinate block with D01/D02/D03
+    const coord = block.match(/^(?:G0*[123])?(X([+-]?\d+))?(Y([+-]?\d+))?(I([+-]?\d+))?(J([+-]?\d+))?D0*(1|2|3)$/);
+    if (coord) {
+      const rawX = coord[2], rawY = coord[4];
+      const rawI = coord[6], rawJ = coord[8];
+      const dcode = +coord[9];
+
+      const x = rawX !== undefined ? this.expandCoord(rawX) : this.curX;
+      const y = rawY !== undefined ? this.expandY(rawY) : this.curY;
+      const I = rawI !== undefined ? this.expandCoord(rawI) : 0;
+      const J = rawJ !== undefined ? this.expandY(rawJ)   : 0;
+
+      if (dcode === 1) this.opDraw(x, y, I, J);
+      else if (dcode === 2) this.opMove(x, y);
+      else if (dcode === 3) this.opFlash(x, y);
+
+      this.curX = x; this.curY = y;
+      return;
+    }
+
+    // ── D-only with implied position
+    const donly = block.match(/^D0*(1|2|3)$/);
+    if (donly) {
+      const dcode = +donly[1];
+      if (dcode === 1) this.opDraw(this.curX, this.curY, 0, 0);
+      else if (dcode === 2) this.opMove(this.curX, this.curY);
+      else if (dcode === 3) this.opFlash(this.curX, this.curY);
+    }
+  }
+
+  opMove(x, y) {
+    if (this.regionMode) {
+      if (this.regionPath.length > 1) {
+        this.primitives.push({ type:'region', path:[...this.regionPath], polarity:this.polarity });
+        this.regionPath.forEach(pt => this.addBounds(pt.x, pt.y));
+      }
+      this.regionPath = [{ x, y }];
+    }
+    this.curX = x; this.curY = y;
+  }
+
+  opDraw(x2, y2, I, J) {
+    const x1 = this.curX, y1 = this.curY;
+    const ap = this.apertures[this.curAp] || { type:'C', params:[0.05] };
+    const w  = ap.params[0] || 0.05;
+    const r  = w / 2;
+
+    if (this.regionMode) {
+      if (this.interpolation === 'L') {
+        if (this.regionPath.length === 0) this.regionPath.push({ x:x1, y:y1 });
+        this.regionPath.push({ x:x2, y:y2 });
+      } else {
+        // arc in region – approximate with line segments
+        const segs = this.arcToLines(x1, y1, x2, y2, I, J, this.interpolation === 'CW');
+        if (this.regionPath.length === 0) this.regionPath.push({ x:x1, y:y1 });
+        segs.forEach(s => this.regionPath.push(s));
+      }
+      return;
+    }
+
+    if (this.interpolation === 'L') {
+      this.primitives.push({ type:'line', x1, y1, x2, y2, width:w, polarity:this.polarity });
+      this.addBounds(x1, y1, r);
+      this.addBounds(x2, y2, r);
+    } else {
+      const cx = x1 + I, cy = y1 + J;
+      this.primitives.push({ type:'arc', x1, y1, x2, y2, cx, cy,
+        cw: this.interpolation === 'CW', width:w, polarity:this.polarity });
+      const rad = Math.hypot(x1 - cx, y1 - cy);
+      this.addBounds(cx, cy, rad + r);
+    }
+  }
+
+  opFlash(x, y) {
+    const ap = this.apertures[this.curAp] || { type:'C', params:[0.05] };
+    this.primitives.push({ type:'flash', x, y, ap:{ ...ap }, polarity:this.polarity });
+    const r = (ap.params[0] || 0.1) / 2;
+    this.addBounds(x, y, r);
+  }
+
+  arcToLines(x1, y1, x2, y2, I, J, cw) {
+    const cx = x1 + I, cy = y1 + J;
+    const r  = Math.hypot(I, J) || Math.hypot(x2 - cx, y2 - cy);
+    let a1 = Math.atan2(y1 - cy, x1 - cx);
+    let a2 = Math.atan2(y2 - cy, x2 - cx);
+    if (cw  && a2 > a1) a2 -= 2 * Math.PI;
+    if (!cw && a2 < a1) a2 += 2 * Math.PI;
+    const n = Math.max(4, Math.ceil(Math.abs(a2 - a1) * 8));
+    const pts = [];
+    for (let k = 1; k <= n; k++) {
+      const a = a1 + (a2 - a1) * k / n;
+      pts.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+    }
+    return pts;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Excellon Drill Parser (simplified)
+// ═══════════════════════════════════════════════════════════════
+class ExcellonParser {
+  parse(src) {
+    const lines = src.split(/\r?\n/);
+    const primitives = [];
+    const bounds = { minX:Infinity, minY:Infinity, maxX:-Infinity, maxY:-Infinity };
+    let tools = {};
+    let curTool = null;
+    let unit = 'IN';
+    let fmt = { xd:4, yd:4 }; // leading zeros, 4 decimals
+
+    const addB = (x, y, r=0) => {
+      bounds.minX = Math.min(bounds.minX, x-r);
+      bounds.minY = Math.min(bounds.minY, y-r);
+      bounds.maxX = Math.max(bounds.maxX, x+r);
+      bounds.maxY = Math.max(bounds.maxY, y+r);
+    };
+
+    const parse_coord = (s) => {
+      if (!s) return 0;
+      const sign = s[0] === '-' ? -1 : 1;
+      const d = s.replace('-','');
+      // assume trailing zeros omitted, fmt.xd decimal places
+      const frac = fmt.xd;
+      const padded = d.padEnd(d.indexOf('.') >= 0 ? d.length : Math.max(frac+1, d.length), '0');
+      if (d.includes('.')) return sign * parseFloat(d);
+      const int_part = padded.slice(0, -frac) || '0';
+      const frac_part = padded.slice(-frac);
+      return sign * parseFloat(int_part + '.' + frac_part);
+    };
+
+    let header = true;
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) continue;
+      if (line === 'M48') { header = true; continue; }
+      if (line === '%' || line === 'M95') { header = false; continue; }
+      if (line === 'M30' || line === 'M00' || line === 'M02') break;
+
+      // Tool definition
+      const tdef = line.match(/^T(\d+)(?:C([0-9.]+))?/);
+      if (header && tdef && tdef[2]) {
+        tools[tdef[1]] = { dia: parseFloat(tdef[2]) };
+        continue;
+      }
+
+      // Tool select
+      const tsel = line.match(/^T(\d+)$/);
+      if (tsel) { curTool = tsel[1]; continue; }
+
+      // METRIC/INCH
+      if (line === 'METRIC' || line.startsWith('METRIC,')) { unit = 'MM'; continue; }
+      if (line === 'INCH' || line.startsWith('INCH,')) { unit = 'IN'; continue; }
+
+      // Coordinate line
+      const cm = line.match(/^X([+-]?[\d.]+)Y([+-]?[\d.]+)/);
+      if (cm) {
+        let x = parse_coord(cm[1]);
+        let y = parse_coord(cm[2]);
+        if (unit === 'IN') { x *= 25.4; y *= 25.4; }
+        const dia = tools[curTool]?.dia || 0.8;
+        const r = (unit === 'IN' ? dia * 25.4 : dia) / 2;
+        primitives.push({ type:'flash', x, y, ap:{ type:'C', params:[dia] }, polarity:'D' });
+        addB(x, y, r);
+        continue;
+      }
+    }
+
+    return { primitives, bounds };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Canvas Renderer
+// ═══════════════════════════════════════════════════════════════
+class GerberRenderer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.layers = [];           // sorted by order
+    this.transform = { x:0, y:0, scale:1, flipY:true };
+    this.bgColor = '#0a0c10';
+    this.globalOpacity = 1;
+    this.bounds = null;
+  }
+
+  addLayer(layer) {
+    this.layers.push(layer);
+    this.layers.sort((a,b) => a.meta.order - b.meta.order);
+    this.updateBounds();
+  }
+
+  removeAllLayers() {
+    this.layers = [];
+    this.bounds = null;
+  }
+
+  updateBounds() {
+    if (!this.layers.length) { this.bounds = null; return; }
+    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+    for (const l of this.layers) {
+      if (!l.bounds || l.bounds.minX === Infinity) continue;
+      minX = Math.min(minX, l.bounds.minX);
+      minY = Math.min(minY, l.bounds.minY);
+      maxX = Math.max(maxX, l.bounds.maxX);
+      maxY = Math.max(maxY, l.bounds.maxY);
+    }
+    if (minX === Infinity) { this.bounds = null; return; }
+    this.bounds = { minX, minY, maxX, maxY };
+  }
+
+  fitView() {
+    if (!this.bounds) return;
+    const { minX, minY, maxX, maxY } = this.bounds;
+    const W = this.canvas.width, H = this.canvas.height;
+    const bW = maxX - minX || 1, bH = maxY - minY || 1;
+    const pad = .9;
+    const scale = Math.min(W / bW, H / bH) * pad;
+    this.transform.scale = scale;
+    // centre
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    this.transform.x = W/2 - scale * cx;
+    this.transform.y = H/2 + scale * cy; // flipY
+  }
+
+  render() {
+    const { ctx, canvas } = this;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Background
+    ctx.fillStyle = this.bgColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (!this.layers.length) return;
+
+    ctx.save();
+    ctx.globalAlpha = this.globalOpacity;
+
+    for (const layer of this.layers) {
+      if (!layer.visible) continue;
+      this.renderLayer(layer);
+    }
+
+    ctx.restore();
+  }
+
+  renderLayer(layer) {
+    const { ctx } = this;
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-over';
+
+    // Apply transform
+    ctx.translate(this.transform.x, this.transform.y);
+    ctx.scale(this.transform.scale, this.transform.flipY ? -this.transform.scale : this.transform.scale);
+
+    ctx.fillStyle   = layer.meta.color;
+    ctx.strokeStyle = layer.meta.color;
+
+    for (const p of layer.primitives) {
+      if (p.polarity === 'C') {
+        // Clear polarity – erase
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        this.drawPrimitive(p, '#fff');
+        ctx.restore();
+      } else {
+        this.drawPrimitive(p, layer.meta.color);
+      }
+    }
+
+    ctx.restore();
+  }
+
+  drawPrimitive(p, color) {
+    const { ctx } = this;
+    ctx.fillStyle   = color;
+    ctx.strokeStyle = color;
+
+    if (p.type === 'line') {
+      ctx.beginPath();
+      ctx.moveTo(p.x1, p.y1);
+      ctx.lineTo(p.x2, p.y2);
+      ctx.lineWidth = p.width;
+      ctx.lineCap   = 'round';
+      ctx.stroke();
+    } else if (p.type === 'arc') {
+      ctx.beginPath();
+      const r = Math.hypot(p.x1 - p.cx, p.y1 - p.cy);
+      const a1 = Math.atan2(p.y1 - p.cy, p.x1 - p.cx);
+      const a2 = Math.atan2(p.y2 - p.cy, p.x2 - p.cx);
+      ctx.arc(p.cx, p.cy, r, a1, a2, !p.cw);
+      ctx.lineWidth = p.width;
+      ctx.lineCap   = 'round';
+      ctx.stroke();
+    } else if (p.type === 'region') {
+      ctx.beginPath();
+      ctx.moveTo(p.path[0].x, p.path[0].y);
+      for (let k = 1; k < p.path.length; k++) ctx.lineTo(p.path[k].x, p.path[k].y);
+      ctx.closePath();
+      ctx.fill();
+    } else if (p.type === 'flash') {
+      this.drawFlash(p, color);
+    }
+  }
+
+  drawFlash(p, color) {
+    const { ctx } = this;
+    const ap = p.ap;
+    ctx.fillStyle   = color;
+    ctx.strokeStyle = color;
+    const x = p.x, y = p.y;
+    const pr = ap.params;
+
+    if (ap.type === 'C') {
+      // Circle
+      const r = (pr[0] || 0.1) / 2;
+      const hole = (pr[1] || 0) / 2;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI*2);
+      if (hole > 0) {
+        ctx.arc(x, y, hole, 0, Math.PI*2, true);
+      }
+      ctx.fill('evenodd');
+    } else if (ap.type === 'R' || ap.type === 'S') {
+      // Rectangle / Square
+      const w = (pr[0] || 0.1), h = (pr[1] !== undefined ? pr[1] : w);
+      const hole = (pr[2] || 0) / 2;
+      ctx.beginPath();
+      ctx.rect(x - w/2, y - h/2, w, h);
+      if (hole > 0) ctx.arc(x, y, hole, 0, Math.PI*2, true);
+      ctx.fill('evenodd');
+    } else if (ap.type === 'O') {
+      // Obround
+      const w = (pr[0] || 0.1), h = (pr[1] || w);
+      const r = Math.min(w, h) / 2;
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(x-w/2, y-h/2, w, h, r)
+                     : ctx.rect(x-w/2, y-h/2, w, h);
+      ctx.fill();
+    } else if (ap.type === 'P') {
+      // Polygon
+      const r = (pr[0] || 0.1) / 2;
+      const sides = Math.max(3, pr[1] || 6);
+      const rot   = (pr[2] || 0) * Math.PI / 180;
+      ctx.beginPath();
+      for (let k = 0; k < sides; k++) {
+        const a = rot + (k * 2 * Math.PI / sides);
+        k === 0 ? ctx.moveTo(x + r*Math.cos(a), y + r*Math.sin(a))
+                : ctx.lineTo(x + r*Math.cos(a), y + r*Math.sin(a));
+      }
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      // fallback
+      const r = (pr[0] || 0.1) / 2;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  toDataURL() { return this.canvas.toDataURL('image/png'); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  UI Controller
+// ═══════════════════════════════════════════════════════════════
+const canvas      = document.getElementById('pcb-canvas');
+const mainView    = document.getElementById('main-view');
+const renderer    = new GerberRenderer(canvas);
+const layerListEl = document.getElementById('layer-list');
+const emptyState  = document.getElementById('empty-state');
+
+let layers = [];
+let pan = { active:false, startX:0, startY:0, origX:0, origY:0 };
+
+// ── Resize canvas to fit container
+function resizeCanvas() {
+  const rect = mainView.getBoundingClientRect();
+  canvas.width  = rect.width;
+  canvas.height = rect.height;
+  renderer.render();
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// ── Load files
+async function loadFiles(fileList) {
+  const parser   = new GerberParser();
+  const exParser = new ExcellonParser();
+
+  for (const file of fileList) {
+    const name = file.name;
+    const ext  = name.split('.').pop().toLowerCase();
+    const text = await file.text();
+
+    let primitives, bounds;
+
+    if (ext === 'drl' || ext === 'xln') {
+      const result = exParser.parse(text);
+      primitives = result.primitives;
+      bounds = result.bounds;
+      // convert IN→MM if needed
+      if (bounds.minX === Infinity) bounds = { minX:0, minY:0, maxX:100, maxY:100 };
+    } else {
+      primitives = parser.parse(text);
+      bounds = { ...parser.bounds };
+      if (bounds.minX === Infinity) bounds = { minX:0, minY:0, maxX:100, maxY:100 };
+    }
+
+    const meta = getLayerMeta(ext);
+    const layer = { name, ext, meta, primitives, bounds, visible:true };
+    layers.push(layer);
+    renderer.addLayer(layer);
+  }
+
+  renderer.updateBounds();
+  renderer.fitView();
+  renderer.render();
+  updateLayerList();
+  updateStatus();
+  emptyState.style.display = 'none';
+  showToast(`Loaded ${fileList.length} file${fileList.length > 1?'s':''}`);
+}
+
+// ── Layer list UI
+function updateLayerList() {
+  if (!layers.length) {
+    layerListEl.innerHTML = '<div style="font-size:.72rem;color:var(--muted);padding:.5rem;font-family:\'Share Tech Mono\',monospace;text-align:center;">No layers loaded</div>';
+    return;
+  }
+  layerListEl.innerHTML = '';
+  const sorted = [...layers].sort((a,b) => a.meta.order - b.meta.order);
+  for (const l of sorted) {
+    const div = document.createElement('div');
+    div.className = 'layer-item';
+    div.innerHTML = `
+      <div class="layer-swatch" style="background:${l.meta.color}"></div>
+      <div class="layer-name" title="${l.name}">${l.name}</div>
+      <div class="layer-ext">${l.ext.toUpperCase()}</div>
+      <div class="layer-eye ${l.visible?'':'hidden'}" data-name="${l.name}">
+        ${l.visible ? '👁' : '◌'}
+      </div>
+    `;
+    div.querySelector('.layer-eye').addEventListener('click', (e) => {
+      e.stopPropagation();
+      l.visible = !l.visible;
+      renderer.render();
+      updateLayerList();
+      updateStatus();
+    });
+    layerListEl.appendChild(div);
+  }
+}
+
+// ── Status bar
+function updateStatus() {
+  document.getElementById('stat-layers').textContent =
+    layers.filter(l=>l.visible).length + ' / ' + layers.length;
+  const b = renderer.bounds;
+  document.getElementById('stat-bounds').textContent = b
+    ? `${(b.maxX-b.minX).toFixed(2)} × ${(b.maxY-b.minY).toFixed(2)} mm`
+    : '—';
+}
+
+// ── Zoom
+function zoom(factor, cx, cy) {
+  const t = renderer.transform;
+  const wx = (cx - t.x) / t.scale;
+  const wy = (cy - t.y) / t.scale;
+  t.scale = Math.max(0.05, Math.min(2000, t.scale * factor));
+  t.x = cx - wx * t.scale;
+  t.y = cy - wy * t.scale;
+  updateZoomBadge();
+  renderer.render();
+}
+
+function updateZoomBadge() {
+  const pct = Math.round(renderer.transform.scale * 10) / 10;
+  document.getElementById('zoom-badge').textContent = pct + 'px/mm';
+  document.getElementById('stat-zoom').textContent  = pct.toFixed(2) + '×';
+}
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  zoom(e.deltaY < 0 ? 1.12 : 1/1.12, e.clientX - rect.left, e.clientY - rect.top);
+}, { passive:false });
+
+// ── Pan
+canvas.addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  pan.active = true;
+  pan.startX = e.clientX; pan.startY = e.clientY;
+  pan.origX  = renderer.transform.x; pan.origY = renderer.transform.y;
+});
+window.addEventListener('mousemove', (e) => {
+  if (pan.active) {
+    renderer.transform.x = pan.origX + (e.clientX - pan.startX);
+    renderer.transform.y = pan.origY + (e.clientY - pan.startY);
+    renderer.render();
+  }
+  // cursor coords
+  const rect = canvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  const t = renderer.transform;
+  const wx = (cx - t.x) / t.scale;
+  const wy = -(cy - t.y) / t.scale;
+  document.getElementById('stat-xy').textContent = `${wx.toFixed(3)}, ${wy.toFixed(3)} mm`;
+});
+window.addEventListener('mouseup', () => pan.active = false);
+
+// Touch pan/zoom
+let touches = {};
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  Array.from(e.changedTouches).forEach(t => { touches[t.identifier] = { x:t.clientX, y:t.clientY }; });
+}, { passive:false });
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  const keys = Object.keys(touches);
+  if (keys.length === 1 && e.touches.length === 1) {
+    const id = e.touches[0].identifier;
+    const dx = e.touches[0].clientX - touches[id].x;
+    const dy = e.touches[0].clientY - touches[id].y;
+    renderer.transform.x += dx;
+    renderer.transform.y += dy;
+    touches[id] = { x:e.touches[0].clientX, y:e.touches[0].clientY };
+    renderer.render();
+  } else if (e.touches.length === 2) {
+    const [a,b] = Array.from(e.touches);
+    const dist = Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY);
+    const rect  = canvas.getBoundingClientRect();
+    const cx = (a.clientX+b.clientX)/2 - rect.left;
+    const cy = (a.clientY+b.clientY)/2 - rect.top;
+    if (touches._pinchDist) zoom(dist / touches._pinchDist, cx, cy);
+    touches._pinchDist = dist;
+  }
+}, { passive:false });
+canvas.addEventListener('touchend', (e) => {
+  Array.from(e.changedTouches).forEach(t => delete touches[t.identifier]);
+  if (e.touches.length < 2) delete touches._pinchDist;
+});
+
+// ── Drop zone
+const dropZone  = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) loadFiles(Array.from(e.target.files));
+  fileInput.value = '';
+});
+mainView.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+mainView.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+mainView.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) loadFiles(Array.from(e.dataTransfer.files));
+});
+
+// ── Buttons
+document.getElementById('fit-btn').addEventListener('click', () => {
+  renderer.fitView(); updateZoomBadge(); renderer.render();
+});
+document.getElementById('clear-btn').addEventListener('click', () => {
+  layers = []; renderer.removeAllLayers(); renderer.render();
+  updateLayerList(); updateStatus(); emptyState.style.display = '';
+});
+document.getElementById('export-btn').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.download = 'pcb-render.png';
+  a.href = renderer.toDataURL();
+  a.click();
+  showToast('PNG exported');
+});
+
+// ── Opacity
+const opSlider = document.getElementById('opacity-slider');
+const opVal    = document.getElementById('opacity-val');
+opSlider.addEventListener('input', () => {
+  const v = +opSlider.value / 100;
+  renderer.globalOpacity = v;
+  opVal.textContent = opSlider.value + '%';
+  renderer.render();
+});
+
+// ── Background buttons
+document.querySelectorAll('#bg-btns .btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#bg-btns .btn').forEach(b => b.classList.remove('primary'));
+    btn.classList.add('primary');
+    renderer.bgColor = btn.dataset.bg;
+    renderer.render();
+  });
+});
+
+// ── Toast
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ── Init
+updateZoomBadge();
+updateStatus();
+</script>
+</body>
+</html>
