@@ -30,13 +30,19 @@ body.light {
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Rajdhani',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;transition:background .2s,color .2s}
-header{display:flex;align-items:center;gap:1rem;padding:.5rem 1.2rem;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;transition:background .2s,border-color .2s}
-.logo{font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--accent);letter-spacing:.08em}
+.logo{font-family:'Share Tech Mono',monospace;font-size:1.1rem;color:var(--accent);letter-spacing:.08em;white-space:nowrap}
 .logo span{color:var(--accent2)}
-header h1{font-size:.9rem;font-weight:300;color:var(--muted);letter-spacing:.12em;flex:1}
 .workspace{display:flex;flex:1;overflow:hidden}
 
-/* ── Resizable sidebar ── */
+/* ── Toolbar ── */
+header{display:flex;align-items:center;gap:.6rem;padding:.4rem .8rem;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;transition:background .2s,border-color .2s}
+.toolbar{display:flex;align-items:center;gap:.25rem;flex-wrap:wrap;flex:1;min-width:0}
+.tb-group{display:flex;align-items:center;gap:.15rem}
+.tb-sep{width:1px;height:20px;background:var(--border);margin:0 .2rem;flex-shrink:0}
+.tb-btn{padding:.28rem .5rem;border:1px solid transparent;background:transparent;color:var(--text);border-radius:4px;font-family:'Rajdhani',sans-serif;font-size:.75rem;font-weight:600;letter-spacing:.04em;cursor:pointer;white-space:nowrap;transition:border-color .15s,color .15s,background .15s}
+.tb-btn:hover{border-color:var(--border);background:var(--hover-bg)}
+.tb-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,170,.1)}
+body.light .tb-btn.active{background:rgba(0,122,99,.1)}
 aside{width:255px;min-width:160px;max-width:520px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;position:relative;transition:background .2s,border-color .2s}
 .sidebar-resizer{position:absolute;top:0;right:0;width:5px;height:100%;cursor:col-resize;z-index:10;background:transparent;transition:background .15s}
 .sidebar-resizer:hover,.sidebar-resizer.dragging{background:var(--accent)}
@@ -54,24 +60,26 @@ body.light .drop-zone:hover,body.light .drop-zone.drag-over{background:rgba(0,12
 .layer-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 
 /* ── Layer items with drag handle ── */
-.layer-item{display:flex;align-items:center;gap:.4rem;padding:.3rem .4rem;border-radius:4px;user-select:none;transition:background .12s,opacity .15s;position:relative}
+.layer-item{display:flex;align-items:center;gap:.4rem;padding:.3rem .4rem;border-radius:4px;user-select:none;transition:background .12s,opacity .15s;position:relative;cursor:pointer}
 .layer-item:hover{background:var(--hover-bg)}
+.layer-item.layer-selected{background:rgba(0,212,170,.13);box-shadow:inset 2px 0 0 var(--accent)}
+body.light .layer-item.layer-selected{background:rgba(0,122,99,.1);box-shadow:inset 2px 0 0 var(--accent)}
 .layer-item.drag-over-top{box-shadow:0 -2px 0 var(--accent)}
 .layer-item.drag-over-bot{box-shadow:0 2px 0 var(--accent)}
 .layer-item.dragging-self{opacity:.35}
 .drag-handle{font-size:.75rem;color:var(--muted);cursor:grab;flex-shrink:0;padding:0 2px;line-height:1;opacity:.5;transition:opacity .15s}
 .drag-handle:hover{opacity:1}
 .drag-handle:active{cursor:grabbing}
-.swatch{width:11px;height:11px;border-radius:2px;flex-shrink:0;border:1px solid var(--swatch-border)}
+.swatch{width:11px;height:11px;border-radius:2px;flex-shrink:0;border:1px solid var(--swatch-border);cursor:pointer;transition:transform .15s,box-shadow .15s}
+.swatch:hover{transform:scale(1.3);box-shadow:0 0 0 2px var(--accent)}
 .lname{font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.lext{font-size:.6rem;color:var(--muted);flex-shrink:0}
+.lext{font-size:.62rem;font-weight:700;letter-spacing:.04em;color:var(--text);opacity:.6;flex-shrink:0;background:var(--border);border-radius:3px;padding:1px 4px;font-family:'Share Tech Mono',monospace}
+.ldirty{font-size:.72rem;color:var(--warn);flex-shrink:0;line-height:1;opacity:.9}
 .leye{margin-left:2px;font-size:.8rem;cursor:pointer;flex-shrink:0;opacity:.8;transition:opacity .15s}
 .leye:hover{opacity:1}
 .leye.off{opacity:.25}
 
-.controls{border-top:1px solid var(--border);padding:.55rem .8rem;display:flex;flex-direction:column;gap:.45rem;flex-shrink:0}
-.controls label{font-size:.7rem;color:var(--muted);display:flex;justify-content:space-between}
-.controls input[type=range]{width:100%;height:3px;accent-color:var(--accent);cursor:pointer}
+/* btn and btn-row kept for any remaining uses */
 .btn-row{display:flex;gap:.35rem}
 .btn{flex:1;padding:.32rem .4rem;border:1px solid var(--border);background:transparent;color:var(--text);border-radius:4px;font-family:'Rajdhani',sans-serif;font-size:.75rem;font-weight:600;letter-spacing:.05em;cursor:pointer;transition:border-color .2s,color .2s,background .2s}
 .btn:hover{border-color:var(--accent);color:var(--accent)}
@@ -89,16 +97,64 @@ main{flex:1;position:relative;overflow:hidden;background:var(--bg);transition:ba
 .statusbar{position:absolute;bottom:0;left:0;right:0;padding:.28rem 1rem;background:var(--statusbar-bg);border-top:1px solid var(--border);font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--muted);display:flex;gap:1.5rem;pointer-events:none;backdrop-filter:blur(4px)}
 .statusbar span{color:var(--text)}
 .zoom-badge{position:absolute;top:.7rem;right:.7rem;background:var(--zoom-bg);border:1px solid var(--border);border-radius:4px;padding:.25rem .55rem;font-family:'Share Tech Mono',monospace;font-size:.68rem;color:var(--accent);pointer-events:none}
+#sel-rect{position:absolute;pointer-events:none;border:2px solid var(--accent);background:rgba(0,212,170,.08);display:none;box-sizing:border-box}
+.meas-label{position:absolute;background:rgba(20,30,40,.92);color:#fff;font-family:'Share Tech Mono',monospace;font-size:.68rem;padding:2px 6px;border-radius:3px;pointer-events:none;white-space:nowrap;border:1px solid rgba(255,255,255,.15);transform:translate(-50%,-130%)}
+body.light .meas-label{background:rgba(255,255,255,.95);color:#1a2430;border:1px solid rgba(0,0,0,.2)}
 .toast{position:absolute;top:.8rem;left:50%;transform:translateX(-50%) translateY(-60px);background:var(--panel);border:1px solid var(--accent);color:var(--accent);padding:.35rem .9rem;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:.72rem;transition:transform .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;white-space:nowrap}
 .toast.show{transform:translateX(-50%) translateY(0)}
 .dbg{position:absolute;top:2.5rem;left:.5rem;background:rgba(0,0,0,.7);color:#0f0;font-family:monospace;font-size:.6rem;padding:.3rem .5rem;border-radius:3px;pointer-events:none;white-space:pre;display:none}
 </style>
 </head>
-<body>
+<body class="light">
 <header>
   <div class="logo">PCB<span>&gt;</span>VIEW</div>
-  <h1>GERBER LAYER RENDERER - DUNCAN JOHNSON</h1>
-  <div style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--muted)">RS-274X / EXCELLON</div>
+
+  <div class="toolbar">
+    <!-- File group -->
+    <div class="tb-group">
+      <button class="tb-btn" id="open-btn"    title="Open files">📂 Open</button>
+      <button class="tb-btn" id="clear-btn"   title="Clear all layers">✕ Clear</button>
+      <button class="tb-btn" id="export-btn"  title="Export PNG">↓ PNG</button>
+      <button class="tb-btn" id="save-btn"    title="Save edited layers as Gerber files">💾 Save Layers</button>
+    </div>
+    <div class="tb-sep"></div>
+    <!-- View group -->
+    <div class="tb-group">
+      <button class="tb-btn" id="fit-btn"      title="Fit board to view">⊡ Fit</button>
+      <button class="tb-btn" id="zoom-in-btn"  title="Zoom in">＋</button>
+      <button class="tb-btn" id="zoom-out-btn" title="Zoom out">－</button>
+      <button class="tb-btn" id="zoom-sel-btn" title="Zoom to selection rectangle">⬚ Zoom Sel</button>
+    </div>
+    <div class="tb-sep"></div>
+    <!-- Tools group -->
+    <div class="tb-group">
+      <button class="tb-btn" id="measure-btn"  title="Measurement tool">📐 Measure</button>
+      <button class="tb-btn" id="obj-sel-btn"  title="Select objects on active layer">⬡ Select</button>
+    </div>
+    <div class="tb-sep"></div>
+    <!-- Edit group -->
+    <div class="tb-group">
+      <button class="tb-btn" id="copy-btn"  title="Copy selected (Ctrl+C)">⎘ Copy</button>
+      <button class="tb-btn" id="cut-btn"   title="Cut selected (Ctrl+X)">✂ Cut</button>
+      <button class="tb-btn" id="paste-btn" title="Paste to active layer (Ctrl+V)">⎙ Paste</button>
+    </div>
+    <div class="tb-sep"></div>
+    <!-- Background group -->
+    <div class="tb-group" id="bg-btns">
+      <button class="tb-btn"        data-bg="#0a0c10" data-theme="dark"  title="Dark background">◼ Dark</button>
+      <button class="tb-btn"        data-bg="#183020" data-theme="dark"  title="PCB green background">◼ PCB</button>
+      <button class="tb-btn active" data-bg="#e8f0ec" data-theme="light" title="Light background">◻ Light</button>
+    </div>
+    <div class="tb-sep"></div>
+    <!-- Opacity -->
+    <div class="tb-group" style="align-items:center;gap:.4rem">
+      <span style="font-size:.65rem;color:var(--muted);white-space:nowrap">Opacity</span>
+      <input type="range" id="op-slider" min="10" max="100" value="100" style="width:80px;height:3px;accent-color:var(--accent);cursor:pointer">
+      <span id="op-val" style="font-size:.65rem;color:var(--muted);min-width:2.5rem">100%</span>
+    </div>
+  </div>
+
+  <div style="font-family:'Rajdhani',sans-serif;font-size:.75rem;font-weight:600;color:var(--muted);letter-spacing:.08em;opacity:.7;white-space:nowrap;margin-left:auto">Duncan Johnson</div>
 </header>
 <div class="workspace">
   <aside id="sidebar">
@@ -112,25 +168,12 @@ main{flex:1;position:relative;overflow:hidden;background:var(--bg);transition:ba
     <div class="layer-list" id="layer-list">
       <div style="font-size:.68rem;color:var(--muted);padding:.5rem;font-family:'Share Tech Mono',monospace;text-align:center">No layers loaded</div>
     </div>
-    <div class="controls">
-      <label>Opacity <span id="op-val">100%</span></label>
-      <input type="range" id="op-slider" min="10" max="100" value="100">
-      <label>Background</label>
-      <div class="btn-row" id="bg-btns">
-        <button class="btn active" data-bg="#0a0c10" data-theme="dark">Dark</button>
-        <button class="btn" data-bg="#183020" data-theme="dark">PCB</button>
-        <button class="btn" data-bg="#e8f0ec" data-theme="light">Light</button>
-      </div>
-      <div class="btn-row">
-        <button class="btn" id="fit-btn">⊡ Fit</button>
-        <button class="btn" id="clear-btn">✕ Clear</button>
-      </div>
-      <button class="btn active" id="export-btn">↓ Export PNG</button>
-    </div>
   </aside>
   <main id="main-view">
     <canvas id="pcb-canvas"></canvas>
+    <canvas id="meas-canvas" style="position:absolute;top:0;left:0;pointer-events:none;display:block"></canvas>
     <div class="overlay"></div>
+    <div id="sel-rect"></div>
     <div class="empty-state" id="empty-state">
       <div class="ei">⬡</div>
       <p>LOAD GERBER FILES TO BEGIN</p>
@@ -152,25 +195,83 @@ main{flex:1;position:relative;overflow:hidden;background:var(--bg);transition:ba
 'use strict';
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Layer metadata  (order = render order, low = bottom)
+//  Layer metadata
+//  `order` controls both the sidebar list position (low = top of list = rendered last = visually on top)
+//  and the canvas render order (higher order number = drawn later = on top).
+//
+//  Requested stack (top of sidebar → bottom of sidebar, top rendered last):
+//   1  .gtp   Paste Top
+//   2  .gts   Soldermask Top
+//   3  .gto   Silkscreen Top
+//   4  .gtl   Copper Top
+//   5  .gp1…  Inner Planes (numbered)
+//   6  .gbl   Copper Bottom
+//   7  .gbo   Silkscreen Bottom
+//   8  .gbs   Soldermask Bottom
+//   9  .gbp   Paste Bottom
+//  10  .gd1   Drill Drawing
+//  11  .gg1   Netlist
+//  12  .gko   Board Outline
+//  13  .gm1…  Mechanical layers (numbered)
+//  14  .gpt   Pad Top
+//  15  .gpb   Pad Bottom
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Base order table for known fixed extensions.
+// Inner planes (.gpN) and mechanical (.gmN) are handled dynamically below.
 const LAYER_META = {
-  gko: { label:'Board Outline',     color:'#ffff00', order: 1 },
-  gm1: { label:'Mech 1',           color:'#ff6600', order: 2 },
-  gm2: { label:'Mech 2',           color:'#ff8800', order: 3 },
-  gbl: { label:'Copper Bottom',     color:'#d4943a', order:10 },
-  gbs: { label:'Soldermask Bottom', color:'#7722cc', order:20 },
-  gbo: { label:'Silkscreen Bottom', color:'#aaaaaa', order:30 },
-  gtl: { label:'Copper Top',        color:'#c87941', order:40 },
-  gts: { label:'Soldermask Top',    color:'#9933ee', order:50 },
-  gto: { label:'Silkscreen Top',    color:'#f0f0f0', order:60 },
-  drl: { label:'Drill',             color:'#00ccff', order:70 },
-  xln: { label:'Excellon Drill',    color:'#00ddff', order:71 },
-  gbr: { label:'Gerber',            color:'#88aacc', order:80 },
-  ger: { label:'Gerber',            color:'#88aacc', order:81 },
+  gtp: { label:'Paste Top',          color:'#aaccff', order: 100 },
+  gts: { label:'Soldermask Top',     color:'#9933ee', order: 200 },
+  gto: { label:'Silkscreen Top',     color:'#f5f5dc', order: 300 },
+  gtl: { label:'Copper Top',         color:'#c87941', order: 400 },
+  // .gpN inner planes: order 500 + N*10  (handled in getLayerMeta)
+  gbl: { label:'Copper Bottom',      color:'#d4943a', order: 600 },
+  gbo: { label:'Silkscreen Bottom',  color:'#aaaaaa', order: 700 },
+  gbs: { label:'Soldermask Bottom',  color:'#7722cc', order: 800 },
+  gbp: { label:'Paste Bottom',       color:'#88aadd', order: 900 },
+  gd1: { label:'Drill Drawing',      color:'#00bbcc', order:1000 },
+  gg1: { label:'Netlist',            color:'#44cc88', order:1100 },
+  gko: { label:'Board Outline',      color:'#ffff00', order:1200 },
+  // .gmN mechanical: order 1300 + N*10  (handled in getLayerMeta)
+  gpt: { label:'Pad Top',            color:'#ffcc44', order:1500 },
+  gpb: { label:'Pad Bottom',         color:'#ff9922', order:1600 },
+  // Drill files
+  drl: { label:'Drill',              color:'#00ccff', order:1700 },
+  xln: { label:'Excellon Drill',     color:'#00ddff', order:1710 },
+  // Generic fallbacks
+  gbr: { label:'Gerber',             color:'#88aacc', order:1800 },
+  ger: { label:'Gerber',             color:'#88aacc', order:1810 },
 };
+
 function getLayerMeta(ext) {
-  return LAYER_META[ext.toLowerCase()] || { label: ext.toUpperCase(), color:'#888888', order:99 };
+  const key = ext.toLowerCase();
+
+  // Known fixed layer
+  if (LAYER_META[key]) return { ...LAYER_META[key] };
+
+  // Inner copper planes: .gp1, .gp2, .gp3 …
+  const planeM = key.match(/^gp(\d+)$/);
+  if (planeM) {
+    const n = parseInt(planeM[1], 10);
+    return { label:`Inner Plane ${n}`, color:'#b8860b', order: 500 + n * 10 };
+  }
+
+  // Mechanical layers: .gm1, .gm2 …
+  const mechM = key.match(/^gm(\d+)$/);
+  if (mechM) {
+    const n = parseInt(mechM[1], 10);
+    const mechColors = ['#ff6600','#ff8800','#ffaa00','#ffcc00','#ddaa00'];
+    return { label:`Mech ${n}`, color: mechColors[(n-1) % mechColors.length], order: 1300 + n * 10 };
+  }
+
+  // Drill drawing variants: .gd2, .gd3 …
+  const drillDwgM = key.match(/^gd(\d+)$/);
+  if (drillDwgM) {
+    const n = parseInt(drillDwgM[1], 10);
+    return { label:`Drill Drawing ${n}`, color:'#00bbcc', order: 1000 + n * 10 };
+  }
+
+  return { label: ext.toUpperCase(), color:'#888888', order: 1900 };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -217,11 +318,93 @@ function parseGerber(src) {
   // ── aperture definition parser
   function parseAD(body) {
     // e.g.  D10C,0.254    D11R,1.0X0.5X0.2    D12O,0.5X0.3    D13P,1.0X6X0.0
+    //       D103THD103    (macro reference)
     const m = body.match(/^D(\d+)([A-Z_][A-Z0-9_]*),?(.*)$/i);
     if (!m) return;
     const id     = parseInt(m[1], 10);
     const type   = m[2].toUpperCase();
     const params = m[3] ? m[3].split('X').map(Number) : [];
+
+    // Check if this is a macro reference
+    const macroPrims = macros[m[2]] || macros[type];
+    if (macroPrims) {
+      // Resolve macro to a bounding-box rectangle.
+      // Altium pre-rotates all primitive coordinates into the macro body,
+      // so computing the union bounding box across all primitives gives the
+      // correct final w×h regardless of pad rotation.
+      let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+      let hasGeom=false;
+
+      for (const prim of macroPrims) {
+        const { code, nums } = prim;
+
+        if (code === 7) {
+          // Thermal relief: x, y, outer_dia, inner_dia, gap, rot
+          apertures[id] = { type:'THERMAL', params:[nums[2], nums[3], nums[4], nums[5]] };
+          return;
+        }
+
+        if (code === 21) {
+          // Rectangle: exposure, w, h, cx, cy, rot
+          const w=nums[1], h=nums[2], cx=nums[3]||0, cy=nums[4]||0;
+          const rot=(nums[5]||0)*Math.PI/180;
+          const cos=Math.cos(rot), sin=Math.sin(rot);
+          for (const [lx,ly] of [[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]]) {
+            const rx = cx + lx*cos - ly*sin;
+            const ry = cy + lx*sin + ly*cos;
+            minX=Math.min(minX,rx); maxX=Math.max(maxX,rx);
+            minY=Math.min(minY,ry); maxY=Math.max(maxY,ry);
+            hasGeom=true;
+          }
+        } else if (code === 1) {
+          // Circle: exposure, dia, cx, cy
+          const r=nums[1]/2, cx=nums[2]||0, cy=nums[3]||0;
+          minX=Math.min(minX,cx-r); maxX=Math.max(maxX,cx+r);
+          minY=Math.min(minY,cy-r); maxY=Math.max(maxY,cy+r);
+          hasGeom=true;
+        } else if (code === 20) {
+          // Vector line: exposure, w, x1, y1, x2, y2, rot
+          const r=nums[1]/2;
+          minX=Math.min(minX,nums[2]-r,nums[4]-r); maxX=Math.max(maxX,nums[2]+r,nums[4]+r);
+          minY=Math.min(minY,nums[3]-r,nums[5]-r); maxY=Math.max(maxY,nums[3]+r,nums[5]+r);
+          hasGeom=true;
+        } else if (code === 5) {
+          // Polygon: exposure, vertices, x, y, dia, rot
+          const r=(nums[4]||0)/2, cx=nums[2]||0, cy=nums[3]||0;
+          minX=Math.min(minX,cx-r); maxX=Math.max(maxX,cx+r);
+          minY=Math.min(minY,cy-r); maxY=Math.max(maxY,cy+r);
+          hasGeom=true;
+        } else if (code === 6) {
+          // Moire: x, y, outer_dia, ...
+          const r=(nums[2]||0)/2, cx=nums[0]||0, cy=nums[1]||0;
+          minX=Math.min(minX,cx-r); maxX=Math.max(maxX,cx+r);
+          minY=Math.min(minY,cy-r); maxY=Math.max(maxY,cy+r);
+          hasGeom=true;
+        }
+      }
+
+      if (hasGeom) {
+        const w = maxX - minX, h = maxY - minY;
+        const offX = (minX+maxX)/2, offY = (minY+maxY)/2;
+        // Derive corner radius from the smallest circle primitive in the macro.
+        // In a ROUNDEDRECT macro, 4 small circles sit at the corners — their radius
+        // IS the corner radius. Fall back to 10% of the short side if no circles found.
+        let cornerR = null;
+        for (const {code, nums} of macroPrims) {
+          if (code === 1) {
+            const r = nums[1] / 2;
+            if (cornerR === null || r < cornerR) cornerR = r;
+          }
+        }
+        if (cornerR === null) cornerR = Math.min(w, h) * 0.10;
+        // params: [w, h, offX, offY, cornerRadius]
+        apertures[id] = { type:'O', params:[w, h, offX, offY, cornerR] };
+      } else {
+        apertures[id] = { type:'C', params:[0.5] };
+      }
+      return;
+    }
+
     apertures[id] = { type, params };
   }
 
@@ -266,11 +449,16 @@ function parseGerber(src) {
   function arcSegs(x1,y1,x2,y2,I,J,cw) {
     const cx=x1+I, cy=y1+J;
     const r=Math.hypot(I,J)||Math.hypot(x2-cx,y2-cy)||1e-6;
-    let a1=Math.atan2(y1-cy,x1-cx);
-    let a2=Math.atan2(y2-cy,x2-cx);
-    if (cw  && a2>a1) a2-=2*Math.PI;
-    if (!cw && a2<a1) a2+=2*Math.PI;
-    const n=Math.max(4,Math.ceil(Math.abs(a2-a1)*12));
+    const dx=x2-x1, dy=y2-y1;
+    const fullCircle = dx*dx+dy*dy < 1e-10;
+    let a1=Math.atan2(y1-cy, x1-cx);
+    let a2 = fullCircle ? a1 + (cw ? -2*Math.PI : 2*Math.PI)
+                        : Math.atan2(y2-cy, x2-cx);
+    if (!fullCircle) {
+      if ( cw && a2 > a1) a2 -= 2*Math.PI;
+      if (!cw && a2 < a1) a2 += 2*Math.PI;
+    }
+    const n=Math.max(8, Math.ceil(Math.abs(a2-a1)*16));
     const pts=[];
     for(let k=1;k<=n;k++){const a=a1+(a2-a1)*k/n; pts.push({x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)});}
     return pts;
@@ -290,6 +478,23 @@ function parseGerber(src) {
   // Process extended params (%...%) first, then data blocks
   // We'll walk character by character through the stream
   let i=0, len=text.length;
+  let macros = {};      // macroName → array of parsed primitives
+  let amName  = null;   // currently being parsed macro name
+  let amLines = [];     // lines of current macro body
+
+  function finishMacro() {
+    if (!amName) return;
+    // Parse macro primitives from amLines
+    const prims = [];
+    for (const line of amLines) {
+      const parts = line.split(',').map(s => s.trim());
+      const code = parseInt(parts[0], 10);
+      const nums = parts.slice(1).map(Number);
+      prims.push({ code, nums });
+    }
+    macros[amName] = prims;
+    amName = null; amLines = [];
+  }
 
   function skipWS() { while(i<len && (text[i]===' '||text[i]==='\n'||text[i]==='\t')) i++; }
   function readUntil(ch) {
@@ -320,9 +525,18 @@ function parseGerber(src) {
           polarity = part[2]==='C'?'C':'D';
         } else if(part.startsWith('AD')) {
           parseAD(part.slice(2));
+        } else if(part.startsWith('AM')) {
+          // Aperture Macro definition: AMname*  primitive_line* ... (ends at closing %)
+          // The name is on the AM line; subsequent *-terminated lines are primitive bodies
+          finishMacro();
+          amName = part.slice(2).trim();
+          amLines = [];
+        } else if(amName && part.match(/^\d/)) {
+          // Numeric line = macro primitive body
+          amLines.push(part);
         }
-        // AM / SR / etc – skip
       }
+      finishMacro(); // close any open macro at end of % block
       continue;
     }
 
@@ -365,9 +579,9 @@ function parseGerber(src) {
       if(!block.match(/[XYDIJ]/)) continue;
     }
 
-    // Aperture select  Dnn (nn>=10)
+    // Aperture select  Dnn (nn>=10) — must NOT match D01/D02/D03 operation codes
     const aps = block.match(/^D(\d+)$/);
-    if(aps){ const id=parseInt(aps[1],10); if(id>=10) curAp=id; continue; }
+    if(aps){ const id=parseInt(aps[1],10); if(id>=10){ curAp=id; continue; } }
 
     // Coordinate + D code
     // Pattern: optional G, then optional X, Y, I, J, then D01/02/03
@@ -456,14 +670,17 @@ class Renderer {
     this.ctx     = canvas.getContext('2d');
     this.layers  = [];
     this.tx = 0; this.ty = 0; this.scale = 1;
-    this.bgColor = '#0a0c10';
+    this.bgColor = '#e8f0ec';
     this.opacity = 1;
     this.bounds  = null;
+    this.selectedLayer = null;
   }
 
   addLayer(l) {
     this.layers.push(l);
-    this.layers.sort((a,b)=>a.meta.order-b.meta.order);
+    // Render descending by order: high order first (bottom), low order last (on top).
+    // This matches the sidebar where low order = top of list = visually on top.
+    this.layers.sort((a,b)=>b.meta.order-a.meta.order);
     this._calcBounds();
   }
   clearLayers() { this.layers=[]; this.bounds=null; }
@@ -501,43 +718,73 @@ class Renderer {
     ctx.fillRect(0,0,canvas.width,canvas.height);
     if(!this.layers.length) return;
 
+    // Draw all layers in normal order, skipping the selected one
     for(const layer of this.layers) {
       if(!layer.visible) continue;
+      if(layer === this.selectedLayer) continue;  // draw last
       this._renderLayer(layer);
     }
+    // Draw selected layer on top
+    if(this.selectedLayer && this.selectedLayer.visible) {
+      this._renderLayer(this.selectedLayer);
+    }
+  }
+
+  // Convert Gerber mm coords → canvas pixels.
+  // Gerber Y grows upward; canvas Y grows downward → negate Y.
+  _px(x) { return this.tx + x * this.scale; }
+  _py(y) { return this.ty - y * this.scale; }   // note: minus
+  _ps(v) { return Math.abs(v * this.scale); }    // scalar (size/width)
+
+  // Return axis-aligned bounding box of a primitive in Gerber mm {minX,minY,maxX,maxY}
+  primitiveBounds(p) {
+    if (p.kind==='flash') {
+      const ap=p.ap, pr=ap.params;
+      let hw=0, hh=0;
+      if(ap.type==='C')      { hw=hh=(pr[0]||0.1)/2; }
+      else if(ap.type==='R') { hw=(pr[0]||0.1)/2; hh=(pr[1]!==undefined?pr[1]:pr[0]||0.1)/2; }
+      else if(ap.type==='O') { hw=(pr[0]||0.1)/2; hh=(pr[1]!==undefined?pr[1]:pr[0]||0.1)/2; }
+      else if(ap.type==='S') { hw=hh=(pr[0]||0.1)/2; }
+      else if(ap.type==='THERMAL'||ap.type==='P') { hw=hh=(pr[0]||0.5)/2; }
+      else { hw=hh=(pr[0]||0.1)/2; }
+      return { minX:p.x-hw, minY:p.y-hh, maxX:p.x+hw, maxY:p.y+hh };
+    }
+    if (p.kind==='line') {
+      const r=p.w/2;
+      return { minX:Math.min(p.x1,p.x2)-r, minY:Math.min(p.y1,p.y2)-r,
+               maxX:Math.max(p.x1,p.x2)+r, maxY:Math.max(p.y1,p.y2)+r };
+    }
+    if (p.kind==='arc') {
+      const r=p.rad+p.w/2;
+      return { minX:p.cx-r, minY:p.cy-r, maxX:p.cx+r, maxY:p.cy+r };
+    }
+    if (p.kind==='region') {
+      let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+      for(const pt of p.path){ x0=Math.min(x0,pt.x);y0=Math.min(y0,pt.y);x1=Math.max(x1,pt.x);y1=Math.max(y1,pt.y); }
+      return { minX:x0, minY:y0, maxX:x1, maxY:y1 };
+    }
+    return null;
   }
 
   _renderLayer(layer) {
     const {ctx}=this;
     const col=layer.meta.color;
 
-    // Draw each layer onto an offscreen canvas then composite
-    // This avoids polarity issues with direct compositing on main canvas
+    // Draw onto an offscreen canvas so destination-out polarity works correctly
     const off=new OffscreenCanvas(this.canvas.width, this.canvas.height);
     const octx=off.getContext('2d');
-    octx.save();
-    // Apply transform: translate then flip Y
-    octx.translate(this.tx, this.ty);
-    octx.scale(this.scale, -this.scale);
-    octx.strokeStyle=col;
-    octx.fillStyle=col;
 
     for(const p of layer.primitives) {
-      const dark = p.polarity==='D';
-      if(!dark) {
-        // clear polarity: erase
+      if(p.polarity==='C') {
         octx.save();
         octx.globalCompositeOperation='destination-out';
         this._draw(octx, p, 'rgba(255,255,255,1)');
         octx.restore();
       } else {
-        octx.strokeStyle=col; octx.fillStyle=col;
         this._draw(octx, p, col);
       }
     }
-    octx.restore();
 
-    // Composite offscreen onto main canvas
     ctx.save();
     ctx.globalAlpha=this.opacity;
     ctx.drawImage(off, 0, 0);
@@ -548,23 +795,45 @@ class Renderer {
     ctx.strokeStyle=col; ctx.fillStyle=col;
     if(p.kind==='line') {
       ctx.beginPath();
-      ctx.moveTo(p.x1,p.y1); ctx.lineTo(p.x2,p.y2);
-      ctx.lineWidth=p.w; ctx.lineCap='round';
+      ctx.moveTo(this._px(p.x1), this._py(p.y1));
+      ctx.lineTo(this._px(p.x2), this._py(p.y2));
+      ctx.lineWidth = this._ps(p.w);
+      ctx.lineCap='round';
       ctx.stroke();
+
     } else if(p.kind==='arc') {
+      // Y-axis is flipped (Gerber Y-up → canvas Y-down).
+      // Correct canvas angle: negate Y delta → atan2(cy-y, x-cx)
+      // Flipping Y reverses winding: anticlockwise_canvas = !gerber_cw
+      const cpx = this._px(p.cx), cpy = this._py(p.cy);
+      const rad  = this._ps(p.rad);
+      const lw   = this._ps(p.w);
+      ctx.lineWidth = lw;
+      ctx.lineCap   = 'round';
       ctx.beginPath();
-      const a1=Math.atan2(p.y1-p.cy,p.x1-p.cx);
-      const a2=Math.atan2(p.y2-p.cy,p.x2-p.cx);
-      ctx.arc(p.cx,p.cy,p.rad,a1,a2, p.cw);
-      ctx.lineWidth=p.w; ctx.lineCap='round';
+
+      // Full-circle detection: start and end are the same point (or nearly so).
+      // ctx.arc with a1==a2 draws nothing; we must use a full 2π sweep instead.
+      const dx = p.x2 - p.x1, dy = p.y2 - p.y1;
+      if (dx*dx + dy*dy < 1e-10) {
+        // Full circle — winding doesn't matter for 2π
+        ctx.arc(cpx, cpy, rad, 0, Math.PI * 2);
+      } else {
+        const a1 = Math.atan2(p.cy - p.y1, p.x1 - p.cx);
+        const a2 = Math.atan2(p.cy - p.y2, p.x2 - p.cx);
+        ctx.arc(cpx, cpy, rad, a1, a2, !p.cw);
+      }
       ctx.stroke();
+
     } else if(p.kind==='region') {
       if(!p.path.length) return;
       ctx.beginPath();
-      ctx.moveTo(p.path[0].x,p.path[0].y);
-      for(let k=1;k<p.path.length;k++) ctx.lineTo(p.path[k].x,p.path[k].y);
+      ctx.moveTo(this._px(p.path[0].x), this._py(p.path[0].y));
+      for(let k=1;k<p.path.length;k++)
+        ctx.lineTo(this._px(p.path[k].x), this._py(p.path[k].y));
       ctx.closePath();
       ctx.fill();
+
     } else if(p.kind==='flash') {
       this._flash(ctx, p, col);
     }
@@ -572,42 +841,99 @@ class Renderer {
 
   _flash(ctx, p, col) {
     ctx.fillStyle=col; ctx.strokeStyle=col;
-    const {x,y,ap}=p;
-    const pr=ap.params;
-    if(ap.type==='C') {
-      const r=(pr[0]||0.1)/2, hole=(pr[1]||0)/2;
+    const px=this._px(p.x), py=this._py(p.y);
+    const pr=p.ap.params;
+
+    if(p.ap.type==='THERMAL') {
+      // params: [outer_dia, inner_dia, gap_thickness, rotation_deg]
+      const ro       = this._ps((pr[0]||1.0)/2);
+      const ri       = this._ps((pr[1]||0.5)/2);
+      const gapMM    = (pr[2]||0.2);
+      const rot      = ((pr[3]||45) * Math.PI/180);
+      // gap half-angle from gap width and outer radius
+      const gapHalf  = Math.asin(Math.min(0.99, this._ps(gapMM/2) / Math.max(ro, 1e-6)));
       ctx.beginPath();
-      ctx.arc(x,y,r,0,Math.PI*2,false);
-      if(hole>0) ctx.arc(x,y,hole,0,Math.PI*2,true);
-      ctx.fill('evenodd');
-    } else if(ap.type==='R') {
-      const w=pr[0]||0.1, h=pr[1]!==undefined?pr[1]:w;
-      const hole=(pr[2]||0)/2;
-      ctx.beginPath();
-      ctx.rect(x-w/2,y-h/2,w,h);
-      if(hole>0){ ctx.arc(x,y,hole,0,Math.PI*2,true); }
-      ctx.fill('evenodd');
-    } else if(ap.type==='O') {
-      const w=pr[0]||0.1, h=pr[1]!==undefined?pr[1]:w;
-      const r=Math.min(w,h)/2;
-      ctx.beginPath();
-      if(ctx.roundRect) ctx.roundRect(x-w/2,y-h/2,w,h,r);
-      else ctx.rect(x-w/2,y-h/2,w,h);
+      for (let q = 0; q < 4; q++) {
+        const base = rot + q * Math.PI/2;
+        const a1 = base + gapHalf;
+        const a2 = base + Math.PI/2 - gapHalf;
+        if (a2 <= a1) continue;
+        ctx.moveTo(px + ro*Math.cos(a1), py + ro*Math.sin(a1));
+        ctx.arc(px, py, ro, a1, a2, false);
+        ctx.lineTo(px + ri*Math.cos(a2), py + ri*Math.sin(a2));
+        ctx.arc(px, py, ri, a2, a1, true);
+        ctx.closePath();
+      }
       ctx.fill();
-    } else if(ap.type==='P') {
-      const r=(pr[0]||0.1)/2, sides=Math.max(3,pr[1]||6), rot=(pr[2]||0)*Math.PI/180;
+
+    } else if(p.ap.type==='C') {
+      const r  = this._ps((pr[0]||0.1)/2);
+      const hr = this._ps((pr[1]||0)/2);
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI*2, false);
+      if(hr>0) ctx.arc(px, py, hr, 0, Math.PI*2, true);
+      ctx.fill('evenodd');
+
+    } else if(p.ap.type==='R') {
+      // pr[0]=width, pr[1]=height (defaults to width), pr[2]=optional hole dia
+      const hw = this._ps((pr[0]||0.1)/2);
+      const hh = this._ps((pr[1]!==undefined?pr[1]:pr[0]||0.1)/2);
+      const hr = this._ps((pr[2]||0)/2);
+      ctx.beginPath();
+      ctx.rect(px-hw, py-hh, hw*2, hh*2);
+      if(hr>0) ctx.arc(px, py, hr, 0, Math.PI*2, true);
+      ctx.fill('evenodd');
+
+    } else if(p.ap.type==='O') {
+      // Obround / rounded-rectangle from macro bounding box.
+      // pr[0]=w, pr[1]=h, pr[2]=offX (Gerber mm), pr[3]=offY (Gerber mm), pr[4]=cornerRadius (Gerber mm)
+      const offX = pr[2]||0, offY = pr[3]||0;
+      const cx = px + offX * this.scale;
+      const cy = py - offY * this.scale;
+      const hw = this._ps((pr[0]||0.1)/2);
+      const hh = this._ps((pr[1]!==undefined?pr[1]:pr[0]||0.1)/2);
+      // Use stored corner radius if available (macro-resolved pad with exact cornerR in params[4]);
+      // otherwise this is a plain RS-274X O (obround) aperture whose ends are full semicircles,
+      // so r = half the short side exactly.
+      const r = pr[4] !== undefined
+        ? Math.min(this._ps(pr[4]), Math.min(hw, hh))
+        : Math.min(hw, hh);  // true obround: semicircular ends
+      // Manual rounded-rect path (works on all Chrome versions, including OffscreenCanvas)
+      ctx.beginPath();
+      ctx.moveTo(cx - hw + r, cy - hh);
+      ctx.lineTo(cx + hw - r, cy - hh);
+      ctx.arcTo (cx + hw, cy - hh,  cx + hw, cy - hh + r,  r);
+      ctx.lineTo(cx + hw, cy + hh - r);
+      ctx.arcTo (cx + hw, cy + hh,  cx + hw - r, cy + hh,  r);
+      ctx.lineTo(cx - hw + r, cy + hh);
+      ctx.arcTo (cx - hw, cy + hh,  cx - hw, cy + hh - r,  r);
+      ctx.lineTo(cx - hw, cy - hh + r);
+      ctx.arcTo (cx - hw, cy - hh,  cx - hw + r, cy - hh,  r);
+      ctx.closePath();
+      ctx.fill();
+
+    } else if(p.ap.type==='P') {
+      // Regular polygon: pr[0]=circumscribed dia, pr[1]=vertices, pr[2]=rotation°
+      // Rotation is in Gerber space (Y-up). Canvas is Y-down, so negate the angle
+      // to keep the polygon orientation correct after the Y-axis mirror.
+      const r     = this._ps((pr[0]||0.1)/2);
+      const sides = Math.max(3, Math.round(pr[1]||6));
+      const rot   = -((pr[2]||0) * Math.PI/180);  // negate for Y-flip
       ctx.beginPath();
       for(let k=0;k<sides;k++){
-        const a=rot+k*2*Math.PI/sides;
-        k===0?ctx.moveTo(x+r*Math.cos(a),y+r*Math.sin(a)):ctx.lineTo(x+r*Math.cos(a),y+r*Math.sin(a));
+        const a = rot + k*2*Math.PI/sides;
+        const ex=px+r*Math.cos(a), ey=py+r*Math.sin(a);
+        k===0 ? ctx.moveTo(ex,ey) : ctx.lineTo(ex,ey);
       }
       ctx.closePath(); ctx.fill();
-    } else if(ap.type==='S') {
-      const s=pr[0]||0.1;
-      ctx.beginPath(); ctx.rect(x-s/2,y-s/2,s,s); ctx.fill();
+
+    } else if(p.ap.type==='S') {
+      const hs = this._ps((pr[0]||0.1)/2);
+      ctx.beginPath(); ctx.rect(px-hs, py-hs, hs*2, hs*2); ctx.fill();
+
     } else {
-      const r=(pr[0]||0.1)/2;
-      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+      const r = this._ps((pr[0]||0.1)/2);
+      ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI*2); ctx.fill();
     }
   }
 }
@@ -627,6 +953,10 @@ function resizeCanvas() {
   const r=mainView.getBoundingClientRect();
   canvas.width =Math.floor(r.width);
   canvas.height=Math.floor(r.height);
+  if(typeof measCanvas!=='undefined') {
+    measCanvas.width=canvas.width;
+    measCanvas.height=canvas.height;
+  }
   renderer.render();
 }
 window.addEventListener('resize', resizeCanvas);
@@ -684,9 +1014,51 @@ function updateLayerList() {
       <div class="drag-handle" title="Drag to reorder">⠿</div>
       <div class="swatch" style="background:${l.meta.color}"></div>
       <div class="lname" title="${l.name}">${l.name}</div>
+      ${l.dirty ? '<div class="ldirty" title="Layer has been edited">✎</div>' : ''}
       <div class="lext">${l.ext.toUpperCase()}</div>
       <div class="leye ${l.visible?'':'off'}">${l.visible?'👁':'○'}</div>
     `;
+    // Row click → select/deselect layer (brings to front while selected)
+    div.addEventListener('click', e => {
+      // Ignore clicks on interactive child elements
+      if (e.target.closest('.swatch,.leye,.drag-handle')) return;
+      if (renderer.selectedLayer === l) {
+        renderer.selectedLayer = null;
+        div.classList.remove('layer-selected');
+      } else {
+        // Deselect previous
+        document.querySelectorAll('.layer-item.layer-selected')
+          .forEach(el => el.classList.remove('layer-selected'));
+        renderer.selectedLayer = l;
+        div.classList.add('layer-selected');
+      }
+      renderer.render();
+    });
+
+    // Swatch click → colour picker
+    const swatchEl = div.querySelector('.swatch');
+    swatchEl.title = 'Click to change colour';
+    swatchEl.addEventListener('click', e => {
+      e.stopPropagation();
+      const picker = document.createElement('input');
+      picker.type = 'color';
+      picker.value = l.meta.color;
+      picker.style.cssText = 'position:absolute;width:0;height:0;opacity:0;pointer-events:none';
+      document.body.appendChild(picker);
+      picker.addEventListener('input', () => {
+        l.meta.color = picker.value;
+        swatchEl.style.background = picker.value;
+        renderer.render();
+      });
+      picker.addEventListener('change', () => {
+        l.meta.color = picker.value;
+        swatchEl.style.background = picker.value;
+        renderer.render();
+        document.body.removeChild(picker);
+      });
+      picker.click();
+    });
+
     div.querySelector('.leye').addEventListener('click', e=>{
       e.stopPropagation();
       l.visible=!l.visible;
@@ -724,19 +1096,21 @@ function updateLayerList() {
       if(!dragSrc||dragSrc===l) return;
       div.classList.remove('drag-over-top','drag-over-bot');
 
-      // Re-order: collect current sorted list, move dragSrc before/after l
+      // Sidebar list is sorted ascending by order (low = top of list)
       const list=[...layers].sort((a,b)=>a.meta.order-b.meta.order);
       const fromIdx=list.indexOf(dragSrc);
       const toIdx  =list.indexOf(l);
       list.splice(fromIdx,1);
       const rect=div.getBoundingClientRect();
       const insertAfter=e.clientY>=rect.top+rect.height/2;
-      list.splice(insertAfter?toIdx:toIdx, 0, dragSrc);
+      // Recalculate toIdx after splice
+      const newToIdx = list.indexOf(l);
+      list.splice(insertAfter ? newToIdx+1 : newToIdx, 0, dragSrc);
 
-      // Reassign order values 10,20,30… preserving spacing
+      // Reassign order values so position 0 (top of sidebar) = lowest order number
       list.forEach((layer,i)=>{ layer.meta.order=(i+1)*10; });
-      // Sync renderer layer order
-      renderer.layers.sort((a,b)=>a.meta.order-b.meta.order);
+      // Renderer draws descending by order (high order first = bottom, low order last = top)
+      renderer.layers.sort((a,b)=>b.meta.order-a.meta.order);
       renderer.render();
       updateLayerList();
     });
@@ -776,15 +1150,38 @@ canvas.addEventListener('wheel', e=>{
   doZoom(e.deltaY<0?1.12:1/1.12, e.clientX-rect.left, e.clientY-rect.top);
 },{passive:false});
 
-// ── Pan
+// ── Pan + Selection (unified)
 let pan={active:false,x0:0,y0:0,tx0:0,ty0:0};
+// Selection-mode state (populated when zoom-sel-btn is active)
+const selRect = document.getElementById('sel-rect');
+const selBtn  = document.getElementById('zoom-sel-btn');
+let selMode = false;
+let sel = { active:false, x0:0, y0:0, x1:0, y1:0 };
 canvas.addEventListener('mousedown', e=>{
   if(e.button!==0) return;
-  pan.active=true; pan.x0=e.clientX; pan.y0=e.clientY;
-  pan.tx0=renderer.tx; pan.ty0=renderer.ty;
+  if(selMode) {
+    const r=canvas.getBoundingClientRect();
+    sel.active=true;
+    sel.x0=sel.x1=e.clientX-r.left;
+    sel.y0=sel.y1=e.clientY-r.top;
+    selRect.style.cssText=`display:block;left:${sel.x0}px;top:${sel.y0}px;width:0;height:0`;
+  } else if(objSelMode || pasteMode) {
+    // handled by capture/paste handlers — do not start pan
+  } else {
+    pan.active=true; pan.x0=e.clientX; pan.y0=e.clientY;
+    pan.tx0=renderer.tx; pan.ty0=renderer.ty;
+  }
 });
 window.addEventListener('mousemove', e=>{
-  if(pan.active){
+  if(selMode && sel.active) {
+    const r=canvas.getBoundingClientRect();
+    sel.x1=e.clientX-r.left; sel.y1=e.clientY-r.top;
+    const x=Math.min(sel.x0,sel.x1), y=Math.min(sel.y0,sel.y1);
+    const w=Math.abs(sel.x1-sel.x0), h=Math.abs(sel.y1-sel.y0);
+    selRect.style.left=x+'px'; selRect.style.top=y+'px';
+    selRect.style.width=w+'px'; selRect.style.height=h+'px';
+  }
+  if(pan.active && !objSelMode && !pasteMode){
     renderer.tx=pan.tx0+(e.clientX-pan.x0);
     renderer.ty=pan.ty0+(e.clientY-pan.y0);
     renderer.render();
@@ -796,7 +1193,25 @@ window.addEventListener('mousemove', e=>{
   const wy=-(cy-renderer.ty)/renderer.scale;
   document.getElementById('s-xy').textContent=`${wx.toFixed(3)}, ${wy.toFixed(3)} mm`;
 });
-window.addEventListener('mouseup', ()=>pan.active=false);
+window.addEventListener('mouseup', e=>{
+  if(selMode && sel.active) {
+    sel.active=false;
+    selRect.style.display='none';
+    const px0=Math.min(sel.x0,sel.x1), px1=Math.max(sel.x0,sel.x1);
+    const py0=Math.min(sel.y0,sel.y1), py1=Math.max(sel.y0,sel.y1);
+    if(px1-px0>8 && py1-py0>8) {
+      const t=renderer;
+      const gx0=(px0-t.tx)/t.scale, gy1=(t.ty-py0)/t.scale;
+      const gx1=(px1-t.tx)/t.scale, gy0=(t.ty-py1)/t.scale;
+      const W=canvas.width, H=canvas.height;
+      const s=Math.min(W/(gx1-gx0), H/(gy1-gy0))*0.88;
+      t.scale=s; t.tx=W/2-s*(gx0+gx1)/2; t.ty=H/2+s*(gy0+gy1)/2;
+      updateZoom(); renderer.render();
+    }
+    exitSelMode();
+  }
+  pan.active=false;
+});
 
 // ── Touch
 let tprev={};
@@ -831,20 +1246,62 @@ canvas.addEventListener('touchend', e=>{
 const dropZone  = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
 dropZone.addEventListener('click',()=>fileInput.click());
+document.getElementById('open-btn').addEventListener('click',()=>fileInput.click());
 fileInput.addEventListener('change', e=>{ if(e.target.files.length) loadFiles(Array.from(e.target.files)); fileInput.value=''; });
-mainView.addEventListener('dragover', e=>{ if(e.dataTransfer.types.includes('Files')){ e.preventDefault(); dropZone.classList.add('drag-over'); } });
-mainView.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
-mainView.addEventListener('drop', e=>{
-  e.preventDefault(); dropZone.classList.remove('drag-over');
-  if(e.dataTransfer.files.length) loadFiles(Array.from(e.dataTransfer.files));
+
+// Intercept ALL drag events at the document level.
+// Chrome will navigate to the dropped file if any ancestor doesn't preventDefault().
+document.addEventListener('dragenter', e=>{ e.preventDefault(); e.stopPropagation(); });
+document.addEventListener('dragover',  e=>{ e.preventDefault(); e.stopPropagation(); dropZone.classList.add('drag-over'); });
+document.addEventListener('dragleave', e=>{
+  // Only clear highlight when leaving the browser window entirely
+  if(e.relatedTarget===null) dropZone.classList.remove('drag-over');
+});
+document.addEventListener('drop', e=>{
+  e.preventDefault(); e.stopPropagation();
+  dropZone.classList.remove('drag-over');
+  const files = Array.from(e.dataTransfer.files).filter(f=>f.size>0);
+  if(files.length) loadFiles(files);
 });
 
 // ── Controls
 document.getElementById('fit-btn').addEventListener('click',()=>{ renderer.fitView(); updateZoom(); renderer.render(); });
 document.getElementById('clear-btn').addEventListener('click',()=>{
-  layers=[]; renderer.clearLayers(); renderer.render();
+  layers=[]; renderer.clearLayers(); renderer.selectedLayer=null; renderer.render();
   updateLayerList(); updateStatus(); emptyEl.style.display='';
+  showToast('Cleared');
 });
+
+// ── Zoom In / Zoom Out (centred on canvas)
+document.getElementById('zoom-in-btn').addEventListener('click',()=>{
+  const W=canvas.width, H=canvas.height;
+  doZoom(1.5, W/2, H/2);
+});
+document.getElementById('zoom-out-btn').addEventListener('click',()=>{
+  const W=canvas.width, H=canvas.height;
+  doZoom(1/1.5, W/2, H/2);
+});
+
+// ── Zoom to Selection
+
+function enterSelMode() {
+  selMode = true;
+  selBtn.classList.add('active');
+  canvas.style.cursor = 'crosshair';
+}
+function exitSelMode() {
+  selMode = false;
+  selBtn.classList.remove('active');
+  canvas.style.cursor = 'grab';
+  selRect.style.display = 'none';
+  sel.active = false;
+}
+
+selBtn.addEventListener('click',()=>{
+  if(selMode) exitSelMode();
+  else enterSelMode();
+});
+
 document.getElementById('export-btn').addEventListener('click',()=>{
   const a=document.createElement('a');
   a.download='pcb-render.png'; a.href=canvas.toDataURL('image/png'); a.click();
@@ -858,13 +1315,12 @@ opSlider.addEventListener('input',()=>{
   renderer.render();
 });
 
-document.querySelectorAll('#bg-btns .btn').forEach(btn=>{
+document.querySelectorAll('#bg-btns .tb-btn').forEach(btn=>{
   btn.addEventListener('click',()=>{
-    document.querySelectorAll('#bg-btns .btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('#bg-btns .tb-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
     renderer.bgColor=btn.dataset.bg;
     renderer.render();
-    // Apply/remove light theme on entire page
     if(btn.dataset.theme==='light') document.body.classList.add('light');
     else document.body.classList.remove('light');
   });
@@ -903,6 +1359,1184 @@ function showToast(msg){
     document.body.style.userSelect='';
   });
 })();
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  MEASUREMENT TOOL
+// ══════════════════════════════════════════════════════════════════════════════
+const measCanvas = document.getElementById('meas-canvas');
+const measCtx    = measCanvas.getContext('2d');
+const measBtn    = document.getElementById('measure-btn');
+
+let measMode    = false;
+let measPt1     = null;   // {x,y,snapType} in Gerber mm
+let measPending = false;  // waiting for second click
+let measCursor  = null;   // {x,y,snapType} live cursor position
+let measurements = [];    // [{p1,p2}] finalised measurements
+
+// Paste mode state — declared here (before renderMeasOverlay) so the guard can read them
+let pasteMode   = false;
+let pasteCursor = null;
+let pasteGhosts = [];
+let clipboard   = [];
+
+// ── Snap engine ───────────────────────────────────────────────────────────────
+// Gather snap candidates from all visible layer primitives.
+// Returns array of {x, y, type} in Gerber mm coords.
+function buildSnapCandidates() {
+  const pts = [];
+  for (const layer of renderer.layers) {
+    if (!layer.visible) continue;
+    for (const p of layer.primitives) {
+      if (p.polarity !== 'D') continue;
+
+      if (p.kind === 'flash') {
+        // Pad / hole centre
+        pts.push({ x: p.x, y: p.y, type: 'centre' });
+        // Pad edges (for rect/obround pads)
+        const ap = p.ap;
+        if (ap.type === 'R' || ap.type === 'O') {
+          const hw = (ap.params[0]||0)/2, hh = (ap.params[1]!==undefined?ap.params[1]:ap.params[0]||0)/2;
+          pts.push({x:p.x-hw, y:p.y, type:'edge'}, {x:p.x+hw, y:p.y, type:'edge'},
+                   {x:p.x, y:p.y-hh, type:'edge'}, {x:p.x, y:p.y+hh, type:'edge'});
+        }
+      } else if (p.kind === 'line') {
+        pts.push({ x:p.x1, y:p.y1, type:'endpoint' },
+                 { x:p.x2, y:p.y2, type:'endpoint' },
+                 { x:(p.x1+p.x2)/2, y:(p.y1+p.y2)/2, type:'midpoint' });
+      } else if (p.kind === 'arc') {
+        pts.push({ x:p.cx, y:p.cy, type:'centre' },
+                 { x:p.x1, y:p.y1, type:'endpoint' },
+                 { x:p.x2, y:p.y2, type:'endpoint' });
+      } else if (p.kind === 'region') {
+        for (let k = 0; k < p.path.length; k++) {
+          pts.push({ x:p.path[k].x, y:p.path[k].y, type:'vertex' });
+        }
+      }
+    }
+  }
+  return pts;
+}
+
+let snapCandidates = [];  // rebuilt when layers change or measure mode entered
+
+// Find nearest snap point within pixelRadius pixels of canvas point (cpx,cpy)
+function findSnap(cpx, cpy, pixelRadius) {
+  const t = renderer;
+  let best = null, bestDist = Infinity;
+  for (const c of snapCandidates) {
+    const px = t._px(c.x), py = t._py(c.y);
+    const d = Math.hypot(px - cpx, py - cpy);
+    if (d < pixelRadius && d < bestDist) {
+      bestDist = d; best = c;
+    }
+  }
+  return best;
+}
+
+// Canvas px → Gerber mm
+function canvasToGerber(cpx, cpy) {
+  const t = renderer;
+  return { x: (cpx - t.tx) / t.scale, y: (t.ty - cpy) / t.scale };
+}
+
+// ── Overlay drawing ────────────────────────────────────────────────────────────
+const SNAP_RADIUS_PX = 14;
+const COL_MEAS   = '#ff4444';
+const COL_SNAP   = '#00d4aa';
+const COL_FREE   = '#ff9900';
+const COL_GHOST  = 'rgba(255,68,68,0.45)';
+
+function drawSnap(ctx, gx, gy, type, color) {
+  const px = renderer._px(gx), py = renderer._py(gy);
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = 1.5;
+  ctx.shadowColor = color;
+  ctx.shadowBlur  = 6;
+  if (type === 'centre' || type === 'arc-centre') {
+    ctx.beginPath();
+    ctx.arc(px, py, 6, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(px-9,py); ctx.lineTo(px+9,py);
+    ctx.moveTo(px,py-9); ctx.lineTo(px,py+9);
+    ctx.stroke();
+  } else if (type === 'endpoint' || type === 'vertex') {
+    ctx.beginPath();
+    ctx.rect(px-5, py-5, 10, 10);
+    ctx.stroke();
+  } else if (type === 'midpoint') {
+    ctx.beginPath();
+    ctx.moveTo(px-7,py+7); ctx.lineTo(px,py-7); ctx.lineTo(px+7,py+7);
+    ctx.closePath(); ctx.stroke();
+  } else if (type === 'edge') {
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, Math.PI*2);
+    ctx.stroke();
+  } else {
+    // free point
+    ctx.beginPath();
+    ctx.moveTo(px-6,py-6); ctx.lineTo(px+6,py+6);
+    ctx.moveTo(px+6,py-6); ctx.lineTo(px-6,py+6);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawMeasurement(ctx, p1, p2, ghost) {
+  const px1=renderer._px(p1.x), py1=renderer._py(p1.y);
+  const px2=renderer._px(p2.x), py2=renderer._py(p2.y);
+  const dx = p2.x - p1.x, dy = p2.y - p1.y;
+  const dist = Math.hypot(dx, dy);
+  const distX = Math.abs(dx), distY = Math.abs(dy);
+
+  ctx.save();
+  const lineCol = ghost ? COL_GHOST : COL_MEAS;
+  ctx.strokeStyle = lineCol;
+  ctx.fillStyle   = lineCol;
+  ctx.lineWidth   = ghost ? 1 : 1.5;
+  ctx.setLineDash(ghost ? [4,4] : []);
+
+  // Main measurement line
+  ctx.beginPath();
+  ctx.moveTo(px1, py1);
+  ctx.lineTo(px2, py2);
+  ctx.stroke();
+
+  // Arrowheads
+  if (!ghost) {
+    const angle = Math.atan2(py2-py1, px2-px1);
+    const aw = 8, ah = 4;
+    for (const [bx,by,a] of [[px1,py1,angle+Math.PI],[px2,py2,angle]]) {
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx + aw*Math.cos(a-ah/aw*2), by + aw*Math.sin(a-ah/aw*2));
+      ctx.lineTo(bx + aw*Math.cos(a+ah/aw*2), by + aw*Math.sin(a+ah/aw*2));
+      ctx.closePath(); ctx.fill();
+    }
+
+    // Extension lines from snap points
+    ctx.setLineDash([3,4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,68,68,0.4)';
+    // Horizontal extension
+    if (distX > 0.01) {
+      const ey = Math.min(py1,py2) - 14;
+      ctx.beginPath();
+      ctx.moveTo(px1, py1); ctx.lineTo(px1, ey-4);
+      ctx.moveTo(px2, py2); ctx.lineTo(px2, ey-4);
+      ctx.stroke();
+      // X dimension line
+      ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(255,68,68,0.7)';
+      ctx.beginPath();
+      ctx.moveTo(px1, ey); ctx.lineTo(px2, ey);
+      ctx.stroke();
+      // X label
+      drawLabel(ctx, (px1+px2)/2, ey-2, `ΔX ${distX.toFixed(3)} mm`, 'rgba(255,68,68,0.9)');
+    }
+    // Vertical extension
+    if (distY > 0.01) {
+      const ex = Math.max(px1,px2) + 14;
+      ctx.setLineDash([3,4]);
+      ctx.strokeStyle = 'rgba(255,68,68,0.4)';
+      ctx.beginPath();
+      ctx.moveTo(px1, py1); ctx.lineTo(ex+4, py1);
+      ctx.moveTo(px2, py2); ctx.lineTo(ex+4, py2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(255,68,68,0.7)';
+      ctx.beginPath();
+      ctx.moveTo(ex, py1); ctx.lineTo(ex, py2);
+      ctx.stroke();
+      // Y label (rotated)
+      ctx.save();
+      ctx.translate(ex+14, (py1+py2)/2);
+      ctx.rotate(Math.PI/2);
+      drawLabel(ctx, 0, 0, `ΔY ${distY.toFixed(3)} mm`, 'rgba(255,68,68,0.9)');
+      ctx.restore();
+    }
+  }
+
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Main distance label
+  if (!ghost) {
+    const mx=(px1+px2)/2, my=(py1+py2)/2;
+    const angle2 = Math.atan2(py2-py1, px2-px1);
+    ctx.save();
+    ctx.translate(mx, my);
+    // keep label readable (flip if upside down)
+    const rot = (angle2 > Math.PI/2 || angle2 < -Math.PI/2) ? angle2+Math.PI : angle2;
+    ctx.rotate(rot);
+    drawLabel(ctx, 0, -10, `${dist.toFixed(3)} mm`, COL_MEAS);
+    ctx.restore();
+  }
+}
+
+function drawLabel(ctx, x, y, text, color) {
+  ctx.save();
+  ctx.font = 'bold 11px "Share Tech Mono", monospace';
+  const w = ctx.measureText(text).width;
+  ctx.fillStyle = 'rgba(10,15,20,0.82)';
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(x-w/2-4, y-10, w+8, 14, 3)
+                : ctx.rect(x-w/2-4, y-10, w+8, 14);
+  ctx.fill();
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y-3);
+  ctx.restore();
+}
+
+function renderMeasOverlay() {
+  measCanvas.width  = canvas.width;
+  measCanvas.height = canvas.height;
+  measCtx.clearRect(0, 0, measCanvas.width, measCanvas.height);
+
+  // Bail only if there is genuinely nothing to draw
+  const hasSelection = typeof selectedPrims !== 'undefined' && selectedPrims.length > 0;
+  if (!measMode && !pasteMode && !hasSelection && measurements.length === 0) return;
+
+  // Draw all finalised measurements
+  for (const m of measurements) {
+    drawMeasurement(measCtx, m.p1, m.p2, false);
+    drawSnap(measCtx, m.p1.x, m.p1.y, m.p1.snapType||'free', COL_MEAS);
+    drawSnap(measCtx, m.p2.x, m.p2.y, m.p2.snapType||'free', COL_MEAS);
+  }
+
+  // Object selection highlights (drawn regardless of measMode)
+  if (typeof drawObjSelHighlights === 'function') drawObjSelHighlights();
+
+  // Paste ghost preview
+  if (pasteMode && pasteCursor) {
+    const origin = clipboardCentroid();
+    const dx = pasteCursor.x - origin.x, dy = pasteCursor.y - origin.y;
+
+    for (const { prim } of clipboard) {
+      const ghost = offsetPrim(prim, dx, dy);
+      _drawPasteGhost(measCtx, ghost);
+    }
+
+    // Crosshair at cursor — drawn with white halo for visibility on any background
+    const cpx3 = renderer._px(pasteCursor.x), cpy3 = renderer._py(pasteCursor.y);
+    measCtx.save();
+    measCtx.setLineDash([]);
+    measCtx.lineCap = 'round';
+    // White halo
+    measCtx.strokeStyle = 'rgba(255,255,255,0.85)';
+    measCtx.lineWidth = 3;
+    measCtx.beginPath();
+    measCtx.moveTo(cpx3-18, cpy3); measCtx.lineTo(cpx3+18, cpy3);
+    measCtx.moveTo(cpx3, cpy3-18); measCtx.lineTo(cpx3, cpy3+18);
+    measCtx.stroke();
+    // Orange line
+    measCtx.strokeStyle = '#ff9900';
+    measCtx.lineWidth = 1.5;
+    measCtx.beginPath();
+    measCtx.moveTo(cpx3-18, cpy3); measCtx.lineTo(cpx3+18, cpy3);
+    measCtx.moveTo(cpx3, cpy3-18); measCtx.lineTo(cpx3, cpy3+18);
+    measCtx.stroke();
+    // Centre circle
+    measCtx.beginPath();
+    measCtx.arc(cpx3, cpy3, 4, 0, Math.PI*2);
+    measCtx.stroke();
+    measCtx.restore();
+
+    // Hint badge
+    measCtx.save();
+    measCtx.font = 'bold 11px "Share Tech Mono",monospace';
+    const ht = 'Click or Enter to place  •  Esc to cancel';
+    const hw2 = measCtx.measureText(ht).width;
+    measCtx.fillStyle = 'rgba(255,153,0,0.92)';
+    measCtx.beginPath();
+    if (measCtx.roundRect) measCtx.roundRect(6, 6, hw2+12, 20, 3);
+    else measCtx.rect(6, 6, hw2+12, 20);
+    measCtx.fill();
+    measCtx.fillStyle = '#000';
+    measCtx.textBaseline = 'middle';
+    measCtx.fillText(ht, 12, 16);
+    measCtx.restore();
+  }
+
+  if (!measMode) return;
+
+  // Draw live cursor snap indicator
+  if (measCursor) {
+    const col = measCursor.snapType ? COL_SNAP : COL_FREE;
+    drawSnap(measCtx, measCursor.x, measCursor.y, measCursor.snapType||'free', col);
+  }
+
+  // Draw ghost line from p1 to cursor
+  if (measPt1 && measCursor) {
+    drawMeasurement(measCtx, measPt1, measCursor, true);
+    drawSnap(measCtx, measPt1.x, measPt1.y, measPt1.snapType||'free', COL_MEAS);
+  }
+}
+
+// ── Mode toggle ───────────────────────────────────────────────────────────────
+function enterMeasMode() {
+  measMode = true;
+  measBtn.classList.add('active');
+  canvas.style.cursor = 'crosshair';
+  snapCandidates = buildSnapCandidates();
+  measPt1 = null;
+  renderMeasOverlay();
+}
+function exitMeasMode() {
+  measMode = false;
+  measBtn.classList.remove('active');
+  canvas.style.cursor = 'grab';
+  measPt1 = null; measCursor = null;
+  renderMeasOverlay();
+}
+
+measBtn.addEventListener('click', () => {
+  if (measMode) exitMeasMode();
+  else {
+    exitSelMode();
+    enterMeasMode();
+  }
+});
+
+// Clear all measurements with double-click on measure button or Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (measMode) {
+      if (measPt1) { measPt1 = null; renderMeasOverlay(); }
+      else exitMeasMode();
+    }
+    if (selMode) exitSelMode();
+  }
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (measMode && measurements.length > 0) {
+      measurements.pop();
+      renderMeasOverlay();
+    }
+  }
+});
+
+// Double-click measure button clears all
+measBtn.addEventListener('dblclick', e => {
+  e.stopPropagation();
+  measurements = [];
+  renderMeasOverlay();
+  showToast('Measurements cleared');
+});
+
+// ── Mouse events for measurement + paste ─────────────────────────────────────
+// Paste ghost tracks on window so it works even before first canvas mousemove
+window.addEventListener('mousemove', e => {
+  if (!pasteMode) return;
+  const rect = canvas.getBoundingClientRect();
+  const cpx = e.clientX - rect.left, cpy = e.clientY - rect.top;
+  pasteCursor = canvasToGerber(cpx, cpy);
+  renderMeasOverlay();
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!measMode) return;
+  const rect = canvas.getBoundingClientRect();
+  const cpx = e.clientX - rect.left, cpy = e.clientY - rect.top;
+  const snap = findSnap(cpx, cpy, SNAP_RADIUS_PX);
+  if (snap) {
+    measCursor = { x: snap.x, y: snap.y, snapType: snap.type };
+  } else {
+    const g = canvasToGerber(cpx, cpy);
+    measCursor = { x: g.x, y: g.y, snapType: null };
+  }
+  renderMeasOverlay();
+});
+
+canvas.addEventListener('click', e => {
+  const rect2 = canvas.getBoundingClientRect();
+  const cpx = e.clientX - rect2.left, cpy = e.clientY - rect2.top;
+
+  // Paste placement on click
+  if (pasteMode && pasteCursor) {
+    commitPaste(pasteCursor.x, pasteCursor.y);
+    return;
+  }
+
+  if (!measMode) return;
+  const snap = findSnap(cpx, cpy, SNAP_RADIUS_PX);
+  const pt = snap
+    ? { x: snap.x, y: snap.y, snapType: snap.type }
+    : { ...canvasToGerber(cpx, cpy), snapType: null };
+
+  if (!measPt1) {
+    measPt1 = pt;
+    showToast('Click second point to complete measurement');
+  } else {
+    measurements.push({ p1: measPt1, p2: pt });
+    measPt1 = null;
+    renderMeasOverlay();
+    const dist = Math.hypot(pt.x - measurements[measurements.length-1].p1.x,
+                            pt.y - measurements[measurements.length-1].p1.y);
+    showToast(`${dist.toFixed(3)} mm`);
+  }
+});
+
+// Re-render overlay when board renders (zoom/pan)
+const origRender = renderer.render.bind(renderer);
+renderer.render = function() { origRender(); renderMeasOverlay(); };
+
+// Rebuild snap candidates when layers change
+const origUpdateLayerList = updateLayerList;
+// (snap candidates rebuilt on mode entry so always fresh)
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  OBJECT SELECTION / COPY / CUT / PASTE
+// ══════════════════════════════════════════════════════════════════════════════
+const objSelBtn  = document.getElementById('obj-sel-btn');
+const copyBtn    = document.getElementById('copy-btn');
+const cutBtn     = document.getElementById('cut-btn');
+const pasteBtn   = document.getElementById('paste-btn');
+
+let objSelMode   = false;
+let objSel       = { active:false, x0:0,y0:0,x1:0,y1:0 };  // rubber-band in pixels
+// selectedPrimitives: [{prim, layer}]
+let selectedPrims = [];
+// paste offset accumulates so repeated pastes stagger
+let pasteOffset = 0;
+
+// ── Rubber-band selection rect (reuse sel-rect element) ───────────────────────
+// sel-rect is already in the DOM; zoom-to-selection also uses it.
+// We gate by mode so they don't clash.
+
+// ── Enter / exit object select mode ──────────────────────────────────────────
+function enterObjSelMode() {
+  objSelMode = true;
+  objSelBtn.classList.add('active');
+  canvas.style.cursor = 'crosshair';
+  // Exit other modes
+  if (selMode)  exitSelMode();
+  if (measMode) exitMeasMode();
+}
+function exitObjSelMode() {
+  objSelMode = false;
+  objSelBtn.classList.remove('active');
+  canvas.style.cursor = 'grab';
+  objSel.active = false;
+  selRect.style.display = 'none';
+}
+function clearObjSelection() {
+  selectedPrims = [];
+  stopMarchingAnts();
+  renderMeasOverlay();
+}
+
+objSelBtn.addEventListener('click', () => {
+  if (objSelMode) { exitObjSelMode(); clearObjSelection(); }
+  else enterObjSelMode();
+});
+
+// ── Hit test: find all primitives whose AABB intersects the rubber-band ───────
+function selectInRect(gx0, gy0, gx1, gy1) {
+  // Normalise
+  const rx0=Math.min(gx0,gx1), rx1=Math.max(gx0,gx1);
+  const ry0=Math.min(gy0,gy1), ry1=Math.max(gy0,gy1);
+  const found = [];
+  // Only search the active (selected) layer; fall back to all visible if none selected
+  const searchLayers = renderer.selectedLayer
+    ? [renderer.selectedLayer]
+    : renderer.layers.filter(l=>l.visible);
+  for (const layer of searchLayers) {
+    if (!layer.visible) continue;
+    for (const prim of layer.primitives) {
+      if (prim.polarity !== 'D') continue;
+      const bb = renderer.primitiveBounds(prim);
+      if (!bb) continue;
+      if (bb.maxX < rx0 || bb.minX > rx1 || bb.maxY < ry0 || bb.minY > ry1) continue;
+      found.push({ prim, layer });
+    }
+  }
+  return found;
+}
+
+// ── Draw selection highlights on the meas overlay canvas ─────────────────────
+function drawObjSelHighlights() {
+  if (!selectedPrims.length) return;
+
+  const SEL_FILL   = 'rgba(30,160,255,0.55)';
+  const SEL_STROKE = 'rgba(30,160,255,0.90)';
+  const SEL_GLOW   = 'rgba(30,160,255,0.30)';
+
+  measCtx.save();
+
+  for (const { prim } of selectedPrims) {
+    // Draw a bright filled version of the primitive's actual shape
+    measCtx.save();
+    measCtx.fillStyle   = SEL_FILL;
+    measCtx.strokeStyle = SEL_STROKE;
+    measCtx.shadowColor = SEL_GLOW;
+    measCtx.shadowBlur  = 10;
+    measCtx.setLineDash([]);
+
+    if (prim.kind === 'flash') {
+      _drawSelFlash(measCtx, prim);
+    } else if (prim.kind === 'line') {
+      measCtx.beginPath();
+      measCtx.moveTo(renderer._px(prim.x1), renderer._py(prim.y1));
+      measCtx.lineTo(renderer._px(prim.x2), renderer._py(prim.y2));
+      measCtx.lineWidth = Math.max(renderer._ps(prim.w), 2);
+      measCtx.lineCap   = 'round';
+      measCtx.stroke();
+    } else if (prim.kind === 'arc') {
+      const cpx = renderer._px(prim.cx), cpy = renderer._py(prim.cy);
+      const rad  = renderer._ps(prim.rad);
+      const dxe  = prim.x2 - prim.x1, dye = prim.y2 - prim.y1;
+      measCtx.beginPath();
+      if (dxe*dxe + dye*dye < 1e-10) {
+        measCtx.arc(cpx, cpy, rad, 0, Math.PI*2);
+      } else {
+        const a1 = Math.atan2(prim.cy - prim.y1, prim.x1 - prim.cx);
+        const a2 = Math.atan2(prim.cy - prim.y2, prim.x2 - prim.cx);
+        measCtx.arc(cpx, cpy, rad, a1, a2, !prim.cw);
+      }
+      measCtx.lineWidth = Math.max(renderer._ps(prim.w), 2);
+      measCtx.lineCap   = 'round';
+      measCtx.stroke();
+    } else if (prim.kind === 'region') {
+      if (!prim.path.length) { measCtx.restore(); continue; }
+      measCtx.beginPath();
+      measCtx.moveTo(renderer._px(prim.path[0].x), renderer._py(prim.path[0].y));
+      for (let k = 1; k < prim.path.length; k++)
+        measCtx.lineTo(renderer._px(prim.path[k].x), renderer._py(prim.path[k].y));
+      measCtx.closePath();
+      measCtx.fill();
+      measCtx.lineWidth = 1;
+      measCtx.stroke();
+    }
+
+    measCtx.restore();
+  }
+
+  // Marching-ants outline around the combined bounding box of all selected prims
+  let bbAll = null;
+  for (const { prim } of selectedPrims) {
+    const bb = renderer.primitiveBounds(prim);
+    if (!bb) continue;
+    if (!bbAll) bbAll = { ...bb };
+    else {
+      bbAll.minX = Math.min(bbAll.minX, bb.minX);
+      bbAll.minY = Math.min(bbAll.minY, bb.minY);
+      bbAll.maxX = Math.max(bbAll.maxX, bb.maxX);
+      bbAll.maxY = Math.max(bbAll.maxY, bb.maxY);
+    }
+  }
+  if (bbAll) {
+    const px0 = renderer._px(bbAll.minX) - 5, py0 = renderer._py(bbAll.maxY) - 5;
+    const pw  = renderer._px(bbAll.maxX) - px0 + 5;
+    const ph  = renderer._py(bbAll.minY) - py0 + 5;
+    // Animate marching ants via dashOffset stored on measCanvas
+    measCanvas._dashOff = ((measCanvas._dashOff || 0) + 0.5) % 12;
+    measCtx.save();
+    measCtx.strokeStyle = '#1ea0ff';
+    measCtx.lineWidth   = 1.5;
+    measCtx.setLineDash([6, 4]);
+    measCtx.lineDashOffset = -measCanvas._dashOff;
+    measCtx.strokeRect(px0, py0, pw, ph);
+    // White underlayer for contrast
+    measCtx.strokeStyle = 'rgba(255,255,255,0.6)';
+    measCtx.setLineDash([6, 4]);
+    measCtx.lineDashOffset = -measCanvas._dashOff + 6;
+    measCtx.strokeRect(px0, py0, pw, ph);
+    measCtx.restore();
+  }
+
+  // Badge
+  const txt = `${selectedPrims.length} object${selectedPrims.length>1?'s':''} selected`;
+  measCtx.font = 'bold 11px "Share Tech Mono",monospace';
+  const tw = measCtx.measureText(txt).width;
+  measCtx.fillStyle = 'rgba(30,160,255,0.93)';
+  measCtx.beginPath();
+  if (measCtx.roundRect) measCtx.roundRect(6, 6, tw+12, 20, 3);
+  else measCtx.rect(6, 6, tw+12, 20);
+  measCtx.fill();
+  measCtx.fillStyle = '#fff';
+  measCtx.textBaseline = 'middle';
+  measCtx.fillText(txt, 12, 16);
+
+  // Kick off animation if not already running
+  startMarchingAnts();
+  measCtx.restore();
+}
+
+function _drawPasteGhost(ctx, p) {
+  const FILL   = 'rgba(255,153,0,0.55)';
+  const STROKE = 'rgba(255,200,0,0.95)';
+  ctx.save();
+  ctx.setLineDash([]);
+  ctx.fillStyle   = FILL;
+  ctx.strokeStyle = STROKE;
+  ctx.shadowColor = 'rgba(255,153,0,0.5)';
+  ctx.shadowBlur  = 10;
+
+  if (p.kind === 'flash') {
+    const px = renderer._px(p.x), py = renderer._py(p.y);
+    const pr = p.ap.params;
+    if (p.ap.type === 'C') {
+      const r  = Math.max(renderer._ps((pr[0]||0.1)/2), 1.5);
+      const hr = renderer._ps((pr[1]||0)/2);
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI*2, false);
+      if (hr > 0) ctx.arc(px, py, hr, 0, Math.PI*2, true);
+      ctx.fill('evenodd'); ctx.lineWidth=1; ctx.stroke();
+    } else if (p.ap.type === 'R' || p.ap.type === 'S') {
+      const hw = renderer._ps((pr[0]||0.1)/2);
+      const hh = renderer._ps((pr[1]!==undefined?pr[1]:pr[0]||0.1)/2);
+      ctx.beginPath(); ctx.rect(px-hw, py-hh, hw*2, hh*2);
+      ctx.fill(); ctx.lineWidth=1; ctx.stroke();
+    } else if (p.ap.type === 'O') {
+      const hw  = renderer._ps((pr[0]||0.1)/2);
+      const hh  = renderer._ps((pr[1]!==undefined?pr[1]:pr[0]||0.1)/2);
+      const offX = (pr[2]||0)*renderer.scale, offY = (pr[3]||0)*renderer.scale;
+      const cx2 = px+offX, cy2 = py-offY;
+      const r   = pr[4]!==undefined ? Math.min(renderer._ps(pr[4]),Math.min(hw,hh)) : Math.min(hw,hh);
+      ctx.beginPath();
+      ctx.moveTo(cx2-hw+r,cy2-hh); ctx.lineTo(cx2+hw-r,cy2-hh);
+      ctx.arcTo(cx2+hw,cy2-hh,cx2+hw,cy2-hh+r,r);
+      ctx.lineTo(cx2+hw,cy2+hh-r);
+      ctx.arcTo(cx2+hw,cy2+hh,cx2+hw-r,cy2+hh,r);
+      ctx.lineTo(cx2-hw+r,cy2+hh);
+      ctx.arcTo(cx2-hw,cy2+hh,cx2-hw,cy2+hh-r,r);
+      ctx.lineTo(cx2-hw,cy2-hh+r);
+      ctx.arcTo(cx2-hw,cy2-hh,cx2-hw+r,cy2-hh,r);
+      ctx.closePath(); ctx.fill(); ctx.lineWidth=1; ctx.stroke();
+    } else if (p.ap.type === 'THERMAL') {
+      const ro = renderer._ps((pr[0]||1)/2), ri = renderer._ps((pr[1]||0.5)/2);
+      const gapHalf = Math.asin(Math.min(0.99, renderer._ps((pr[2]||0.2)/2)/Math.max(ro,1e-6)));
+      const rot = (pr[3]||45)*Math.PI/180;
+      ctx.beginPath();
+      for (let q=0;q<4;q++) {
+        const base=rot+q*Math.PI/2, a1=base+gapHalf, a2=base+Math.PI/2-gapHalf;
+        if(a2<=a1) continue;
+        ctx.moveTo(px+ro*Math.cos(a1),py+ro*Math.sin(a1));
+        ctx.arc(px,py,ro,a1,a2,false);
+        ctx.lineTo(px+ri*Math.cos(a2),py+ri*Math.sin(a2));
+        ctx.arc(px,py,ri,a2,a1,true); ctx.closePath();
+      }
+      ctx.fill(); ctx.lineWidth=1; ctx.stroke();
+    } else {
+      const r = Math.max(renderer._ps((pr[0]||0.1)/2), 1.5);
+      ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI*2);
+      ctx.fill(); ctx.lineWidth=1; ctx.stroke();
+    }
+  } else if (p.kind === 'line') {
+    ctx.beginPath();
+    ctx.moveTo(renderer._px(p.x1), renderer._py(p.y1));
+    ctx.lineTo(renderer._px(p.x2), renderer._py(p.y2));
+    ctx.lineWidth = Math.max(renderer._ps(p.w), 1.5);
+    ctx.lineCap = 'round'; ctx.stroke();
+  } else if (p.kind === 'arc') {
+    const cpx2=renderer._px(p.cx), cpy2=renderer._py(p.cy);
+    const rad2=renderer._ps(p.rad);
+    const dxe=p.x2-p.x1, dye=p.y2-p.y1;
+    ctx.beginPath();
+    if (dxe*dxe+dye*dye < 1e-10) {
+      ctx.arc(cpx2,cpy2,rad2,0,Math.PI*2);
+    } else {
+      const a1=Math.atan2(p.cy-p.y1,p.x1-p.cx), a2=Math.atan2(p.cy-p.y2,p.x2-p.cx);
+      ctx.arc(cpx2,cpy2,rad2,a1,a2,!p.cw);
+    }
+    ctx.lineWidth=Math.max(renderer._ps(p.w),1.5); ctx.lineCap='round'; ctx.stroke();
+  } else if (p.kind === 'region') {
+    if (!p.path.length) { ctx.restore(); return; }
+    ctx.beginPath();
+    ctx.moveTo(renderer._px(p.path[0].x), renderer._py(p.path[0].y));
+    for (let k=1;k<p.path.length;k++)
+      ctx.lineTo(renderer._px(p.path[k].x), renderer._py(p.path[k].y));
+    ctx.closePath(); ctx.fill(); ctx.lineWidth=1; ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function _drawSelFlash(ctx, p) {
+  const px = renderer._px(p.x), py = renderer._py(p.y);
+  const pr = p.ap.params;
+  ctx.fillStyle   = 'rgba(30,160,255,0.55)';
+  ctx.strokeStyle = 'rgba(30,160,255,0.90)';
+  ctx.lineWidth   = 1;
+
+  if (p.ap.type === 'C') {
+    const r = renderer._ps((pr[0]||0.1)/2);
+    const hr = renderer._ps((pr[1]||0)/2);
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, Math.PI*2, false);
+    if (hr > 0) ctx.arc(px, py, hr, 0, Math.PI*2, true);
+    ctx.fill('evenodd');
+    ctx.stroke();
+  } else if (p.ap.type === 'R' || p.ap.type === 'S') {
+    const hw = renderer._ps((pr[0]||0.1)/2);
+    const hh = renderer._ps((pr[1]!==undefined?pr[1]:pr[0]||0.1)/2);
+    ctx.beginPath(); ctx.rect(px-hw, py-hh, hw*2, hh*2); ctx.fill(); ctx.stroke();
+  } else if (p.ap.type === 'O') {
+    const hw = renderer._ps((pr[0]||0.1)/2);
+    const hh = renderer._ps((pr[1]!==undefined?pr[1]:pr[0]||0.1)/2);
+    const offX = (pr[2]||0)*renderer.scale, offY = (pr[3]||0)*renderer.scale;
+    const cx = px+offX, cy = py-offY;
+    const r = pr[4] !== undefined ? Math.min(renderer._ps(pr[4]), Math.min(hw,hh)) : Math.min(hw,hh);
+    ctx.beginPath();
+    ctx.moveTo(cx-hw+r, cy-hh); ctx.lineTo(cx+hw-r, cy-hh);
+    ctx.arcTo(cx+hw,cy-hh, cx+hw,cy-hh+r, r);
+    ctx.lineTo(cx+hw, cy+hh-r);
+    ctx.arcTo(cx+hw,cy+hh, cx+hw-r,cy+hh, r);
+    ctx.lineTo(cx-hw+r, cy+hh);
+    ctx.arcTo(cx-hw,cy+hh, cx-hw,cy+hh-r, r);
+    ctx.lineTo(cx-hw, cy-hh+r);
+    ctx.arcTo(cx-hw,cy-hh, cx-hw+r,cy-hh, r);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else if (p.ap.type === 'THERMAL') {
+    const ro = renderer._ps((pr[0]||1)/2), ri = renderer._ps((pr[1]||0.5)/2);
+    const gapHalf = Math.asin(Math.min(0.99, renderer._ps((pr[2]||0.2)/2)/Math.max(ro,1e-6)));
+    const rot = ((pr[3]||45)*Math.PI/180);
+    ctx.beginPath();
+    for (let q=0;q<4;q++) {
+      const base=rot+q*Math.PI/2, a1=base+gapHalf, a2=base+Math.PI/2-gapHalf;
+      if(a2<=a1) continue;
+      ctx.moveTo(px+ro*Math.cos(a1),py+ro*Math.sin(a1));
+      ctx.arc(px,py,ro,a1,a2,false);
+      ctx.lineTo(px+ri*Math.cos(a2),py+ri*Math.sin(a2));
+      ctx.arc(px,py,ri,a2,a1,true);
+      ctx.closePath();
+    }
+    ctx.fill(); ctx.stroke();
+  } else {
+    // P or unknown — circle fallback
+    const r = renderer._ps((pr[0]||0.1)/2);
+    ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  }
+}
+
+// ── Marching-ants animation loop ──────────────────────────────────────────────
+let _marchingRAF = null;
+function startMarchingAnts() {
+  if (_marchingRAF) return;
+  function tick() {
+    if (!selectedPrims.length) { _marchingRAF = null; return; }
+    renderMeasOverlay();
+    _marchingRAF = requestAnimationFrame(tick);
+  }
+  _marchingRAF = requestAnimationFrame(tick);
+}
+function stopMarchingAnts() {
+  if (_marchingRAF) { cancelAnimationFrame(_marchingRAF); _marchingRAF = null; }
+}
+canvas.addEventListener('mousedown', e => {
+  if (e.button !== 0 || !objSelMode) return;
+  const r = canvas.getBoundingClientRect();
+  objSel.active = true;
+  objSel.x0 = objSel.x1 = e.clientX - r.left;
+  objSel.y0 = objSel.y1 = e.clientY - r.top;
+  selRect.style.cssText = `display:block;left:${objSel.x0}px;top:${objSel.y0}px;width:0;height:0;border-color:#2288ff;background:rgba(34,136,255,.07)`;
+}, true);
+
+window.addEventListener('mousemove', e => {
+  if (!objSelMode || !objSel.active) return;
+  const r = canvas.getBoundingClientRect();
+  objSel.x1 = e.clientX - r.left;
+  objSel.y1 = e.clientY - r.top;
+  const x=Math.min(objSel.x0,objSel.x1), y=Math.min(objSel.y0,objSel.y1);
+  const w=Math.abs(objSel.x1-objSel.x0), h=Math.abs(objSel.y1-objSel.y0);
+  selRect.style.left=x+'px'; selRect.style.top=y+'px';
+  selRect.style.width=w+'px'; selRect.style.height=h+'px';
+}, true);
+
+window.addEventListener('mouseup', e => {
+  if (!objSelMode || !objSel.active) return;
+  objSel.active = false;
+  selRect.style.display = 'none';
+
+  const px0=Math.min(objSel.x0,objSel.x1), px1=Math.max(objSel.x0,objSel.x1);
+  const py0=Math.min(objSel.y0,objSel.y1), py1=Math.max(objSel.y0,objSel.y1);
+
+  if (px1-px0 < 3 && py1-py0 < 3) {
+    // Click (not drag): point-select — find nearest primitive centroid
+    const cpx=(px0+px1)/2, cpy=(py0+py1)/2;
+    const g = canvasToGerber(cpx, cpy);
+    let best=null, bestD=Infinity;
+    const clickLayers = renderer.selectedLayer
+      ? [renderer.selectedLayer]
+      : renderer.layers.filter(l=>l.visible);
+    for (const layer of clickLayers) {
+      if (!layer.visible) continue;
+      for (const prim of layer.primitives) {
+        if (prim.polarity !== 'D') continue;
+        const bb = renderer.primitiveBounds(prim);
+        if (!bb) continue;
+        const cx=(bb.minX+bb.maxX)/2, cy=(bb.minY+bb.maxY)/2;
+        const d=Math.hypot(g.x-cx, g.y-cy);
+        if (d<bestD) { bestD=d; best={prim,layer}; }
+      }
+    }
+    // Accept if within 5mm or 20px equivalent
+    const thresh = 20/renderer.scale;
+    if (best && bestD < thresh) {
+      const already = selectedPrims.findIndex(s=>s.prim===best.prim);
+      if (e.shiftKey) {
+        // Shift-click: toggle
+        if (already>=0) selectedPrims.splice(already,1);
+        else selectedPrims.push(best);
+      } else {
+        if (already>=0 && selectedPrims.length===1) selectedPrims=[];
+        else selectedPrims=[best];
+      }
+    } else if (!e.shiftKey) {
+      selectedPrims=[];
+    }
+  } else {
+    // Rubber-band: convert to Gerber coords
+    const t=renderer;
+    const gx0=(px0-t.tx)/t.scale, gy0=(t.ty-py1)/t.scale;
+    const gx1=(px1-t.tx)/t.scale, gy1=(t.ty-py0)/t.scale;
+    const found = selectInRect(gx0,gy0,gx1,gy1);
+    if (e.shiftKey) {
+      // Add to existing selection
+      for (const f of found) {
+        if (!selectedPrims.find(s=>s.prim===f.prim)) selectedPrims.push(f);
+      }
+    } else {
+      selectedPrims = found;
+    }
+  }
+  renderMeasOverlay();
+  if (selectedPrims.length)
+    showToast(`${selectedPrims.length} object${selectedPrims.length>1?'s':''} selected`);
+}, true);
+
+// ── Deep clone a primitive ────────────────────────────────────────────────────
+function clonePrim(p) {
+  const c = { ...p };
+  if (p.ap)   c.ap   = { ...p.ap, params: [...p.ap.params] };
+  if (p.path) c.path = p.path.map(pt=>({...pt}));
+  return c;
+}
+
+// ── Mark a layer as edited ────────────────────────────────────────────────────
+function markDirty(layer) {
+  if (!layer.dirty) {
+    layer.dirty = true;
+    updateLayerList();
+  }
+  // Highlight save button whenever any layer is dirty
+  const anyDirty = layers.some(l => l.dirty);
+  const saveBtn = document.getElementById('save-btn');
+  if (saveBtn) saveBtn.classList.toggle('active', anyDirty);
+}
+
+// ── Copy ──────────────────────────────────────────────────────────────────────
+function doCopy() {
+  if (!selectedPrims.length) { showToast('Nothing selected'); return; }
+  clipboard = selectedPrims.map(({prim, layer}) => ({
+    prim: clonePrim(prim),
+    srcLayerName: layer.name
+  }));
+  pasteOffset = 0;
+  showToast(`Copied ${clipboard.length} object${clipboard.length>1?'s':''}`);
+}
+
+// ── Cut ───────────────────────────────────────────────────────────────────────
+function doCut() {
+  if (!selectedPrims.length) { showToast('Nothing selected'); return; }
+  clipboard = selectedPrims.map(({prim, layer}) => ({
+    prim: clonePrim(prim),
+    srcLayerName: layer.name
+  }));
+  pasteOffset = 0;
+  // Remove from source layers
+  for (const { prim, layer } of selectedPrims) {
+    const idx = layer.primitives.indexOf(prim);
+    if (idx >= 0) { layer.primitives.splice(idx, 1); markDirty(layer); }
+  }
+  selectedPrims = [];
+  renderer.render();
+  renderMeasOverlay();
+  showToast(`Cut ${clipboard.length} object${clipboard.length>1?'s':''}`);
+}
+
+// ── Paste ─────────────────────────────────────────────────────────────────────
+// Compute the centroid of the clipboard items
+function clipboardCentroid() {
+  let sx=0, sy=0, n=0;
+  for (const { prim } of clipboard) {
+    const bb = renderer.primitiveBounds(prim);
+    if (!bb) continue;
+    sx += (bb.minX+bb.maxX)/2; sy += (bb.minY+bb.maxY)/2; n++;
+  }
+  return n ? { x:sx/n, y:sy/n } : { x:0, y:0 };
+}
+
+// Offset a cloned prim by (dx,dy)
+function offsetPrim(prim, dx, dy) {
+  const c = clonePrim(prim);
+  if (c.kind==='flash')  { c.x+=dx; c.y+=dy; }
+  if (c.kind==='line')   { c.x1+=dx;c.y1+=dy;c.x2+=dx;c.y2+=dy; }
+  if (c.kind==='arc')    { c.x1+=dx;c.y1+=dy;c.x2+=dx;c.y2+=dy;c.cx+=dx;c.cy+=dy; }
+  if (c.kind==='region') { c.path=c.path.map(pt=>({x:pt.x+dx,y:pt.y+dy})); }
+  return c;
+}
+
+function enterPasteMode() {
+  if (!clipboard.length) { showToast('Clipboard empty'); return; }
+  pasteMode   = true;
+  pasteCursor = null;
+  pasteGhosts = [];
+  pasteBtn.classList.add('active');
+  // Use a custom SVG crosshair cursor that's always visible in Chrome/Windows
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'><line x1='16' y1='0' x2='16' y2='32' stroke='%23ff9900' stroke-width='2'/><line x1='0' y1='16' x2='32' y2='16' stroke='%23ff9900' stroke-width='2'/><circle cx='16' cy='16' r='3' fill='none' stroke='%23ff9900' stroke-width='1.5'/></svg>`;
+  canvas.style.cursor = `url("data:image/svg+xml,${svg}") 16 16, crosshair`;
+  showToast('Move mouse to position — click or Enter to place, Esc to cancel');
+  renderMeasOverlay();
+}
+
+function exitPasteMode() {
+  pasteMode = false;
+  pasteGhosts = [];
+  pasteBtn.classList.remove('active');
+  canvas.style.cursor = objSelMode ? 'crosshair' : 'grab';
+  renderMeasOverlay();
+}
+function commitPaste(gx, gy) {
+  if (!clipboard.length) return;
+  const target = renderer.selectedLayer || renderer.layers.find(l=>l.visible);
+  if (!target) { showToast('No target layer — select a layer first'); return; }
+
+  const origin = clipboardCentroid();
+  const dx = gx - origin.x, dy = gy - origin.y;
+
+  const pasted = [];
+  for (const { prim } of clipboard) {
+    const c = offsetPrim(prim, dx, dy);
+    target.primitives.push(c);
+    pasted.push({ prim:c, layer:target });
+  }
+
+  selectedPrims = pasted;
+  markDirty(target);
+  exitPasteMode();
+  renderer.render();
+  startMarchingAnts();
+  showToast(`Pasted ${pasted.length} object${pasted.length>1?'s':''} onto "${target.name}"`);
+}
+
+function doPaste() {
+  if (!clipboard.length) { showToast('Clipboard empty'); return; }
+  enterPasteMode();
+}
+
+// ── Button wiring ─────────────────────────────────────────────────────────────
+copyBtn.addEventListener('click',  doCopy);
+cutBtn.addEventListener('click',   doCut);
+pasteBtn.addEventListener('click', doPaste);
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  // Don't fire if focus is in an input
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key==='Escape' && pasteMode) { exitPasteMode(); return; }
+  if (e.key==='Enter'  && pasteMode && pasteCursor) { commitPaste(pasteCursor.x, pasteCursor.y); return; }
+  if (e.key==='Escape' && objSelMode) { exitObjSelMode(); clearObjSelection(); return; }
+  if ((e.ctrlKey||e.metaKey) && e.key==='a' && objSelMode) {
+    e.preventDefault();
+    selectedPrims = [];
+    const allLayers = renderer.selectedLayer
+      ? [renderer.selectedLayer]
+      : renderer.layers.filter(l=>l.visible);
+    for (const layer of allLayers) {
+      if (!layer.visible) continue;
+      for (const prim of layer.primitives) {
+        if (prim.polarity==='D') selectedPrims.push({prim,layer});
+      }
+    }
+    renderMeasOverlay();
+    showToast(`${selectedPrims.length} objects selected`);
+    return;
+  }
+  if ((e.ctrlKey||e.metaKey) && e.key==='c') { e.preventDefault(); doCopy();  return; }
+  if ((e.ctrlKey||e.metaKey) && e.key==='x') { e.preventDefault(); doCut();   return; }
+  if ((e.ctrlKey||e.metaKey) && e.key==='v') { e.preventDefault(); doPaste(); return; }
+  if ((e.key==='Delete'||e.key==='Backspace') && objSelMode && selectedPrims.length) {
+    e.preventDefault();
+    for (const {prim,layer} of selectedPrims) {
+      const idx=layer.primitives.indexOf(prim);
+      if(idx>=0) { layer.primitives.splice(idx,1); markDirty(layer); }
+    }
+    selectedPrims=[];
+    renderer.render(); renderMeasOverlay();
+    showToast('Deleted');
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  GERBER WRITER  — reconstructs RS-274X from in-memory primitives
+// ══════════════════════════════════════════════════════════════════════════════
+
+function writeGerber(layer) {
+  // Format: FSLAX46Y46 — 4 integer digits, 6 decimal digits (sub-nanometre resolution)
+  const INT = 4, DEC = 6, SCALE = Math.pow(10, DEC);
+
+  function fmtCoord(v) {
+    // Round to DEC decimal places, encode as integer string (no decimal point)
+    const raw = Math.round(v * SCALE);
+    return raw.toString();
+  }
+  function fmtI(v) { return fmtCoord(v); }
+
+  // Collect unique apertures from primitives
+  // Key: canonical description string → aperture id
+  const apMap = new Map();   // description → {id, def}
+  let nextAp = 10;
+
+  function apKey(ap) {
+    const pr = ap.params;
+    if (ap.type === 'C')       return `C,${pr[0].toFixed(4)}${pr[1]?'X'+pr[1].toFixed(4):''}`;
+    if (ap.type === 'R')       return `R,${pr[0].toFixed(4)}X${(pr[1]!==undefined?pr[1]:pr[0]).toFixed(4)}${pr[2]?'X'+pr[2].toFixed(4):''}`;
+    if (ap.type === 'O')       return `O,${pr[0].toFixed(4)}X${(pr[1]!==undefined?pr[1]:pr[0]).toFixed(4)}`;
+    if (ap.type === 'S')       return `R,${pr[0].toFixed(4)}X${pr[0].toFixed(4)}`;
+    if (ap.type === 'P')       return `P,${pr[0].toFixed(4)}X${Math.round(pr[1]||6)}X${(pr[2]||0).toFixed(4)}`;
+    if (ap.type === 'THERMAL') return `C,${pr[0].toFixed(4)}`;  // export outer as circle
+    return `C,${(pr[0]||0.1).toFixed(4)}`;
+  }
+  function apDef(ap, id) {
+    const pr = ap.params;
+    if (ap.type === 'C')  return `%ADD${id}C,${pr[0].toFixed(4)}${pr[1]?'X'+pr[1].toFixed(4):''}*%`;
+    if (ap.type === 'R')  return `%ADD${id}R,${pr[0].toFixed(4)}X${(pr[1]!==undefined?pr[1]:pr[0]).toFixed(4)}${pr[2]?'X'+pr[2].toFixed(4):''}*%`;
+    if (ap.type === 'O')  return `%ADD${id}O,${pr[0].toFixed(4)}X${(pr[1]!==undefined?pr[1]:pr[0]).toFixed(4)}*%`;
+    if (ap.type === 'S')  return `%ADD${id}R,${pr[0].toFixed(4)}X${pr[0].toFixed(4)}*%`;
+    if (ap.type === 'P')  return `%ADD${id}P,${pr[0].toFixed(4)}X${Math.round(pr[1]||6)}X${(pr[2]||0).toFixed(4)}*%`;
+    if (ap.type === 'THERMAL') return `%ADD${id}C,${pr[0].toFixed(4)}*%`;
+    return `%ADD${id}C,${(pr[0]||0.1).toFixed(4)}*%`;
+  }
+
+  function getAp(ap) {
+    const k = apKey(ap);
+    if (!apMap.has(k)) apMap.set(k, { id: nextAp++, def: apDef(ap, nextAp - 1) });
+    return apMap.get(k);
+  }
+
+  // Two-pass: collect apertures, then emit data
+  // Pass 1: register all apertures
+  for (const p of layer.primitives) {
+    if (p.kind === 'flash') getAp(p.ap);
+    else if (p.kind === 'line' || p.kind === 'arc') getAp(p.ap || { type:'C', params:[p.w||0.05] });
+  }
+
+  // Build output
+  const lines = [];
+  lines.push('G04 PCBView exported Gerber*');
+  lines.push(`G04 Layer: ${layer.name}*`);
+  lines.push(`G04 Generated: ${new Date().toISOString()}*`);
+  lines.push('%FSLAX46Y46*%');
+  lines.push('%MOMM*%');
+  lines.push('%LPD*%');
+
+  // Aperture definitions
+  for (const { def } of apMap.values()) lines.push(def);
+
+  lines.push('G01*'); // linear interpolation default
+
+  let curApId = null;
+  let curX = null, curY = null;
+  let inRegion = false;
+
+  function emitMove(x, y) {
+    if (curX === x && curY === y) return;
+    lines.push(`X${fmtCoord(x)}Y${fmtCoord(y)}D02*`);
+    curX = x; curY = y;
+  }
+
+  function selectAp(apObj) {
+    const { id } = getAp(apObj);
+    if (curApId !== id) { lines.push(`D${id}*`); curApId = id; }
+  }
+
+  for (const p of layer.primitives) {
+    if (p.polarity === 'C') {
+      if (inRegion) { lines.push('D02*'); lines.push('G37*'); inRegion = false; }
+      lines.push('%LPC*%');
+    } else if (!inRegion) {
+      lines.push('%LPD*%');
+    }
+
+    if (p.kind === 'flash') {
+      selectAp(p.ap);
+      emitMove(p.x, p.y);
+      lines.push('D03*');
+      curX = p.x; curY = p.y;
+
+    } else if (p.kind === 'line') {
+      const lineAp = p.ap || { type:'C', params:[p.w||0.05] };
+      selectAp(lineAp);
+      lines.push('G01*');
+      emitMove(p.x1, p.y1);
+      lines.push(`X${fmtCoord(p.x2)}Y${fmtCoord(p.y2)}D01*`);
+      curX = p.x2; curY = p.y2;
+
+    } else if (p.kind === 'arc') {
+      const arcAp = p.ap || { type:'C', params:[p.w||0.05] };
+      selectAp(arcAp);
+      lines.push(p.cw ? 'G02*' : 'G03*');
+      lines.push('G75*'); // multi-quadrant
+      emitMove(p.x1, p.y1);
+      const I = p.cx - p.x1, J = p.cy - p.y1;
+      // Full circle check
+      const dxe = p.x2 - p.x1, dye = p.y2 - p.y1;
+      if (dxe*dxe + dye*dye < 1e-10) {
+        // Full circle: end = start
+        lines.push(`X${fmtCoord(p.x1)}Y${fmtCoord(p.y1)}I${fmtI(I)}J${fmtI(J)}D01*`);
+      } else {
+        lines.push(`X${fmtCoord(p.x2)}Y${fmtCoord(p.y2)}I${fmtI(I)}J${fmtI(J)}D01*`);
+      }
+      curX = p.x2; curY = p.y2;
+      lines.push('G01*'); // restore linear
+
+    } else if (p.kind === 'region') {
+      if (p.path.length < 3) continue;
+      lines.push('G36*');
+      lines.push('G01*');
+      lines.push(`X${fmtCoord(p.path[0].x)}Y${fmtCoord(p.path[0].y)}D02*`);
+      for (let k = 1; k < p.path.length; k++) {
+        lines.push(`X${fmtCoord(p.path[k].x)}Y${fmtCoord(p.path[k].y)}D01*`);
+      }
+      // Close
+      lines.push(`X${fmtCoord(p.path[0].x)}Y${fmtCoord(p.path[0].y)}D01*`);
+      lines.push('D02*');
+      lines.push('G37*');
+      curX = p.path[0].x; curY = p.path[0].y;
+    }
+  }
+
+  lines.push('M02*');
+  return lines.join('\r\n');
+}
+
+// ── Save dirty layers ─────────────────────────────────────────────────────────
+function saveDirtyLayers() {
+  const dirty = layers.filter(l => l.dirty);
+  if (!dirty.length) {
+    showToast('No edited layers to save');
+    return;
+  }
+  for (const layer of dirty) {
+    const gerber = writeGerber(layer);
+    const blob   = new Blob([gerber], { type: 'text/plain' });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement('a');
+    // Suggest filename: original name with _edited suffix before extension
+    const nameParts = layer.name.split('.');
+    const ext = nameParts.pop();
+    a.download = `${nameParts.join('.')}_edited.${ext}`;
+    a.href = url;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+  showToast(`Saved ${dirty.length} layer${dirty.length>1?'s':''}`);
+}
+
+document.getElementById('save-btn').addEventListener('click', saveDirtyLayers);
 
 updateZoom(); updateStatus();
 </script>
