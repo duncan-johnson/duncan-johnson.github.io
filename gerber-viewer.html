@@ -78,6 +78,9 @@ body.light .layer-item.layer-selected{background:rgba(0,122,99,.1);box-shadow:in
 .leye{margin-left:2px;font-size:.8rem;cursor:pointer;flex-shrink:0;opacity:.8;transition:opacity .15s}
 .leye:hover{opacity:1}
 .leye.off{opacity:.25}
+.lremove{font-size:.72rem;cursor:pointer;flex-shrink:0;color:var(--muted);opacity:0;transition:opacity .15s;padding:0 2px;line-height:1}
+.layer-item:hover .lremove{opacity:.7}
+.lremove:hover{opacity:1!important;color:#e05555}
 
 /* btn and btn-row kept for any remaining uses */
 .btn-row{display:flex;gap:.35rem}
@@ -100,6 +103,39 @@ main{flex:1;position:relative;overflow:hidden;background:var(--bg);transition:ba
 #sel-rect{position:absolute;pointer-events:none;border:2px solid var(--accent);background:rgba(0,212,170,.08);display:none;box-sizing:border-box}
 .meas-label{position:absolute;background:rgba(20,30,40,.92);color:#fff;font-family:'Share Tech Mono',monospace;font-size:.68rem;padding:2px 6px;border-radius:3px;pointer-events:none;white-space:nowrap;border:1px solid rgba(255,255,255,.15);transform:translate(-50%,-130%)}
 body.light .meas-label{background:rgba(255,255,255,.95);color:#1a2430;border:1px solid rgba(0,0,0,.2)}
+/* ── Drill table panel ── */
+#drill-panel{position:absolute;top:.7rem;right:.7rem;width:520px;max-width:calc(100vw - 280px);background:var(--panel);border:1px solid var(--border);border-radius:6px;font-family:'Rajdhani',sans-serif;font-size:.8rem;box-shadow:0 4px 20px rgba(0,0,0,.25);z-index:50;overflow:hidden;transition:background .2s,border-color .2s;display:flex;flex-direction:column;max-height:75vh}
+.drill-header{display:flex;align-items:center;justify-content:space-between;padding:.4rem .8rem;background:var(--accent);color:#000;font-weight:700;font-size:.72rem;letter-spacing:.1em;flex-shrink:0}
+#drill-close{cursor:pointer;opacity:.7;transition:opacity .15s;font-size:.85rem}
+#drill-close:hover{opacity:1}
+#drill-table-wrap{overflow-y:auto;flex:1}
+#drill-table-wrap::-webkit-scrollbar{width:4px}
+#drill-table-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+#drill-table{width:100%;border-collapse:collapse;font-family:'Share Tech Mono',monospace;font-size:.72rem}
+#drill-table th{position:sticky;top:0;background:var(--panel);color:var(--muted);font-size:.63rem;letter-spacing:.1em;text-transform:uppercase;padding:.35rem .6rem;text-align:left;border-bottom:2px solid var(--border);font-family:'Rajdhani',sans-serif;font-weight:700;z-index:1}
+#drill-table th:not(:first-child){text-align:right}
+#drill-table td{padding:.32rem .6rem;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+#drill-table td:not(:first-child){text-align:right}
+#drill-table tbody tr{cursor:pointer;transition:background .12s}
+#drill-table tbody tr:hover{background:var(--hover-bg)}
+#drill-table tbody tr.dt-selected{background:rgba(0,212,170,.12);outline:2px solid var(--accent);outline-offset:-2px}
+body.light #drill-table tbody tr.dt-selected{background:rgba(0,122,99,.1)}
+.drill-tool-swatch{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle;flex-shrink:0}
+.drill-footer{padding:.35rem .8rem;font-size:.68rem;color:var(--muted);border-top:1px solid var(--border);font-family:'Share Tech Mono',monospace;flex-shrink:0}
+#info-panel{position:absolute;top:.7rem;left:.7rem;width:260px;background:var(--panel);border:1px solid var(--border);border-radius:6px;font-family:'Share Tech Mono',monospace;font-size:.68rem;box-shadow:0 4px 20px rgba(0,0,0,.25);z-index:50;overflow:hidden;transition:background .2s,border-color .2s}
+#info-header{display:flex;align-items:center;justify-content:space-between;padding:.4rem .7rem;background:var(--accent);color:#000;font-weight:700;font-size:.7rem;letter-spacing:.06em}
+#info-close{cursor:pointer;opacity:.7;transition:opacity .15s;font-size:.8rem}
+#info-close:hover{opacity:1}
+#info-body{padding:.5rem .7rem;display:flex;flex-direction:column;gap:0;max-height:65vh;overflow-y:auto}
+#info-body::-webkit-scrollbar{width:3px}
+#info-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.info-section{font-size:.6rem;color:var(--accent);letter-spacing:.12em;padding:.4rem 0 .15rem;margin-top:.2rem;border-top:1px solid var(--border)}
+.info-section:first-child{margin-top:0;border-top:none}
+.info-row{display:flex;justify-content:space-between;gap:.5rem;padding:.18rem 0;border-bottom:1px solid rgba(0,0,0,.06)}
+body.light .info-row{border-bottom:1px solid rgba(0,0,0,.07)}
+.info-row:last-child{border-bottom:none}
+.info-key{color:var(--muted);flex-shrink:0}
+.info-val{color:var(--text);text-align:right;word-break:break-all}
 .toast{position:absolute;top:.8rem;left:50%;transform:translateX(-50%) translateY(-60px);background:var(--panel);border:1px solid var(--accent);color:var(--accent);padding:.35rem .9rem;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:.72rem;transition:transform .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;white-space:nowrap}
 .toast.show{transform:translateX(-50%) translateY(0)}
 .dbg{position:absolute;top:2.5rem;left:.5rem;background:rgba(0,0,0,.7);color:#0f0;font-family:monospace;font-size:.6rem;padding:.3rem .5rem;border-radius:3px;pointer-events:none;white-space:pre;display:none}
@@ -130,6 +166,8 @@ body.light .meas-label{background:rgba(255,255,255,.95);color:#1a2430;border:1px
     <div class="tb-group">
       <button class="tb-btn" id="measure-btn"  title="Measurement tool">📐 Measure</button>
       <button class="tb-btn" id="obj-sel-btn"  title="Select objects on active layer">⬡ Select</button>
+      <button class="tb-btn" id="info-btn"     title="Inspect primitive (click an object)">ℹ Info</button>
+      <button class="tb-btn" id="drill-table-btn" title="Show drill table">⊚ Drill Table</button>
     </div>
     <div class="tb-sep"></div>
     <!-- Edit group -->
@@ -164,7 +202,10 @@ body.light .meas-label{background:rgba(255,255,255,.95);color:#1a2430;border:1px
       <p><strong>Drop Gerber files here</strong><br>or click to browse<br><span style="font-size:.65rem;opacity:.6">.gtl .gbl .gts .gbs .gto .gbo .gko .drl …</span></p>
     </div>
     <input type="file" id="file-input" multiple>
-    <div class="sec-label">LAYERS</div>
+    <div class="sec-label" style="display:flex;align-items:center;justify-content:space-between;padding-right:.6rem">
+      <span>LAYERS</span>
+      <span id="all-eye" title="Toggle all layers" style="cursor:pointer;font-size:.8rem;opacity:.8;transition:opacity .15s" >👁</span>
+    </div>
     <div class="layer-list" id="layer-list">
       <div style="font-size:.68rem;color:var(--muted);padding:.5rem;font-family:'Share Tech Mono',monospace;text-align:center">No layers loaded</div>
     </div>
@@ -180,6 +221,35 @@ body.light .meas-label{background:rgba(255,255,255,.95);color:#1a2430;border:1px
       <small>Supports RS-274X extended Gerber · Excellon drill</small>
     </div>
     <div class="zoom-badge" id="zoom-badge">1.0×</div>
+    <div id="info-panel" style="display:none">
+      <div id="info-header">
+        <span id="info-title">Primitive Info</span>
+        <span id="info-close" title="Close">✕</span>
+      </div>
+      <div id="info-body"></div>
+    </div>
+
+    <!-- Drill Table Panel -->
+    <div id="drill-panel" style="display:none">
+      <div class="drill-header">
+        <span>DRILL TABLE</span>
+        <span id="drill-close" title="Close">✕</span>
+      </div>
+      <div id="drill-table-wrap">
+        <table id="drill-table">
+          <thead>
+            <tr>
+              <th>Tool</th>
+              <th>Ø (mm)</th>
+              <th>Type</th>
+              <th>Count</th>
+            </tr>
+          </thead>
+          <tbody id="drill-tbody"></tbody>
+        </table>
+      </div>
+      <div class="drill-footer" id="drill-footer"></div>
+    </div>
     <div class="statusbar">
       XY: <span id="s-xy">—</span> &nbsp;|&nbsp;
       Zoom: <span id="s-zoom">1.00×</span> &nbsp;|&nbsp;
@@ -238,6 +308,9 @@ const LAYER_META = {
   // Drill files
   drl: { label:'Drill',              color:'#00ccff', order:1700 },
   xln: { label:'Excellon Drill',     color:'#00ddff', order:1710 },
+  nc:  { label:'NC Drill',           color:'#00ccff', order:1720 },
+  ncd: { label:'NC Drill',           color:'#00ccff', order:1730 },
+  txt: { label:'NC Drill',           color:'#00ccff', order:1740 },
   // Generic fallbacks
   gbr: { label:'Gerber',             color:'#88aacc', order:1800 },
   ger: { label:'Gerber',             color:'#88aacc', order:1810 },
@@ -604,62 +677,158 @@ function parseGerber(src) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Excellon drill parser (simplified)
+//  Excellon drill parser — full format detection
 // ─────────────────────────────────────────────────────────────────────────────
 function parseExcellon(src) {
   const lines = src.split(/\r?\n/);
   const primitives = [];
-  let tools={}, curTool=null, unit='IN', metric=false;
-  let fmtXd=4, header=true;
-  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  let tools   = {};
+  let curTool = null;
+  let metric  = true;   // METRIC unless INCH declared
+  let suppLZ  = false;  // false=TZ (trailing zeros suppressed, pad right) — Altium default
+                        // true=LZ (leading zeros suppressed, pad left) — set by explicit TZ/LZ header
+  let intDig  = 3;      // integer digit count
+  let decDig  = 3;      // decimal digit count
+  let fmtSet  = false;  // explicit format seen in header?
+  let header  = true;
+  let curX = 0, curY = 0;  // current position — updated per axis independently
+  let curPlated = true;     // tracks ;TYPE=PLATED / ;TYPE=NON_PLATED sections
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  const rawCoordLens = [];  // digit-lengths of raw coordinate strings for auto-detection
 
-  function parseCoord(s, nd) {
-    if(!s) return 0;
-    const neg=s[0]==='-';
-    const d=s.replace(/^-/,'');
-    if(d.includes('.')) return (neg?-1:1)*parseFloat(d)*(metric?1:25.4);
-    // trailing zero suppressed: pad right
-    const padded = d.padEnd(Math.max(d.length, nd+1),'0');
-    const intP = padded.slice(0, -nd)||'0';
-    const frP  = padded.slice(-nd);
+  function applyUnitDefaults() {
+    if (!fmtSet) { intDig = metric ? 3 : 2; decDig = metric ? 3 : 4; }
+    // suppLZ is set explicitly by the METRIC,LZ / INCH,LZ line if present
+  }
+
+  // Infer format from the TOTAL digit count of the longest coordinate seen.
+  // e.g. "01682677" = 8 digits → 4+4 format. "003495" = 6 digits → 4+2? use known split.
+  // Strategy: total digits → pick standard split for metric/inch.
+  function autoDetect() {
+    if (fmtSet || rawCoordLens.length === 0) return;
+    const maxLen = Math.max(...rawCoordLens);
+    if (metric) {
+      // Standard metric splits by total digit count:
+      // 6 = 3+3, 7 = 3+4, 8 = 4+4, 9 = 4+5
+      if      (maxLen >= 9) { intDig=4; decDig=5; }
+      else if (maxLen >= 8) { intDig=4; decDig=4; }
+      else if (maxLen >= 7) { intDig=3; decDig=4; }
+      else                  { intDig=3; decDig=3; }
+    } else {
+      // Inch: 6=2+4, 7=3+4, 8=2+6
+      if      (maxLen >= 8) { intDig=2; decDig=6; }
+      else if (maxLen >= 7) { intDig=3; decDig=4; }
+      else                  { intDig=2; decDig=4; }
+    }
+  }
+
+  function parseCoord(s) {
+    if (!s) return 0;
+    const neg = s[0]==='-';
+    const d   = s.replace(/^-/,'');
+    if (d.includes('.')) return (neg?-1:1)*parseFloat(d)*(metric?1:25.4);
+    const total  = intDig + decDig;
+    const padded = suppLZ ? d.padStart(total,'0') : d.padEnd(total,'0');
+    const intP   = padded.slice(0, intDig) || '0';
+    const frP    = padded.slice(intDig);
     return (neg?-1:1)*parseFloat(intP+'.'+frP)*(metric?1:25.4);
   }
 
-  for(const raw of lines) {
-    const line=raw.trim();
-    if(!line||line.startsWith(';')) continue;
-    if(line==='M48'){ header=true; continue; }
-    if(line==='%'||line==='M95'){ header=false; continue; }
-    if(line==='M30'||line==='M00'||line==='M02') break;
+  for (const raw of lines) {
+    const line = raw.trim().replace(/\r$/,'');
+    if (!line) continue;
 
-    if(line==='METRIC'||line.startsWith('METRIC,')){ metric=true; unit='MM'; continue; }
-    if(line==='INCH'||line.startsWith('INCH,')){ metric=false; unit='IN'; continue; }
+    // Parse ;FILE_FORMAT=N:M and ;TYPE=PLATED/NON_PLATED comments
+    if (line.startsWith(';')) {
+      const ffM = line.match(/FILE_FORMAT\s*=\s*(\d+)\s*:\s*(\d+)/i);
+      if (ffM) { intDig=+ffM[1]; decDig=+ffM[2]; fmtSet=true; }
+      const typeM = line.match(/TYPE\s*=\s*(NON_PLATED|PLATED)/i);
+      if (typeM) curPlated = typeM[1].toUpperCase() !== 'NON_PLATED';
+      continue;
+    }
+    if (line==='M48') { header=true; continue; }
+    if (line==='%' || line==='M95') {
+      if (header) autoDetect();
+      header=false; continue;
+    }
+    if (line==='M30'||line==='M00'||line==='M02') break;
 
-    // Format hint
-    const fmtm = line.match(/FMAT,V(\d)/); // ignore
-    const lzm  = line.match(/^(LZ|TZ)/);   // leading/trailing zeros – simplified
+    // Unit + zero suppression: METRIC,LZ / METRIC,TZ / INCH,LZ / INCH,TZ
+    // NOTE: Altium declares METRIC,LZ but writes trailing-zero-suppressed (TZ/padEnd) coords.
+    // Real-world practice: default TZ (padEnd) for metric; only switch to padStart when
+    // the file explicitly declares TZ (which genuinely means leading zeros are present).
+    const unitM = line.match(/^(METRIC|INCH)(?:,([LT]Z))?/i);
+    if (unitM) {
+      metric = unitM[1].toUpperCase()==='METRIC';
+      // Only override suppLZ if explicitly specified as TZ; LZ declaration is unreliable
+      if (unitM[2] && unitM[2].toUpperCase()==='TZ') suppLZ = true;   // TZ declared → pad left
+      else suppLZ = false;  // no specifier or LZ declared → use TZ (pad right)
+      applyUnitDefaults();
+      continue;
+    }
 
-    // Tool definition
-    const td = line.match(/^T(\d+)(?:C([0-9.]+))?(?:F\d+)?(?:S\d+)?(?:B\d+)?(?:H\d+)?/);
-    if(td && header && td[2]){ tools[td[1]]={dia:parseFloat(td[2])}; continue; }
-    if(td && !td[2] && !line.match(/X/)){ curTool=td[1]; continue; }
+    // Explicit format hint: e.g. 000.000 or 0000.00000
+    const fmtM = line.match(/^(\d+)\.(\d+)$/);
+    if (fmtM) { intDig=fmtM[1].length; decDig=fmtM[2].length; fmtSet=true; continue; }
 
-    // Coordinate
-    const cm = line.match(/^(?:T(\d+))?X([+-]?[\d.]+)Y([+-]?[\d.]+)/);
-    if(cm){
-      if(cm[1]) curTool=cm[1];
-      const x=parseCoord(cm[2],fmtXd);
-      const y=parseCoord(cm[3],fmtXd);
-      const dia=(tools[curTool]?.dia||0.8)*(metric?1:25.4);
-      const r=dia/2;
-      primitives.push({ kind:'flash', x, y, ap:{type:'C',params:[dia]}, polarity:'D' });
+    // FMAT version line — ignore
+    if (line.startsWith('FMAT,')) continue;
+
+    // Tool definition: T1C0.800 or T01F00S00C0.2000 or T01C0.0315F... S... etc.
+    const tdH = line.match(/^T(\d+).*?C([0-9.]+)/i);
+    if (tdH) {
+      let dia = parseFloat(tdH[2]);
+      if (!metric) dia *= 25.4;
+      tools[tdH[1]] = { dia, plated: curPlated };
+      if (!line.match(/X/)) continue;
+    }
+
+    // Tool select only (no coordinates)
+    const tSel = line.match(/^T(\d+)$/);
+    if (tSel) { curTool=tSel[1]; continue; }
+
+    // Coordinate line — X and/or Y may be omitted; missing axis reuses last value
+    const cm = line.match(/^(?:T(\d+))?(?:X([+-]?[\d.]+))?(?:Y([+-]?[\d.]+))?(?:G|M|$)/);
+    if (cm && (cm[2] !== undefined || cm[3] !== undefined)) {
+      if (cm[1]) {
+        curTool = cm[1];
+        const tdI = line.match(/T\d+.*?C([0-9.]+)/i);
+        if (tdI && !tools[curTool]) {
+          let dia = parseFloat(tdI[1]);
+          if (!metric) dia *= 25.4;
+          tools[curTool] = { dia };
+        }
+      }
+
+      // Collect raw digit-counts for auto-detection
+      if (!fmtSet) {
+        if (cm[2]) { const r=cm[2].replace(/[^0-9]/g,''); if(r) rawCoordLens.push(r.length); }
+        if (cm[3]) { const r=cm[3].replace(/[^0-9]/g,''); if(r) rawCoordLens.push(r.length); }
+        autoDetect();
+      }
+
+      // Update current position — only overwrite the axis that was specified
+      if (cm[2] !== undefined) curX = parseCoord(cm[2]);
+      if (cm[3] !== undefined) curY = parseCoord(cm[3]);
+
+      const x    = curX;
+      const y    = curY;
+      const tool = tools[curTool] || { dia: 0.8, plated: curPlated };
+      const dia  = tool.dia;
+      const r    = dia / 2;
+
+      primitives.push({ kind:'flash', x, y,
+        ap:{ type:'C', params:[dia] },
+        polarity:'D', isHole:true, holeDia:dia, plated:tool.plated });
       minX=Math.min(minX,x-r); minY=Math.min(minY,y-r);
       maxX=Math.max(maxX,x+r); maxY=Math.max(maxY,y+r);
     }
   }
-  if(minX===Infinity){minX=0;minY=0;maxX=100;maxY=100;}
-  return { primitives, bounds:{minX,minY,maxX,maxY} };
+
+  if (minX===Infinity) { minX=0; minY=0; maxX=100; maxY=100; }
+  return { primitives, bounds:{ minX, minY, maxX, maxY } };
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Renderer
@@ -718,15 +887,63 @@ class Renderer {
     ctx.fillRect(0,0,canvas.width,canvas.height);
     if(!this.layers.length) return;
 
-    // Draw all layers in normal order, skipping the selected one
+    // Pass 1: draw all non-drill layers in stack order, selected layer last
     for(const layer of this.layers) {
       if(!layer.visible) continue;
-      if(layer === this.selectedLayer) continue;  // draw last
+      if(layer === this.selectedLayer) continue;
+      if(layer._isDrillLayer) continue;
       this._renderLayer(layer);
     }
-    // Draw selected layer on top
-    if(this.selectedLayer && this.selectedLayer.visible) {
+    if(this.selectedLayer && this.selectedLayer.visible && !this.selectedLayer._isDrillLayer) {
       this._renderLayer(this.selectedLayer);
+    }
+
+    // Pass 2: drill holes — punch transparent circles through everything, then draw ring
+    for(const layer of this.layers) {
+      if(!layer.visible) continue;
+      if(!layer._isDrillLayer) continue;
+      this._renderDrillLayer(layer);
+    }
+  }
+
+  _renderDrillLayer(layer) {
+    const {ctx} = this;
+    const col = layer.meta.color;
+    const RING_W = Math.max(1.5, this._ps(0.08)); // ring stroke ≈ 0.08mm or 1.5px min
+
+    for (const p of layer.primitives) {
+      if (p.kind !== 'flash' || !p.isHole) continue;
+      const px = this._px(p.x), py = this._py(p.y);
+      const r  = this._ps(p.holeDia / 2);
+      if (r < 0.5) continue;
+
+      // Punch hole through all rendered layers
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,1)';
+      ctx.fill();
+      ctx.restore();
+
+      // Draw drill ring on top (source-over, so it's always visible)
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.beginPath();
+      ctx.arc(px, py, r + RING_W / 2, 0, Math.PI * 2);
+      ctx.strokeStyle = col;
+      ctx.lineWidth   = RING_W;
+      ctx.globalAlpha = this.opacity;
+      ctx.stroke();
+
+      // Centre dot for very small holes so they're still visible when zoomed out
+      if (r < 2) {
+        ctx.beginPath();
+        ctx.arc(px, py, Math.min(1.5, r * 0.4), 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
+      }
+      ctx.restore();
     }
   }
 
@@ -973,12 +1190,50 @@ async function loadFiles(fileList) {
 
     let result;
     try {
-      if(ext==='drl'||ext==='xln') result=parseExcellon(text);
-      else                          result=parseGerber(text);
+      // .txt files are only treated as NC drill if they contain Excellon markers
+      const isExcellonTxt = ext==='txt' &&
+        /M48|^T\d+.*C[\d.]+|^METRIC|^INCH/m.test(text.slice(0, 2000));
+      if(ext==='drl'||ext==='xln'||ext==='nc'||ext==='ncd'||isExcellonTxt)
+        result=parseExcellon(text);      else                          result=parseGerber(text);
     } catch(e){ console.error('Parse error',name,e); continue; }
 
     const meta=getLayerMeta(ext);
-    const layer={ name, ext, meta, primitives:result.primitives, bounds:result.bounds, visible:true };
+    const isDrill = (ext==='drl'||ext==='xln'||ext==='nc'||ext==='ncd') ||
+                    (ext==='txt' && /M48|^T\d+.*C[\d.]+|^METRIC|^INCH/m.test(text.slice(0,2000)));
+
+    // Skip files with no usable geometry
+    if (!result.primitives || result.primitives.length === 0) {
+      console.warn(`Skipping empty layer: ${name}`);
+      continue;
+    }
+
+    // Skip duplicate filenames already loaded
+    if (layers.some(l => l.name === name)) {
+      showToast(`"${name}" already loaded — skipped`);
+      continue;
+    }
+
+    // Skip content-duplicate drill layers (same file, different name/extension).
+    // Two drill layers are considered identical if they have the same hole count
+    // and the same bounding box to 2 decimal places.
+    if (isDrill && result.primitives.length > 0) {
+      const b = result.bounds;
+      const isDupe = layers.some(l => {
+        if (!l._isDrillLayer) return false;
+        if (l.primitives.length !== result.primitives.length) return false;
+        const lb = l.bounds;
+        return Math.abs(lb.minX - b.minX) < 0.01 &&
+               Math.abs(lb.minY - b.minY) < 0.01 &&
+               Math.abs(lb.maxX - b.maxX) < 0.01 &&
+               Math.abs(lb.maxY - b.maxY) < 0.01;
+      });
+      if (isDupe) {
+        showToast(`"${name}" is a duplicate drill file — skipped`);
+        continue;
+      }
+    }
+
+    const layer={ name, ext, meta, primitives:result.primitives, bounds:result.bounds, visible:true, _isDrillLayer:isDrill };
     layers.push(layer);
     renderer.addLayer(layer);
     loaded++;
@@ -1017,11 +1272,12 @@ function updateLayerList() {
       ${l.dirty ? '<div class="ldirty" title="Layer has been edited">✎</div>' : ''}
       <div class="lext">${l.ext.toUpperCase()}</div>
       <div class="leye ${l.visible?'':'off'}">${l.visible?'👁':'○'}</div>
+      <div class="lremove" title="Remove layer">✕</div>
     `;
     // Row click → select/deselect layer (brings to front while selected)
     div.addEventListener('click', e => {
       // Ignore clicks on interactive child elements
-      if (e.target.closest('.swatch,.leye,.drag-handle')) return;
+      if (e.target.closest('.swatch,.leye,.drag-handle,.lremove')) return;
       if (renderer.selectedLayer === l) {
         renderer.selectedLayer = null;
         div.classList.remove('layer-selected');
@@ -1065,6 +1321,25 @@ function updateLayerList() {
       renderer.render();
       updateLayerList();
       updateStatus();
+    });
+
+    // Remove button
+    div.querySelector('.lremove').addEventListener('click', e=>{
+      e.stopPropagation();
+      // Remove from layers array and renderer
+      const idx = layers.indexOf(l);
+      if (idx >= 0) layers.splice(idx, 1);
+      const ridx = renderer.layers.indexOf(l);
+      if (ridx >= 0) renderer.layers.splice(ridx, 1);
+      // Clear selected layer if it was this one
+      if (renderer.selectedLayer === l) renderer.selectedLayer = null;
+      renderer._calcBounds();
+      renderer.render();
+      updateLayerList();
+      updateStatus();
+      // Show empty state if no layers remain
+      if (!layers.length) emptyEl.style.display = '';
+      showToast(`Removed "${l.name}"`);
     });
 
     // ── Drag events
@@ -1117,7 +1392,28 @@ function updateLayerList() {
 
     layerList.appendChild(div);
   }
+  // Sync all-eye icon with current state
+  const allEye = document.getElementById('all-eye');
+  if (allEye) {
+    const anyVisible = layers.some(l => l.visible);
+    allEye.textContent   = anyVisible ? '👁' : '○';
+    allEye.style.opacity = anyVisible ? '0.8' : '0.35';
+  }
 }
+
+// ── All-layers visibility toggle ──────────────────────────────────────────────
+document.getElementById('all-eye').addEventListener('click', () => {
+  if (!layers.length) return;
+  // If any layer is visible, hide all; if all hidden, show all
+  const anyVisible = layers.some(l => l.visible);
+  layers.forEach(l => l.visible = !anyVisible);
+  const allEye = document.getElementById('all-eye');
+  allEye.textContent  = anyVisible ? '○' : '👁';
+  allEye.style.opacity = anyVisible ? '0.35' : '0.8';
+  renderer.render();
+  updateLayerList();
+  updateStatus();
+});
 
 function updateStatus() {
   document.getElementById('s-layers').textContent=layers.filter(l=>l.visible).length+'/'+layers.length;
@@ -1165,8 +1461,8 @@ canvas.addEventListener('mousedown', e=>{
     sel.x0=sel.x1=e.clientX-r.left;
     sel.y0=sel.y1=e.clientY-r.top;
     selRect.style.cssText=`display:block;left:${sel.x0}px;top:${sel.y0}px;width:0;height:0`;
-  } else if(objSelMode || pasteMode) {
-    // handled by capture/paste handlers — do not start pan
+  } else if(objSelMode || pasteMode || infoMode) {
+    // handled by dedicated handlers — do not start pan
   } else {
     pan.active=true; pan.x0=e.clientX; pan.y0=e.clientY;
     pan.tx0=renderer.tx; pan.ty0=renderer.ty;
@@ -1181,7 +1477,7 @@ window.addEventListener('mousemove', e=>{
     selRect.style.left=x+'px'; selRect.style.top=y+'px';
     selRect.style.width=w+'px'; selRect.style.height=h+'px';
   }
-  if(pan.active && !objSelMode && !pasteMode){
+  if(pan.active && !objSelMode && !pasteMode && !infoMode){
     renderer.tx=pan.tx0+(e.clientX-pan.x0);
     renderer.ty=pan.ty0+(e.clientY-pan.y0);
     renderer.render();
@@ -1597,8 +1893,9 @@ function renderMeasOverlay() {
   measCtx.clearRect(0, 0, measCanvas.width, measCanvas.height);
 
   // Bail only if there is genuinely nothing to draw
-  const hasSelection = typeof selectedPrims !== 'undefined' && selectedPrims.length > 0;
-  if (!measMode && !pasteMode && !hasSelection && measurements.length === 0) return;
+  const hasSelection    = typeof selectedPrims   !== 'undefined' && selectedPrims.length   > 0;
+  const hasDrillHL      = typeof drillHighlights !== 'undefined' && drillHighlights.length > 0;
+  if (!measMode && !pasteMode && !hasSelection && !hasDrillHL && measurements.length === 0) return;
 
   // Draw all finalised measurements
   for (const m of measurements) {
@@ -1608,7 +1905,9 @@ function renderMeasOverlay() {
   }
 
   // Object selection highlights (drawn regardless of measMode)
-  if (typeof drawObjSelHighlights === 'function') drawObjSelHighlights();
+  if (typeof drawObjSelHighlights  === 'function') drawObjSelHighlights();
+  // Drill table hole highlights
+  if (typeof drawDrillHighlights   === 'function') drawDrillHighlights();
 
   // Paste ghost preview
   if (pasteMode && pasteCursor) {
@@ -2537,6 +2836,408 @@ function saveDirtyLayers() {
 }
 
 document.getElementById('save-btn').addEventListener('click', saveDirtyLayers);
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  INFO TOOL
+// ══════════════════════════════════════════════════════════════════════════════
+const infoBtn   = document.getElementById('info-btn');
+const infoPanel = document.getElementById('info-panel');
+const infoBody  = document.getElementById('info-body');
+const infoTitle = document.getElementById('info-title');
+let   infoMode  = false;
+
+function enterInfoMode() {
+  infoMode = true;
+  infoBtn.classList.add('active');
+  canvas.style.cursor = 'crosshair';
+  if (selMode)  exitSelMode();
+  if (measMode) exitMeasMode();
+  if (objSelMode) exitObjSelMode();
+}
+function exitInfoMode() {
+  infoMode = false;
+  infoBtn.classList.remove('active');
+  canvas.style.cursor = 'grab';
+}
+
+infoBtn.addEventListener('click', () => {
+  if (infoMode) exitInfoMode();
+  else enterInfoMode();
+});
+
+document.getElementById('info-close').addEventListener('click', () => {
+  infoPanel.style.display = 'none';
+  exitInfoMode();
+});
+
+// ── Find the nearest primitive to a canvas click ──────────────────────────────
+function findNearestPrimitive(cpx, cpy, maxPxDist) {
+  const t = renderer;
+  const gx = (cpx - t.tx) / t.scale;
+  const gy = (t.ty - cpy) / t.scale;
+  let best = null, bestD = Infinity;
+
+  const searchLayers = renderer.selectedLayer
+    ? [renderer.selectedLayer]
+    : renderer.layers.filter(l => l.visible);
+
+  for (const layer of searchLayers) {
+    for (const prim of layer.primitives) {
+      if (prim.polarity !== 'D') continue;
+      const d = primDistToPoint(prim, gx, gy);
+      if (d < bestD) { bestD = d; best = { prim, layer }; }
+    }
+  }
+  // Convert bestD (mm) back to pixels for threshold check
+  return (bestD * t.scale) <= maxPxDist ? best : null;
+}
+
+function primDistToPoint(p, gx, gy) {
+  if (p.kind === 'flash') {
+    return Math.hypot(p.x - gx, p.y - gy);
+  }
+  if (p.kind === 'line') {
+    return distPointToSegment(gx, gy, p.x1, p.y1, p.x2, p.y2);
+  }
+  if (p.kind === 'arc') {
+    const dctr = Math.hypot(gx - p.cx, gy - p.cy);
+    return Math.abs(dctr - p.rad);
+  }
+  if (p.kind === 'region') {
+    let minD = Infinity;
+    for (let k = 0; k < p.path.length; k++) {
+      const a = p.path[k], b = p.path[(k+1) % p.path.length];
+      minD = Math.min(minD, distPointToSegment(gx, gy, a.x, a.y, b.x, b.y));
+    }
+    return minD;
+  }
+  return Infinity;
+}
+
+function distPointToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx-ax, dy = by-ay;
+  const len2 = dx*dx + dy*dy;
+  if (len2 === 0) return Math.hypot(px-ax, py-ay);
+  const t = Math.max(0, Math.min(1, ((px-ax)*dx + (py-ay)*dy) / len2));
+  return Math.hypot(px - (ax+t*dx), py - (ay+t*dy));
+}
+
+// ── Build info rows from a primitive ─────────────────────────────────────────
+function showPrimInfo(prim, layer) {
+  infoPanel.style.display = 'block';
+
+  const rows = [];
+  const sec  = (label) => rows.push({ section: label });
+  const row  = (key, val) => rows.push({ key, val });
+  const mm   = (v, digits=4) => v !== undefined ? v.toFixed(digits) + ' mm' : '—';
+  const deg  = (v) => (v * 180 / Math.PI).toFixed(2) + '°';
+
+  // ── Layer info
+  sec('LAYER');
+  row('Name',  layer.name);
+  row('Type',  layer.meta.label);
+  row('Polarity', prim.polarity === 'D' ? 'Dark' : 'Clear');
+
+  // ── Primitive type
+  if (prim.kind === 'flash') {
+    const ap  = prim.ap;
+    const pr  = ap.params;
+    infoTitle.textContent = prim.isHole ? 'Drill Hole' : 'Pad Flash';
+
+    sec('POSITION');
+    row('X',  mm(prim.x));
+    row('Y',  mm(prim.y));
+
+    sec('APERTURE');
+    row('Shape', ap.type);
+
+    if (ap.type === 'C') {
+      row('Diameter', mm(pr[0]));
+      row('Radius',   mm(pr[0] / 2));
+      if (pr[1]) row('Hole Ø', mm(pr[1]));
+    } else if (ap.type === 'R') {
+      row('Width',  mm(pr[0]));
+      row('Height', mm(pr[1] !== undefined ? pr[1] : pr[0]));
+      if (pr[2]) row('Hole Ø', mm(pr[2]));
+    } else if (ap.type === 'O') {
+      row('Width',  mm(pr[0]));
+      row('Height', mm(pr[1] !== undefined ? pr[1] : pr[0]));
+      if (pr[4] !== undefined) row('Corner R', mm(pr[4]));
+    } else if (ap.type === 'P') {
+      row('Circ. Dia', mm(pr[0]));
+      row('Vertices',  Math.round(pr[1] || 6));
+      row('Rotation',  (pr[2] || 0).toFixed(2) + '°');
+    } else if (ap.type === 'THERMAL') {
+      row('Outer Ø', mm(pr[0]));
+      row('Inner Ø', mm(pr[1]));
+      row('Gap',     mm(pr[2]));
+      row('Rotation', (pr[3] || 45).toFixed(2) + '°');
+    }
+
+    if (prim.isHole) {
+      sec('DRILL');
+      row('Hole Ø', mm(prim.holeDia));
+      row('Radius', mm(prim.holeDia / 2));
+    }
+
+  } else if (prim.kind === 'line') {
+    infoTitle.textContent = 'Line / Track';
+    sec('ENDPOINTS');
+    row('X1', mm(prim.x1)); row('Y1', mm(prim.y1));
+    row('X2', mm(prim.x2)); row('Y2', mm(prim.y2));
+    sec('GEOMETRY');
+    row('Width',  mm(prim.w));
+    const len = Math.hypot(prim.x2 - prim.x1, prim.y2 - prim.y1);
+    row('Length', mm(len));
+    const angle = Math.atan2(prim.y2 - prim.y1, prim.x2 - prim.x1);
+    row('Angle',  deg(angle));
+    row('ΔX', mm(Math.abs(prim.x2 - prim.x1)));
+    row('ΔY', mm(Math.abs(prim.y2 - prim.y1)));
+
+  } else if (prim.kind === 'arc') {
+    const isCircle = Math.hypot(prim.x2 - prim.x1, prim.y2 - prim.y1) < 1e-6;
+    infoTitle.textContent = isCircle ? 'Circle' : 'Arc';
+    sec('CENTRE');
+    row('CX', mm(prim.cx)); row('CY', mm(prim.cy));
+    sec('GEOMETRY');
+    row('Radius',    mm(prim.rad));
+    row('Diameter',  mm(prim.rad * 2));
+    row('Width',     mm(prim.w));
+    if (!isCircle) {
+      sec('ENDPOINTS');
+      row('X1', mm(prim.x1)); row('Y1', mm(prim.y1));
+      row('X2', mm(prim.x2)); row('Y2', mm(prim.y2));
+      const a1 = Math.atan2(prim.y1 - prim.cy, prim.x1 - prim.cx) * 180 / Math.PI;
+      const a2 = Math.atan2(prim.y2 - prim.cy, prim.x2 - prim.cx) * 180 / Math.PI;
+      row('Start Angle', a1.toFixed(2) + '°');
+      row('End Angle',   a2.toFixed(2) + '°');
+      row('Direction',   prim.cw ? 'Clockwise' : 'Counter-CW');
+      // Arc length
+      let sweep = Math.abs(a2 - a1); if (sweep > 180) sweep = 360 - sweep;
+      row('Sweep',       sweep.toFixed(2) + '°');
+      row('Arc Length',  mm(prim.rad * sweep * Math.PI / 180));
+    } else {
+      row('Circumference', mm(2 * Math.PI * prim.rad));
+      row('Area',          (Math.PI * prim.rad * prim.rad).toFixed(4) + ' mm²');
+    }
+
+  } else if (prim.kind === 'region') {
+    infoTitle.textContent = 'Copper Pour / Region';
+    sec('GEOMETRY');
+    row('Vertices', prim.path.length);
+    // Bounding box
+    const bb = renderer.primitiveBounds(prim);
+    if (bb) {
+      row('BBox W', mm(bb.maxX - bb.minX));
+      row('BBox H', mm(bb.maxY - bb.minY));
+      row('BBox X', mm(bb.minX));
+      row('BBox Y', mm(bb.minY));
+    }
+    // Shoelace area
+    let area = 0;
+    for (let k = 0; k < prim.path.length; k++) {
+      const a = prim.path[k], b = prim.path[(k+1) % prim.path.length];
+      area += a.x * b.y - b.x * a.y;
+    }
+    row('Area', Math.abs(area / 2).toFixed(4) + ' mm²');
+  }
+
+  // ── Render rows
+  infoBody.innerHTML = '';
+  for (const r of rows) {
+    if (r.section) {
+      const s = document.createElement('div');
+      s.className = 'info-section';
+      s.textContent = r.section;
+      infoBody.appendChild(s);
+    } else {
+      const d = document.createElement('div');
+      d.className = 'info-row';
+      d.innerHTML = `<span class="info-key">${r.key}</span><span class="info-val">${r.val}</span>`;
+      infoBody.appendChild(d);
+    }
+  }
+}
+
+// ── Canvas click handler for info mode ────────────────────────────────────────
+canvas.addEventListener('click', e => {
+  if (!infoMode) return;
+  const rect = canvas.getBoundingClientRect();
+  const cpx  = e.clientX - rect.left;
+  const cpy  = e.clientY - rect.top;
+  const hit  = findNearestPrimitive(cpx, cpy, 20);
+  if (hit) {
+    showPrimInfo(hit.prim, hit.layer);
+  } else {
+    showToast('No primitive found — click closer to an object');
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  DRILL TABLE
+// ══════════════════════════════════════════════════════════════════════════════
+const drillTableBtn  = document.getElementById('drill-table-btn');
+const drillPanel     = document.getElementById('drill-panel');
+const drillTbody     = document.getElementById('drill-tbody');
+const drillFooter    = document.getElementById('drill-footer');
+
+let drillTableOpen   = false;
+let drillHighlights  = [];   // [{prim}] currently highlighted holes
+let drillSelectedDia = null; // currently selected diameter row
+
+document.getElementById('drill-close').addEventListener('click', closeDrillTable);
+
+function closeDrillTable() {
+  drillPanel.style.display = 'none';
+  drillTableBtn.classList.remove('active');
+  drillTableOpen = false;
+  drillHighlights = [];
+  drillSelectedDia = null;
+  renderMeasOverlay();
+}
+
+drillTableBtn.addEventListener('click', () => {
+  if (drillTableOpen) { closeDrillTable(); return; }
+  openDrillTable();
+});
+
+function openDrillTable() {
+  // Collect all drill holes from visible drill layers
+  const allHoles = [];
+  for (const layer of renderer.layers) {
+    if (!layer.visible) continue;
+    for (const prim of layer.primitives) {
+      if (prim.isHole) allHoles.push({ prim, layer });
+    }
+  }
+
+  if (!allHoles.length) { showToast('No drill holes loaded'); return; }
+
+  // Group by diameter + plated status — prevents double-counting and correctly separates PTH/NPTH
+  const groups = new Map(); // "1.000-PTH" → { dia, count, plated, holes[], color }
+  for (const { prim, layer } of allHoles) {
+    const plated = prim.plated !== undefined ? prim.plated : true;
+    const key = prim.holeDia.toFixed(3) + (plated ? '-PTH' : '-NPTH');
+    if (!groups.has(key)) {
+      groups.set(key, { dia: prim.holeDia, count: 0, plated,
+                        holes: [], color: layer.meta.color });
+    }
+    const g = groups.get(key);
+    g.count++;
+    g.holes.push(prim);
+  }
+
+  // Sort: PTH before NPTH, then by diameter ascending
+  const sorted = [...groups.values()].sort((a, b) =>
+    (b.plated - a.plated) || (a.dia - b.dia));
+
+  // IPC-2221A asymmetric drill tolerances
+  function getTolerance(dia, plated) {
+    if (!plated)    return { plus: '+0.13', minus: '-0.00' };
+    if (dia < 0.8)  return { plus: '+0.05', minus: '-0.05' };
+    if (dia < 1.6)  return { plus: '+0.08', minus: '-0.05' };
+    return              { plus: '+0.10', minus: '-0.08' };
+  }
+
+  // Build table
+  drillTbody.innerHTML = '';
+  sorted.forEach((g, idx) => {
+    const toolNum = idx + 1;
+    const tol = getTolerance(g.dia, g.plated);
+    // Finished hole: plated holes are reduced by ~0.1mm copper plating
+    const finishedDia = g.plated
+      ? (g.dia - 0.1).toFixed(3)
+      : g.dia.toFixed(3);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="drill-tool-swatch" style="background:${g.color}"></span>T${String(toolNum).padStart(2,'0')}</td>
+      <td>${g.dia.toFixed(3)}</td>
+      <td>${g.plated ? 'Plated' : 'Non-Plated'}</td>
+      <td>${g.count}</td>
+    `;
+    tr.addEventListener('click', () => selectDrillRow(tr, g));
+    drillTbody.appendChild(tr);
+  });
+
+  // Footer summary
+  const totalHoles = allHoles.length;
+  const totalSizes = sorted.length;
+  drillFooter.textContent = `${totalSizes} tool${totalSizes!==1?'s':''} · ${totalHoles} hole${totalHoles!==1?'s':''} total`;
+
+  drillPanel.style.display = 'flex';
+  drillTableBtn.classList.add('active');
+  drillTableOpen = true;
+}
+
+function selectDrillRow(tr, group) {
+  // Deselect if clicking the same row
+  if (drillSelectedDia === group.dia) {
+    drillSelectedDia = null;
+    drillHighlights = [];
+    document.querySelectorAll('#drill-tbody tr').forEach(r => r.classList.remove('dt-selected'));
+    renderMeasOverlay();
+    return;
+  }
+
+  // Highlight selection
+  document.querySelectorAll('#drill-tbody tr').forEach(r => r.classList.remove('dt-selected'));
+  tr.classList.add('dt-selected');
+  drillSelectedDia = group.dia;
+  drillHighlights  = group.holes;
+
+  // Zoom to fit all holes of this type with 20% padding
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  for (const p of group.holes) {
+    const r = p.holeDia / 2;
+    minX=Math.min(minX,p.x-r); minY=Math.min(minY,p.y-r);
+    maxX=Math.max(maxX,p.x+r); maxY=Math.max(maxY,p.y+r);
+  }
+  // Add margin
+  const mx = (maxX-minX)*0.25 || 2, my = (maxY-minY)*0.25 || 2;
+  minX-=mx; minY-=my; maxX+=mx; maxY+=my;
+  const W=canvas.width, H=canvas.height;
+  const s = Math.min(W/(maxX-minX), H/(maxY-minY)) * 0.88;
+  const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
+  renderer.scale = s;
+  renderer.tx = W/2 - s*cx;
+  renderer.ty = H/2 + s*cy;
+  updateZoom();
+  renderer.render();
+  renderMeasOverlay();
+}
+
+// ── Draw drill highlights on the overlay ─────────────────────────────────────
+// Called from inside renderMeasOverlay via hook
+function drawDrillHighlights() {
+  if (!drillHighlights.length) return;
+
+  for (const p of drillHighlights) {
+    const px = renderer._px(p.x), py = renderer._py(p.y);
+    const r  = renderer._ps(p.holeDia / 2);
+
+    // Bright fill
+    measCtx.save();
+    measCtx.globalAlpha     = 0.35;
+    measCtx.fillStyle       = '#ffdd00';
+    measCtx.shadowColor     = '#ffdd00';
+    measCtx.shadowBlur      = 8;
+    measCtx.beginPath();
+    measCtx.arc(px, py, Math.max(r, 2), 0, Math.PI*2);
+    measCtx.fill();
+    measCtx.restore();
+
+    // Bright ring
+    measCtx.save();
+    measCtx.strokeStyle  = '#ffdd00';
+    measCtx.lineWidth    = 2;
+    measCtx.shadowColor  = '#ffdd00';
+    measCtx.shadowBlur   = 6;
+    measCtx.beginPath();
+    measCtx.arc(px, py, Math.max(r + 2, 3), 0, Math.PI*2);
+    measCtx.stroke();
+    measCtx.restore();
+  }
+}
 
 updateZoom(); updateStatus();
 </script>
