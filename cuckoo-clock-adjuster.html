@@ -618,6 +618,88 @@
   }
   .perm-msg.error { color: var(--red); opacity: 1; }
 
+  /* ── Tick FFT panel ── */
+  .fft-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 1px 4px rgba(160,120,40,0.06);
+  }
+
+  .fft-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .fft-meta {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+  }
+
+  .fft-canvas-wrap {
+    position: relative;
+    height: 110px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 1px;
+  }
+  #tickFftCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .fft-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .fft-stat {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .fft-stat-label {
+    font-size: 0.52rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .fft-stat-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    color: var(--tick-col);
+    line-height: 1;
+  }
+
+  .fft-btn {
+    background: transparent;
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    padding: 6px 14px;
+    cursor: pointer;
+    text-transform: uppercase;
+    border-radius: 2px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    align-self: flex-start;
+  }
+  .fft-btn:active { opacity: 0.6; }
+
   .history-rows::-webkit-scrollbar { width: 4px; }
   .history-rows::-webkit-scrollbar-track { background: transparent; }
   .history-rows::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -803,6 +885,37 @@
     <canvas id="waveCanvas"></canvas>
   </div>
 
+  <!-- Tick & Tock FFT Analysis -->
+  <div class="fft-panel">
+    <div class="fft-header">
+      <div class="section-title">Tick &amp; Tock FFT Analysis</div>
+      <div class="fft-meta" id="fftMeta">Waiting for beats…</div>
+    </div>
+    <div class="fft-canvas-wrap">
+      <canvas id="tickFftCanvas"></canvas>
+    </div>
+    <!-- Legend -->
+    <div style="display:flex;gap:16px;font-size:0.6rem;letter-spacing:0.12em;">
+      <span style="color:var(--tick-col)">▮ Tick</span>
+      <span style="color:var(--tock-col)">▮ Tock</span>
+    </div>
+    <div class="fft-stats">
+      <div class="fft-stat">
+        <div class="fft-stat-label" style="color:var(--tick-col)">Tick Peak</div>
+        <div class="fft-stat-value" id="fftTickPeak" style="color:var(--tick-col)">---</div>
+      </div>
+      <div class="fft-stat">
+        <div class="fft-stat-label" style="color:var(--tock-col)">Tock Peak</div>
+        <div class="fft-stat-value" id="fftTockPeak" style="color:var(--tock-col)">---</div>
+      </div>
+      <div class="fft-stat">
+        <div class="fft-stat-label">Captures</div>
+        <div class="fft-stat-value" id="fftAvgN" style="color:var(--text-dim)">0 / 0</div>
+      </div>
+    </div>
+    <button class="fft-btn" id="fftResetBtn">↺ Reset</button>
+  </div>
+
   <!-- History -->
   <div class="history-section">
     <div class="section-title" style="margin-bottom:10px">Beat Log</div>
@@ -939,6 +1052,189 @@ function getBandPeak() {
 
 var tickBuf = [], tockBuf = [];
 var BUF_SIZE = 6;
+var lastTickMs = null, lastTockMs = null;  // raw live values for the big display
+
+// ── Tick & Tock FFT accumulators ──
+var tickFftAccum = null, tockFftAccum = null;
+var tickFftCount = 0,    tockFftCount = 0;
+
+var tickFftCanvas = document.getElementById('tickFftCanvas');
+var tfCtx = tickFftCanvas.getContext('2d');
+
+function resizeTickFftCanvas() {
+  var dpr = window.devicePixelRatio || 1;
+  tickFftCanvas.width  = tickFftCanvas.offsetWidth  * dpr;
+  tickFftCanvas.height = tickFftCanvas.offsetHeight * dpr;
+  renderFft();
+}
+
+document.getElementById('fftResetBtn').addEventListener('click', function() {
+  tickFftAccum = null; tockFftAccum = null;
+  tickFftCount = 0;    tockFftCount = 0;
+  document.getElementById('fftMeta').textContent     = 'Waiting for beats…';
+  document.getElementById('fftTickPeak').textContent = '---';
+  document.getElementById('fftTockPeak').textContent = '---';
+  document.getElementById('fftAvgN').textContent     = '0 / 0';
+  tfCtx.clearRect(0, 0, tickFftCanvas.width, tickFftCanvas.height);
+});
+
+function captureFft(type) {
+  if (!analyser) return;
+  var bins = analyser.frequencyBinCount;
+  var data = new Uint8Array(bins);
+  analyser.getByteFrequencyData(data);
+
+  if (type === 'tick') {
+    if (!tickFftAccum || tickFftAccum.length !== bins) tickFftAccum = new Float64Array(bins);
+    for (var i = 0; i < bins; i++) tickFftAccum[i] += data[i];
+    tickFftCount++;
+  } else {
+    if (!tockFftAccum || tockFftAccum.length !== bins) tockFftAccum = new Float64Array(bins);
+    for (var i = 0; i < bins; i++) tockFftAccum[i] += data[i];
+    tockFftCount++;
+  }
+  renderFft();
+}
+
+function fmtHz(hz) {
+  return hz < 1000 ? hz + ' Hz' : (hz / 1000).toFixed(2) + ' kHz';
+}
+
+// Returns top 2 peak bin indices (relative to avg array) at least minGapBins apart.
+function findTopTwoPeaks(avg, hzPerBin) {
+  var minGapBins = Math.round(200 / hzPerBin);
+  // Pass 1: find global peak
+  var p1 = 0, p1val = 0;
+  for (var i = 0; i < avg.length; i++) {
+    if (avg[i] > p1val) { p1val = avg[i]; p1 = i; }
+  }
+  // Pass 2: find best peak outside exclusion zone around p1
+  var p2 = -1, p2val = 0;
+  for (var i = 0; i < avg.length; i++) {
+    if (Math.abs(i - p1) < minGapBins) continue;
+    if (avg[i] > p2val) { p2val = avg[i]; p2 = i; }
+  }
+  return [p1, p2];  // p2 may be -1 if nothing qualifies
+}
+
+function renderFft() {
+  var cW = tickFftCanvas.width, cH = tickFftCanvas.height;
+  tfCtx.clearRect(0, 0, cW, cH);
+
+  var nyquist  = audioCtx ? audioCtx.sampleRate / 2 : 22050;
+  var hasT     = tickFftAccum && tickFftCount > 0;
+  var hasK     = tockFftAccum && tockFftCount > 0;
+  if (!hasT && !hasK) return;
+
+  var bins     = hasT ? tickFftAccum.length : tockFftAccum.length;
+  var hzPerBin = nyquist / bins;
+  var startBin    = Math.ceil(1000 / hzPerBin);          // first bin to display (≥1 kHz)
+  var endBin      = Math.min(bins, Math.ceil(8000 / hzPerBin) + 20);
+  var displayBins = endBin - startBin;
+  var barW = cW / displayBins;
+
+  // Build normalised averaged arrays (only the displayed slice)
+  var tickAvg = new Float64Array(displayBins);
+  var tockAvg = new Float64Array(displayBins);
+  var globalMax = 0;
+
+  if (hasT) {
+    for (var i = 0; i < displayBins; i++) { tickAvg[i] = tickFftAccum[startBin + i] / tickFftCount; if (tickAvg[i] > globalMax) globalMax = tickAvg[i]; }
+  }
+  if (hasK) {
+    for (var i = 0; i < displayBins; i++) { tockAvg[i] = tockFftAccum[startBin + i] / tockFftCount; if (tockAvg[i] > globalMax) globalMax = tockAvg[i]; }
+  }
+  if (globalMax === 0) return;
+
+  // Find one peak per channel; tock peak must be at least 200 Hz from tick peak
+  var tickPeakBin = hasT ? findTopTwoPeaks(tickAvg, hzPerBin)[0] : null;
+  var tockPeakBin = null;
+  if (hasK) {
+    var minGapBins = Math.round(200 / hzPerBin);
+    var best = -1, bestVal = 0;
+    for (var i = 0; i < tockAvg.length; i++) {
+      if (tickPeakBin !== null && Math.abs(i - tickPeakBin) < minGapBins) continue;
+      if (tockAvg[i] > bestVal) { bestVal = tockAvg[i]; best = i; }
+    }
+    tockPeakBin = best >= 0 ? best : findTopTwoPeaks(tockAvg, hzPerBin)[0]; // fallback if no valid bin
+  }
+  var tickPeaks = [tickPeakBin, null];
+  var tockPeaks = [tockPeakBin, null];
+
+  // Grid
+  tfCtx.strokeStyle = '#e8e0cc'; tfCtx.lineWidth = 1;
+  [0.25, 0.5, 0.75].forEach(function(f) {
+    var y = cH * (1 - f);
+    tfCtx.beginPath(); tfCtx.moveTo(0, y); tfCtx.lineTo(cW, y); tfCtx.stroke();
+  });
+
+  // Draw tock bars first (behind), then tick bars on top
+  var dpr = window.devicePixelRatio || 1;
+
+  // Tock — muted green
+  if (hasK) {
+    for (var i = 0; i < displayBins; i++) {
+      var norm = tockAvg[i] / globalMax;
+      if (norm < 0.01) continue;
+      var bH = norm * cH;
+      var x  = i * barW;
+      var isPeak = (i === tockPeaks[0] || i === tockPeaks[1]);
+      tfCtx.fillStyle = isPeak ? 'rgba(60,110,50,0.95)' : 'rgba(80,130,60,' + (0.25 + norm * 0.45) + ')';
+      tfCtx.fillRect(x, cH - bH, Math.max(1, barW - 0.5), bH);
+    }
+  }
+
+  // Tick — amber/brown
+  if (hasT) {
+    for (var i = 0; i < displayBins; i++) {
+      var norm = tickAvg[i] / globalMax;
+      if (norm < 0.01) continue;
+      var bH = norm * cH;
+      var x  = i * barW;
+      var isPeak = (i === tickPeaks[0] || i === tickPeaks[1]);
+      tfCtx.fillStyle = isPeak ? 'rgba(140,80,10,0.95)' : 'rgba(180,130,40,' + (0.25 + norm * 0.5) + ')';
+      tfCtx.fillRect(x, cH - bH, Math.max(1, barW - 0.5), bH);
+    }
+  }
+
+  // Peak labels — helper to draw one label
+  tfCtx.font = 'bold ' + Math.round(10 * dpr) + 'px Courier Prime, monospace';
+
+  function drawPeakLabel(avg, peakIdx, prefix, fillColor, yOffset) {
+    if (peakIdx === null || peakIdx < 0) return;
+    var hz  = Math.round((peakIdx + startBin) * hzPerBin);
+    var px  = (peakIdx + 0.5) * barW;
+    var py  = Math.max((10 + yOffset) * dpr, cH - (avg[peakIdx] / globalMax) * cH - (4 + yOffset) * dpr);
+    tfCtx.fillStyle = fillColor;
+    tfCtx.textAlign = px > cW * 0.8 ? 'right' : 'left';
+    tfCtx.fillText(prefix + (hz < 1000 ? hz + 'Hz' : (hz/1000).toFixed(1) + 'k'), px, py);
+    return hz;
+  }
+
+  var tickHz1 = null, tockHz1 = null;
+  if (hasT) tickHz1 = drawPeakLabel(tickAvg, tickPeaks[0], 'T:', '#7a5010', 0);
+  if (hasK) tockHz1 = drawPeakLabel(tockAvg, tockPeaks[0], 'K:', '#3a6030', 0);
+
+  if (hasT && tickHz1 !== null) document.getElementById('fftTickPeak').textContent = fmtHz(tickHz1);
+  if (hasK && tockHz1 !== null) document.getElementById('fftTockPeak').textContent = fmtHz(tockHz1);
+
+  // X-axis Hz labels (1 kHz and above only)
+  tfCtx.fillStyle = '#b0a888';
+  tfCtx.font = Math.round(9 * dpr) + 'px Courier Prime, monospace';
+  tfCtx.textAlign = 'center';
+  [1000, 2000, 3000, 4000, 6000, 8000].forEach(function(hz) {
+    var sliceIdx = Math.round(hz / hzPerBin) - startBin;
+    if (sliceIdx < 0 || sliceIdx >= displayBins) return;
+    tfCtx.fillText((hz/1000) + 'k', (sliceIdx + 0.5) * barW, cH - 2);
+  });
+
+  // Update counters and meta
+  document.getElementById('fftAvgN').textContent = tickFftCount + ' / ' + tockFftCount;
+  var parts = [];
+  if (hasT && tickHz1 !== null) parts.push('Tick ' + (tickHz1/1000).toFixed(1) + 'k');
+  if (hasK && tockHz1 !== null) parts.push('Tock ' + (tockHz1/1000).toFixed(1) + 'k');
+  document.getElementById('fftMeta').textContent = parts.join('  ·  ');
+}
 
 var waveCanvas = document.getElementById('waveCanvas');
 var wCtx = waveCanvas.getContext('2d');
@@ -948,6 +1244,7 @@ function resizeCanvas() {
   waveCanvas.width  = waveCanvas.offsetWidth * dpr;
   waveCanvas.height = 80 * dpr;
   resizeFreqCanvas();
+  resizeTickFftCanvas();
   updateBandOverlay();
 }
 resizeCanvas();
@@ -963,8 +1260,9 @@ function setFirstBeat(which) {
   document.getElementById('syncTock').className = 'sync-opt' + (which === 'tock' ? ' selected-tock' : '');
   // If already running, reset beat phase so next detected beat is treated as the chosen type
   if (isListening) {
-    lastBeatType = which === 'tick' ? 'tock' : 'tick'; // next beat will flip to chosen
+    lastBeatType = which === 'tick' ? 'tock' : 'tick';
     tickBuf = []; tockBuf = [];
+    lastTickMs = null; lastTockMs = null;
     lastBeatTime = null;
     setMsg('Phase synced — next beat treated as ' + which.toUpperCase());
   }
@@ -1036,7 +1334,14 @@ function resetState() {
   lastBeatType = firstBeat === 'tick' ? 'tock' : 'tick';
   beatCount = 0; historyLog = [];
   tickBuf = []; tockBuf = [];
+  lastTickMs = null; lastTockMs = null;
   COOLDOWN = false;
+  tickFftAccum = null; tockFftAccum = null;
+  tickFftCount = 0;    tockFftCount = 0;
+  document.getElementById('fftMeta').textContent     = 'Waiting for beats…';
+  document.getElementById('fftTickPeak').textContent = '---';
+  document.getElementById('fftTockPeak').textContent = '---';
+  document.getElementById('fftAvgN').textContent     = '0 / 0';
   updateUI();
   renderHistory();
 }
@@ -1083,8 +1388,8 @@ function onBeat(now) {
   var type = (!lastBeatType || lastBeatType === 'tock') ? 'tick' : 'tock';
 
   if (dt !== null) {
-    if (type === 'tick') pushBuf(tickBuf, dt);
-    else                 pushBuf(tockBuf, dt);
+    if (type === 'tick') { pushBuf(tickBuf, dt); lastTickMs = dt; }
+    else                 { pushBuf(tockBuf, dt); lastTockMs = dt; }
   }
 
   lastBeatTime = now;
@@ -1092,6 +1397,9 @@ function onBeat(now) {
 
   animatePendulum(type);
   flashCard(type);
+
+  // Capture FFT snapshot on every beat
+  captureFft(type);
 
   if (dt !== null) {
     historyLog.unshift({
@@ -1126,19 +1434,27 @@ function updateUI() {
   var tickAvg = bufAvg(tickBuf);
   var tockAvg = bufAvg(tockBuf);
 
-  if (tickAvg !== null) document.getElementById('tickMs').textContent = Math.round(tickAvg);
-  if (tockAvg !== null) document.getElementById('tockMs').textContent = Math.round(tockAvg);
+  // Big ms display: live last value, not averaged
+  if (lastTickMs !== null) document.getElementById('tickMs').textContent = Math.round(lastTickMs);
+  if (lastTockMs !== null) document.getElementById('tockMs').textContent = Math.round(lastTockMs);
 
-  if (tickAvg !== null && tockAvg !== null) {
-    var total = tickAvg + tockAvg;
-    var tickPct = (tickAvg / total * 100).toFixed(1);
-    var tockPct = (tockAvg / total * 100).toFixed(1);
+  // Use live values for pct too when both are available
+  var tickLive = lastTickMs !== null ? lastTickMs : tickAvg;
+  var tockLive = lastTockMs !== null ? lastTockMs : tockAvg;
+
+  if (tickLive !== null && tockLive !== null) {
+    var total = tickLive + tockLive;
+    var tickPct = (tickLive / total * 100).toFixed(1);
+    var tockPct = (tockLive / total * 100).toFixed(1);
     document.getElementById('tickPct').textContent = tickPct + '%';
     document.getElementById('tockPct').textContent = tockPct + '%';
-    document.getElementById('period').textContent = Math.round(total);
-    document.getElementById('bpm').textContent = (60000 / total).toFixed(1);
 
-    var err = Math.abs(tickAvg - tockAvg);
+    // BPM and period: use smoothed avg for stability
+    var smoothTotal = (tickAvg !== null && tockAvg !== null) ? tickAvg + tockAvg : total;
+    document.getElementById('period').textContent = Math.round(smoothTotal);
+    document.getElementById('bpm').textContent = (60000 / smoothTotal).toFixed(1);
+
+    var err = Math.abs(tickLive - tockLive);
     document.getElementById('beatErr').textContent = Math.round(err) + 'ms';
     document.getElementById('beatErr').style.color = err < 10 ? '#3a7040' : err < 30 ? '#c07010' : '#b03020';
 
@@ -1147,13 +1463,13 @@ function updateUI() {
     document.getElementById('balTock').style.width = Math.max(0, parseFloat(tockPct) - 50) + '%';
 
     var reading, readColor;
-    if (err < 5)       { reading = 'In beat ✓';                            readColor = '#3a7040'; }
+    if (err < 5)       { reading = 'In beat ✓';                              readColor = '#3a7040'; }
     else if (err < 15) { reading = 'Good — ' + Math.round(err) + 'ms error'; readColor = '#5a8030'; }
     else if (err < 35) { reading = 'Adjust needed — ' + Math.round(err) + 'ms error'; readColor = '#c07010'; }
     else               { reading = 'Out of beat — ' + Math.round(err) + 'ms error';   readColor = '#b03020'; }
 
-    if (tickAvg > tockAvg) reading += ' (tick long)';
-    else if (tockAvg > tickAvg) reading += ' (tock long)';
+    if (tickLive > tockLive) reading += ' (tick long)';
+    else if (tockLive > tickLive) reading += ' (tock long)';
 
     document.getElementById('balReading').textContent = reading;
     document.getElementById('balReading').style.color = readColor;
