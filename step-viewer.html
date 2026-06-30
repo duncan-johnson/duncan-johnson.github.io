@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STEP File Viewer</title>
+<style>
+  :root {
+    --bg:        #0f1117;
+    --panel:     #181c27;
+    --border:    #2a2f42;
+    --accent:    #4f8ef7;
+    --accent2:   #7c5cfc;
+    --text:      #e4e8f5;
+    --muted:     #6b7394;
+    --hover:     #232840;
+    --vis-on:    #3ecf8e;
+    --vis-off:   #444a63;
+    --radius:    8px;
+    --font-mono: 'JetBrains Mono', 'Fira Mono', monospace;
+    --font-ui:   'Inter', system-ui, sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── Top bar ── */
+  #topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    height: 48px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  #topbar .logo {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  #topbar .logo svg { flex-shrink: 0; }
+
+  #topbar .sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+    font-family: var(--font-ui);
+    transition: background .15s, border-color .15s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--hover); border-color: var(--accent); }
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .btn.primary:hover { background: #3a7de0; border-color: #3a7de0; }
+
+  #filename-label {
+    color: var(--muted);
+    font-size: 12px;
+    font-family: var(--font-mono);
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #topbar .spacer { flex: 1; }
+
+  /* view preset buttons */
+  .view-btns { display: flex; gap: 4px; }
+  .view-btns .btn { padding: 5px 8px; font-size: 11px; }
+
+  /* ── Main layout ── */
+  #main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: 240px;
+    min-width: 180px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  #sidebar-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  #sidebar-header span { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+
+  #sidebar-controls {
+    display: flex;
+    gap: 6px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  #sidebar-controls .btn { flex: 1; justify-content: center; padding: 4px 6px; font-size: 11px; }
+
+  #part-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+  }
+  #part-list::-webkit-scrollbar { width: 5px; }
+  #part-list::-webkit-scrollbar-track { background: transparent; }
+  #part-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .part-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: background .12s;
+    border-left: 2px solid transparent;
+  }
+  .part-item:hover { background: var(--hover); }
+  .part-item.selected {
+    background: rgba(79,142,247,.1);
+    border-left-color: var(--accent);
+  }
+
+  .part-color-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,.15);
+  }
+
+  .part-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .part-item.hidden-part .part-name { color: var(--muted); }
+
+  .vis-toggle {
+    width: 18px; height: 18px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--vis-on);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: background .15s;
+  }
+  .vis-toggle:hover { opacity: .85; }
+  .vis-toggle.off { background: var(--vis-off); }
+  .vis-toggle svg { pointer-events: none; }
+
+  #empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 24px;
+    color: var(--muted);
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  #empty-state svg { opacity: .35; }
+
+  /* ── Viewport ── */
+  #viewport {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  #canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  #canvas:active { cursor: grabbing; }
+
+  /* drop overlay */
+  #drop-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    color: var(--muted);
+    pointer-events: none;
+    transition: opacity .2s;
+  }
+  #drop-overlay.drag-active {
+    background: rgba(79,142,247,.08);
+    border: 2px dashed var(--accent);
+    border-radius: 4px;
+    pointer-events: none;
+    color: var(--accent);
+  }
+  #drop-overlay .drop-icon { opacity: .4; }
+  #drop-overlay h2 { font-size: 18px; font-weight: 600; }
+  #drop-overlay p { font-size: 13px; }
+  #drop-overlay.hidden { opacity: 0; }
+
+  /* status bar */
+  #statusbar {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15,17,23,.85);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 11px;
+    color: var(--muted);
+    pointer-events: none;
+    white-space: nowrap;
+    backdrop-filter: blur(6px);
+    display: none;
+  }
+
+  /* loading overlay */
+  #loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15,17,23,.85);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    backdrop-filter: blur(4px);
+    z-index: 20;
+  }
+  #loading-overlay.active { display: flex; }
+
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #loading-msg { font-size: 13px; color: var(--muted); }
+  #loading-detail { font-size: 11px; color: var(--vis-off); font-family: var(--font-mono); }
+
+  /* corner info */
+  #corner-info {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    pointer-events: none;
+  }
+  .info-pill {
+    background: rgba(24,28,39,.8);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    backdrop-filter: blur(4px);
+  }
+  .info-pill span { color: var(--text); }
+
+  /* error toast */
+  #error-toast {
+    position: absolute;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #3d1a1a;
+    border: 1px solid #6b2a2a;
+    border-radius: var(--radius);
+    padding: 10px 18px;
+    color: #ff8a8a;
+    font-size: 12px;
+    display: none;
+    z-index: 30;
+    max-width: 500px;
+    text-align: center;
+  }
+
+  /* ── File input hidden ── */
+  #file-input { display: none; }
+
+  /* ── resizer ── */
+  #resizer {
+    width: 4px;
+    background: var(--border);
+    cursor: col-resize;
+    flex-shrink: 0;
+    transition: background .15s;
+  }
+  #resizer:hover { background: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- Hidden file input -->
+<input type="file" id="file-input" accept=".step,.stp,.STEP,.STP">
+
+<!-- Top bar -->
+<div id="topbar">
+  <div class="logo">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M10 2L3 6v8l7 4 7-4V6L10 2z" stroke="#4f8ef7" stroke-width="1.5" fill="none"/>
+      <path d="M3 6l7 4 7-4M10 10v8" stroke="#4f8ef7" stroke-width="1.2"/>
+    </svg>
+    STEP Viewer
+  </div>
+  <div class="sep"></div>
+  <button class="btn primary" id="open-btn">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 4.5h9M2 4.5V10a1 1 0 001 1h7a1 1 0 001-1V4.5M2 4.5l1-2h2l1 1.5h3.5" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+    Open STEP File
+  </button>
+  <span id="filename-label">No file loaded</span>
+  <div class="spacer"></div>
+  <div class="view-btns">
+    <button class="btn" data-view="front"  title="Front">Front</button>
+    <button class="btn" data-view="top"    title="Top">Top</button>
+    <button class="btn" data-view="right"  title="Right">Right</button>
+    <button class="btn" data-view="iso"    title="Isometric">Iso</button>
+    <button class="btn" id="fit-btn"       title="Fit all">⊡ Fit</button>
+    <button class="btn" id="reset-btn"     title="Reset view">↺ Reset</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <span>Parts</span>
+      <span id="part-count" style="color:var(--muted);font-size:11px;"></span>
+    </div>
+    <div id="sidebar-controls">
+      <button class="btn" id="show-all-btn">Show All</button>
+      <button class="btn" id="hide-all-btn">Hide All</button>
+      <button class="btn" id="isolate-btn" title="Isolate selected">Isolate</button>
+    </div>
+    <div id="part-list">
+      <div id="empty-state">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+          <path d="M20 5L5 13v14l15 8 15-8V13L20 5z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          <path d="M5 13l15 8 15-8M20 21v16" stroke="currentColor" stroke-width="1.2"/>
+        </svg>
+        <p>Open a STEP file to<br>see its parts here</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resizer -->
+  <div id="resizer"></div>
+
+  <!-- 3D Viewport -->
+  <div id="viewport">
+    <canvas id="canvas"></canvas>
+
+    <!-- Drop overlay -->
+    <div id="drop-overlay">
+      <svg class="drop-icon" width="56" height="56" viewBox="0 0 56 56" fill="none">
+        <path d="M28 8L8 18v20l20 10 20-10V18L28 8z" stroke="currentColor" stroke-width="2" fill="none"/>
+        <path d="M8 18l20 10 20-10M28 28v20" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+      <h2>Drop a STEP file here</h2>
+      <p>or click <strong>Open STEP File</strong> above</p>
+      <p style="font-size:11px;margin-top:6px;">Supports .step and .stp</p>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay">
+      <div class="spinner"></div>
+      <div id="loading-msg">Loading STEP file…</div>
+      <div id="loading-detail">Initialising WebAssembly kernel</div>
+    </div>
+
+    <!-- Corner info -->
+    <div id="corner-info">
+      <div class="info-pill" id="info-parts">Parts: <span>—</span></div>
+      <div class="info-pill" id="info-tris">Triangles: <span>—</span></div>
+    </div>
+
+    <!-- Status bar -->
+    <div id="statusbar">Scroll to zoom · Drag to rotate · Right-drag to pan</div>
+
+    <!-- Error toast -->
+    <div id="error-toast"></div>
+  </div>
+</div>
+
+<!-- Three.js + OrbitControls from CDN -->
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════
+//  Wait for Three.js to load, then load occt-import-js
+// ═══════════════════════════════════════════════════════════
+
+const OCCT_CDN = 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.22/dist/occt-import-js.js';
+
+let THREE_ready = false;
+let occt = null;
+let scene, camera, renderer, controls;
+let modelGroup = null;
+const parts = [];   // { name, mesh, color, visible }
+let selectedIndex = -1;
+let animFrameId = null;
+
+// palette for auto-colouring parts
+const PALETTE = [
+  0x4f8ef7, 0x7c5cfc, 0x3ecf8e, 0xf7974f, 0xf75c7c,
+  0x5ce8f7, 0xf7d44f, 0xb45cf7, 0x4ff7a0, 0xf75c5c,
+  0x5cf7d4, 0xcf7c4f, 0x7cf74f, 0x4f7cf7, 0xf74fcf,
+];
+
+// ── Utility ─────────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 6000);
+}
+
+function setLoadingMsg(msg, detail = '') {
+  document.getElementById('loading-msg').textContent = msg;
+  document.getElementById('loading-detail').textContent = detail;
+}
+
+function showLoading(on) {
+  document.getElementById('loading-overlay').classList.toggle('active', on);
+}
+
+function updateCornerInfo() {
+  let totalTris = 0;
+  let visCount = 0;
+  for (const p of parts) {
+    if (p.visible) {
+      visCount++;
+      if (p.mesh && p.mesh.geometry) {
+        const idx = p.mesh.geometry.index;
+        totalTris += idx ? idx.count / 3 : (p.mesh.geometry.attributes.position.count / 3);
+      }
+    }
+  }
+  document.getElementById('info-parts').querySelector('span').textContent =
+    parts.length ? `${visCount} / ${parts.length}` : '—';
+  document.getElementById('info-tris').querySelector('span').textContent =
+    totalTris > 0 ? totalTris.toLocaleString() : '—';
+}
+
+// ── Three.js init ───────────────────────────────────────────
+function initThree() {
+  const canvas = document.getElementById('canvas');
+  const viewport = document.getElementById('viewport');
+
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x0f1117, 1);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+
+  scene = new THREE.Scene();
+
+  // grid helper
+  const grid = new THREE.GridHelper(200, 40, 0x1a2030, 0x1a2030);
+  grid.name = '__grid';
+  scene.add(grid);
+
+  // lights
+  const ambient = new THREE.AmbientLight(0xffffff, 0.45);
+  scene.add(ambient);
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+  dirLight.position.set(100, 150, 80);
+  dirLight.castShadow = true;
+  scene.add(dirLight);
+
+  const fillLight = new THREE.DirectionalLight(0x8ab4ff, 0.3);
+  fillLight.position.set(-80, 40, -60);
+  scene.add(fillLight);
+
+  const backLight = new THREE.DirectionalLight(0xffffff, 0.2);
+  backLight.position.set(0, -80, -100);
+  scene.add(backLight);
+
+  // camera
+  const w = viewport.clientWidth || window.innerWidth - 244;
+  const h = viewport.clientHeight || window.innerHeight - 48;
+  camera = new THREE.PerspectiveCamera(45, w / h, 0.01, 10000);
+  camera.position.set(5, 4, 8);
+
+  // orbit controls — inline minimal implementation
+  setupOrbitControls(canvas, camera, renderer);
+
+  // resize
+  const ro = new ResizeObserver(() => resizeRenderer());
+  ro.observe(viewport);
+
+  // animate
+  function animate() {
+    animFrameId = requestAnimationFrame(animate);
+    orbitTick();
+    renderer.render(scene, camera);
+  }
+  animate();
+}
+
+// ── Minimal OrbitControls (no external dependency) ──────────
+let orbitState = { rotating: false, panning: false, lastX: 0, lastY: 0,
+                   spherical: { theta: 0.6, phi: 1.1, radius: 12 },
+                   target: new THREE.Vector3() };
+
+function setupOrbitControls(canvas) {
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const factor = e.deltaY > 0 ? 1.12 : 0.89;
+    orbitState.spherical.radius = Math.max(0.5, Math.min(5000, orbitState.spherical.radius * factor));
+  }, { passive: false });
+
+  canvas.addEventListener('pointerdown', e => {
+    canvas.setPointerCapture(e.pointerId);
+    if (e.button === 2 || (e.button === 0 && e.ctrlKey)) {
+      orbitState.panning = true;
+    } else if (e.button === 0) {
+      orbitState.rotating = true;
+    } else if (e.button === 1) {
+      orbitState.panning = true;
+    }
+    orbitState.lastX = e.clientX;
+    orbitState.lastY = e.clientY;
+  });
+
+  canvas.addEventListener('pointermove', e => {
+    const dx = e.clientX - orbitState.lastX;
+    const dy = e.clientY - orbitState.lastY;
+    orbitState.lastX = e.clientX;
+    orbitState.lastY = e.clientY;
+
+    if (orbitState.rotating) {
+      orbitState.spherical.theta -= dx * 0.007;
+      orbitState.spherical.phi = Math.max(0.05, Math.min(Math.PI - 0.05, orbitState.spherical.phi - dy * 0.007));
+    }
+    if (orbitState.panning) {
+      const panSpeed = orbitState.spherical.radius * 0.0015;
+      const right = new THREE.Vector3();
+      const up = new THREE.Vector3();
+      camera.getWorldDirection(new THREE.Vector3());
+      right.setFromMatrixColumn(camera.matrix, 0).multiplyScalar(-dx * panSpeed);
+      up.setFromMatrixColumn(camera.matrix, 1).multiplyScalar(dy * panSpeed);
+      orbitState.target.add(right).add(up);
+    }
+  });
+
+  window.addEventListener('pointerup', () => {
+    orbitState.rotating = false;
+    orbitState.panning = false;
+  });
+}
+
+function orbitTick() {
+  if (!camera) return;
+  const s = orbitState.spherical;
+  camera.position.x = orbitState.target.x + s.radius * Math.sin(s.phi) * Math.sin(s.theta);
+  camera.position.y = orbitState.target.y + s.radius * Math.cos(s.phi);
+  camera.position.z = orbitState.target.z + s.radius * Math.sin(s.phi) * Math.cos(s.theta);
+  camera.lookAt(orbitState.target);
+}
+
+function resizeRenderer() {
+  const vp = document.getElementById('viewport');
+  const w = vp.clientWidth;
+  const h = vp.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+
+// ── Fit camera to model ─────────────────────────────────────
+function fitToModel() {
+  if (!modelGroup) return;
+  const box = new THREE.Box3().setFromObject(modelGroup);
+  if (box.isEmpty()) return;
+  const center = new THREE.Vector3();
+  const size = new THREE.Vector3();
+  box.getCenter(center);
+  box.getSize(size);
+  const maxDim = Math.max(size.x, size.y, size.z);
+  orbitState.target.copy(center);
+  orbitState.spherical.radius = maxDim * 1.8;
+
+  // move grid to model base
+  const grid = scene.getObjectByName('__grid');
+  if (grid) {
+    grid.position.y = box.min.y;
+    const scale = maxDim / 20;
+    grid.scale.set(scale, scale, scale);
+  }
+}
+
+// ── View presets ─────────────────────────────────────────────
+function setViewPreset(preset) {
+  const PI = Math.PI;
+  const presets = {
+    front: { theta: 0,       phi: PI / 2 },
+    right: { theta: -PI / 2, phi: PI / 2 },
+    top:   { theta: 0,       phi: 0.01   },
+    iso:   { theta: PI / 4,  phi: PI / 3 },
+  };
+  if (presets[preset]) {
+    orbitState.spherical.theta = presets[preset].theta;
+    orbitState.spherical.phi   = presets[preset].phi;
+  }
+}
+
+// ── Load occt-import-js ──────────────────────────────────────
+function loadOcctScript() {
+  return new Promise((resolve, reject) => {
+    if (occt) return resolve(occt);
+    const script = document.createElement('script');
+    script.src = OCCT_CDN;
+    script.onload = () => {
+      setLoadingMsg('Starting geometry kernel…', 'Loading WebAssembly module');
+      // occt-import-js exposes OcctImportJs global
+      if (typeof OcctImportJs === 'undefined') {
+        reject(new Error('occt-import-js failed to load'));
+        return;
+      }
+      OcctImportJs().then(instance => {
+        occt = instance;
+        resolve(occt);
+      }).catch(reject);
+    };
+    script.onerror = () => reject(new Error('Failed to fetch occt-import-js from CDN'));
+    document.head.appendChild(script);
+  });
+}
+
+// ── Parse STEP + build Three.js meshes ──────────────────────
+async function loadStepFile(file) {
+  showLoading(true);
+  setLoadingMsg('Reading file…', file.name);
+
+  try {
+    // 1. load occt
+    await loadOcctScript();
+
+    setLoadingMsg('Parsing STEP geometry…', 'This may take a moment for large files');
+
+    // 2. read file bytes
+    const buffer = await file.arrayBuffer();
+    const uint8 = new Uint8Array(buffer);
+
+    // 3. call occt
+    const fileBuffer = occt._malloc(uint8.length);
+    occt.HEAPU8.set(uint8, fileBuffer);
+    const result = occt.ReadStepFile(fileBuffer, uint8.length, null);
+    occt._free(fileBuffer);
+
+    if (!result || !result.success) {
+      throw new Error('STEP parsing failed — file may be corrupt or unsupported');
+    }
+
+    setLoadingMsg('Building 3D geometry…', `${result.meshes?.length ?? 0} mesh(es) found`);
+
+    // 4. clear old model
+    if (modelGroup) {
+      scene.remove(modelGroup);
+    }
+    parts.length = 0;
+    selectedIndex = -1;
+
+    modelGroup = new THREE.Group();
+    scene.add(modelGroup);
+
+    let totalMeshes = result.meshes ? result.meshes.length : 0;
+
+    for (let mi = 0; mi < totalMeshes; mi++) {
+      const meshData = result.meshes[mi];
+      const geometry = new THREE.BufferGeometry();
+
+      // vertices
+      const vertexArr = new Float32Array(meshData.attributes.position.array);
+      geometry.setAttribute('position', new THREE.BufferAttribute(vertexArr, 3));
+
+      // normals
+      if (meshData.attributes.normal) {
+        const normArr = new Float32Array(meshData.attributes.normal.array);
+        geometry.setAttribute('normal', new THREE.BufferAttribute(normArr, 3));
+      } else {
+        geometry.computeVertexNormals();
+      }
+
+      // index
+      if (meshData.index) {
+        const idxArr = new Uint32Array(meshData.index.array);
+        geometry.setIndex(new THREE.BufferAttribute(idxArr, 1));
+      }
+
+      // colour: use mesh colour if present, else palette
+      let color = PALETTE[mi % PALETTE.length];
+      if (meshData.color) {
+        color = new THREE.Color(meshData.color[0], meshData.color[1], meshData.color[2]).getHex();
+      }
+
+      const material = new THREE.MeshStandardMaterial({
+        color,
+        roughness: 0.45,
+        metalness: 0.25,
+        side: THREE.DoubleSide,
+      });
+
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      modelGroup.add(mesh);
+
+      const name = meshData.name || `Part ${mi + 1}`;
+      parts.push({ name, mesh, color, visible: true, index: mi });
+    }
+
+    // 5. update UI
+    document.getElementById('filename-label').textContent = file.name;
+    document.getElementById('drop-overlay').classList.add('hidden');
+    document.getElementById('statusbar').style.display = 'block';
+    document.getElementById('part-count').textContent = `${parts.length}`;
+    rebuildPartList();
+    updateCornerInfo();
+
+    // 6. fit view
+    fitToModel();
+
+  } catch (err) {
+    console.error(err);
+    showError(`Error: ${err.message}`);
+  } finally {
+    showLoading(false);
+  }
+}
+
+// ── Part list UI ─────────────────────────────────────────────
+function rebuildPartList() {
+  const list = document.getElementById('part-list');
+  const empty = document.getElementById('empty-state');
+  empty.style.display = 'none';
+
+  // remove old items
+  Array.from(list.querySelectorAll('.part-item')).forEach(n => n.remove());
+
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i];
+    const item = document.createElement('div');
+    item.className = 'part-item' + (p.visible ? '' : ' hidden-part') + (i === selectedIndex ? ' selected' : '');
+    item.dataset.index = i;
+
+    const dot = document.createElement('div');
+    dot.className = 'part-color-dot';
+    dot.style.background = '#' + p.color.toString(16).padStart(6, '0');
+
+    const label = document.createElement('div');
+    label.className = 'part-name';
+    label.textContent = p.name;
+    label.title = p.name;
+
+    const tog = document.createElement('div');
+    tog.className = 'vis-toggle' + (p.visible ? '' : ' off');
+    tog.title = p.visible ? 'Hide' : 'Show';
+    tog.innerHTML = p.visible
+      ? `<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><ellipse cx="5" cy="4" rx="4" ry="2.5" stroke="white" stroke-width="1.2"/><circle cx="5" cy="4" r="1.3" fill="white"/></svg>`
+      : `<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 1l8 6M2 5.5C3.2 6.5 4 7 5 7c2 0 3.5-1.5 4-3M1.5 3C2.2 1.7 3.4 1 5 1" stroke="#6b7394" stroke-width="1.2" stroke-linecap="round"/></svg>`;
+
+    tog.addEventListener('click', e => {
+      e.stopPropagation();
+      togglePartVisibility(i);
+    });
+
+    item.addEventListener('click', () => selectPart(i));
+
+    item.append(dot, label, tog);
+    list.appendChild(item);
+  }
+
+  if (parts.length === 0) {
+    empty.style.display = 'flex';
+  }
+}
+
+function togglePartVisibility(i) {
+  const p = parts[i];
+  p.visible = !p.visible;
+  p.mesh.visible = p.visible;
+  rebuildPartList();
+  updateCornerInfo();
+}
+
+function selectPart(i) {
+  // deselect previous
+  if (selectedIndex >= 0 && parts[selectedIndex]) {
+    parts[selectedIndex].mesh.material.emissive = new THREE.Color(0x000000);
+    parts[selectedIndex].mesh.material.emissiveIntensity = 0;
+  }
+  selectedIndex = (selectedIndex === i) ? -1 : i;
+  if (selectedIndex >= 0) {
+    parts[selectedIndex].mesh.material.emissive = new THREE.Color(0x4f8ef7);
+    parts[selectedIndex].mesh.material.emissiveIntensity = 0.18;
+  }
+  rebuildPartList();
+}
+
+// ── Sidebar controls ─────────────────────────────────────────
+document.getElementById('show-all-btn').addEventListener('click', () => {
+  for (const p of parts) { p.visible = true; p.mesh.visible = true; }
+  rebuildPartList(); updateCornerInfo();
+});
+
+document.getElementById('hide-all-btn').addEventListener('click', () => {
+  for (const p of parts) { p.visible = false; p.mesh.visible = false; }
+  rebuildPartList(); updateCornerInfo();
+});
+
+document.getElementById('isolate-btn').addEventListener('click', () => {
+  if (selectedIndex < 0) return;
+  for (let i = 0; i < parts.length; i++) {
+    parts[i].visible = (i === selectedIndex);
+    parts[i].mesh.visible = parts[i].visible;
+  }
+  rebuildPartList(); updateCornerInfo();
+});
+
+// ── View preset buttons ───────────────────────────────────────
+document.querySelectorAll('[data-view]').forEach(btn => {
+  btn.addEventListener('click', () => setViewPreset(btn.dataset.view));
+});
+
+document.getElementById('fit-btn').addEventListener('click', fitToModel);
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+  orbitState.target.set(0, 0, 0);
+  setViewPreset('iso');
+  if (modelGroup) fitToModel();
+});
+
+// ── File open ────────────────────────────────────────────────
+document.getElementById('open-btn').addEventListener('click', () => {
+  document.getElementById('file-input').click();
+});
+
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) loadStepFile(e.target.files[0]);
+});
+
+// ── Drag & drop ───────────────────────────────────────────────
+const viewport = document.getElementById('viewport');
+const dropOverlay = document.getElementById('drop-overlay');
+
+viewport.addEventListener('dragover', e => { e.preventDefault(); dropOverlay.classList.add('drag-active'); });
+viewport.addEventListener('dragleave', () => dropOverlay.classList.remove('drag-active'));
+viewport.addEventListener('drop', e => {
+  e.preventDefault();
+  dropOverlay.classList.remove('drag-active');
+  const file = e.dataTransfer?.files?.[0];
+  if (file) loadStepFile(file);
+  else showError('Please drop a valid .step or .stp file');
+});
+
+// ── Sidebar resizer ───────────────────────────────────────────
+const resizer = document.getElementById('resizer');
+const sidebar = document.getElementById('sidebar');
+let isResizing = false;
+
+resizer.addEventListener('pointerdown', e => {
+  isResizing = true;
+  resizer.setPointerCapture(e.pointerId);
+});
+resizer.addEventListener('pointermove', e => {
+  if (!isResizing) return;
+  const newW = Math.max(140, Math.min(420, e.clientX));
+  sidebar.style.width = newW + 'px';
+  resizeRenderer();
+});
+resizer.addEventListener('pointerup', () => { isResizing = false; resizeRenderer(); });
+
+// ── Boot ──────────────────────────────────────────────────────
+function waitForThreeAndInit() {
+  if (typeof THREE !== 'undefined') {
+    initThree();
+    resizeRenderer();
+  } else {
+    setTimeout(waitForThreeAndInit, 50);
+  }
+}
+
+waitForThreeAndInit();
+</script>
+</body>
+</html>
