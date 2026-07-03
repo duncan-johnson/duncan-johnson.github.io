@@ -19,7 +19,26 @@
     --radius:    8px;
     --font-mono: 'JetBrains Mono', 'Fira Mono', monospace;
     --font-ui:   'Inter', system-ui, sans-serif;
+    --panel-rgba: rgba(15,17,23,.85);
+    --panel-rgba-strong: rgba(24,28,39,.92);
   }
+
+  body.light {
+    --bg:        #f4f5f8;
+    --panel:     #ffffff;
+    --border:    #dde1ea;
+    --accent:    #2f6fe0;
+    --accent2:   #6a47d8;
+    --text:      #1b1f2a;
+    --muted:     #6b7280;
+    --hover:     #eef1f7;
+    --vis-on:    #1fa872;
+    --vis-off:   #c4c9d4;
+    --panel-rgba: rgba(255,255,255,.85);
+    --panel-rgba-strong: rgba(255,255,255,.92);
+  }
+
+  body.light .spinner { border-color: var(--border); border-top-color: var(--accent); }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -81,6 +100,12 @@
     font-weight: 600;
   }
   .btn.primary:hover { background: #3a7de0; border-color: #3a7de0; }
+  .btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+  }
 
   #filename-label {
     color: var(--muted);
@@ -189,6 +214,90 @@
   .vis-toggle.off { background: var(--vis-off); }
   .vis-toggle svg { pointer-events: none; }
 
+  /* ── Tree toggle (expand/collapse arrow) ── */
+  .tree-toggle {
+    width: 28px;
+    flex-shrink: 0;
+    text-align: center;
+    color: var(--text);
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    opacity: .75;
+    transition: opacity .12s, color .12s;
+  }
+  .tree-toggle:hover { opacity: 1; color: var(--accent); }
+
+  /* ── Properties panel ── */
+  #props-panel {
+    position: absolute;
+    top: 208px;
+    right: 12px;
+    width: 280px;
+    max-height: calc(100% - 228px);
+    background: var(--panel-rgba-strong);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(6px);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 15;
+    box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  }
+  #props-panel.open { display: flex; }
+  #props-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  #props-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #props-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 2px 4px;
+    flex-shrink: 0;
+  }
+  #props-close:hover { color: var(--text); }
+  #props-body {
+    padding: 6px 14px 14px;
+    overflow-y: auto;
+    font-size: 12px;
+  }
+  .props-section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    margin: 10px 0 4px;
+    font-weight: 600;
+  }
+  .props-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .props-row .k { color: var(--muted); flex-shrink: 0; }
+  .props-row .v { color: var(--text); text-align: right; word-break: break-word; font-family: var(--font-mono); font-size: 11px; }
+  #props-empty { color: var(--muted); padding: 6px 0; }
+
   #empty-state {
     flex: 1;
     display: flex;
@@ -219,6 +328,88 @@
     cursor: grab;
   }
   #canvas:active { cursor: grabbing; }
+  #canvas.measuring { cursor: crosshair; }
+
+  #measure-canvas {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  /* measurement results panel */
+  #measure-panel {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    width: 250px;
+    max-height: 220px;
+    background: var(--panel-rgba-strong);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(6px);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 15;
+    box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  }
+  #measure-panel.open { display: flex; }
+  #measure-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  #measure-clear-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  #measure-clear-btn:hover { color: var(--text); border-color: var(--accent); }
+  #measure-legend {
+    display: flex;
+    gap: 10px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  #measure-legend span { display: inline-flex; align-items: center; gap: 4px; }
+  #measure-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  #measure-list { overflow-y: auto; padding: 4px 0; }
+  .measure-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+  }
+  .measure-item .m-del {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .measure-item .m-del:hover { color: #ff8a8a; }
 
   /* drop overlay */
   #drop-overlay {
@@ -251,7 +442,7 @@
     bottom: 12px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(15,17,23,.85);
+    background: var(--panel-rgba);
     border: 1px solid var(--border);
     border-radius: 20px;
     padding: 5px 14px;
@@ -267,7 +458,7 @@
   #loading-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(15,17,23,.85);
+    background: var(--panel-rgba);
     display: none;
     flex-direction: column;
     align-items: center;
@@ -293,7 +484,7 @@
   /* corner info */
   #corner-info {
     position: absolute;
-    top: 12px;
+    top: 140px;
     right: 12px;
     display: flex;
     flex-direction: column;
@@ -301,7 +492,7 @@
     pointer-events: none;
   }
   .info-pill {
-    background: rgba(24,28,39,.8);
+    background: var(--panel-rgba);
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 4px 10px;
@@ -311,6 +502,117 @@
     backdrop-filter: blur(4px);
   }
   .info-pill span { color: var(--text); }
+
+  /* ── Zoom slider ── */
+  #zoom-slider-wrap {
+    position: absolute;
+    right: 14px;
+    bottom: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    z-index: 12;
+  }
+  #zoom-slider-wrap label {
+    font-size: 10px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    user-select: none;
+  }
+  #zoom-in-btn, #zoom-out-btn {
+    width: 26px; height: 26px;
+    background: var(--panel-rgba-strong);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+    line-height: 1;
+    padding: 0;
+  }
+  #zoom-in-btn:hover, #zoom-out-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #zoom-slider {
+    writing-mode: vertical-lr;
+    direction: rtl;
+    appearance: slider-vertical;
+    -webkit-appearance: slider-vertical;
+    width: 26px;
+    height: 120px;
+    cursor: pointer;
+    accent-color: var(--accent);
+    background: transparent;
+  }
+
+  /* ── Exploded view slider ── */
+  #explode-panel {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 280px;
+    background: var(--panel-rgba-strong);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(6px);
+    padding: 8px 14px 10px;
+    z-index: 15;
+    box-shadow: 0 8px 24px rgba(0,0,0,.35);
+    display: none;
+  }
+  #explode-panel.open { display: block; }
+  #explode-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  #explode-value {
+    font-family: var(--font-mono);
+    color: var(--accent);
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  #explode-slider {
+    width: 100%;
+    cursor: pointer;
+    accent-color: var(--accent);
+    background: transparent;
+  }
+  #explode-toggle-btn.active { border-color: var(--accent); color: var(--accent); }
+
+  /* ── View cube ── */
+  #view-cube-wrap {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 100px;
+    height: 100px;
+    z-index: 12;
+    user-select: none;
+  }
+  #view-cube-canvas {
+    width: 100px;
+    height: 100px;
+    cursor: pointer;
+    border-radius: 8px;
+  }
+  #view-cube-hint {
+    text-align: center;
+    font-size: 9px;
+    color: var(--muted);
+    margin-top: 2px;
+    font-family: var(--font-mono);
+    pointer-events: none;
+  }
 
   /* error toast */
   #error-toast {
@@ -372,6 +674,11 @@
     <button class="btn" data-view="iso"    title="Isometric">Iso</button>
     <button class="btn" id="fit-btn"       title="Fit all">⊡ Fit</button>
     <button class="btn" id="reset-btn"     title="Reset view">↺ Reset</button>
+    <button class="btn" id="props-toggle-btn" title="Toggle properties panel">▤ Properties</button>
+    <button class="btn" id="measure-toggle-btn" title="Smart measurement tool (snaps to vertex / edge / center)">📏 Measure</button>
+    <button class="btn" id="explode-toggle-btn" title="Exploded view">💥 Explode</button>
+    <div class="sep"></div>
+    <button class="btn" id="theme-toggle-btn" title="Toggle light/dark mode">☀ Light</button>
   </div>
 </div>
 
@@ -405,6 +712,7 @@
   <!-- 3D Viewport -->
   <div id="viewport">
     <canvas id="canvas"></canvas>
+    <canvas id="measure-canvas"></canvas>
 
     <!-- Drop overlay -->
     <div id="drop-overlay">
@@ -433,13 +741,64 @@
     <!-- Status bar -->
     <div id="statusbar">Scroll to zoom · Drag to rotate · Right-drag to pan</div>
 
+    <!-- Properties panel -->
+    <div id="props-panel">
+      <div id="props-header">
+        <span id="props-title">Properties</span>
+        <button id="props-close" title="Close">✕</button>
+      </div>
+      <div id="props-body">
+        <div id="props-empty">Select a component to view its properties</div>
+      </div>
+    </div>
+
+    <!-- Zoom slider -->
+    <div id="zoom-slider-wrap">
+      <button id="zoom-in-btn" title="Zoom in">+</button>
+      <input type="range" id="zoom-slider" min="1" max="1000" step="1" value="500" title="Zoom">
+      <button id="zoom-out-btn" title="Zoom out">−</button>
+      <label>ZOOM</label>
+    </div>
+
+    <!-- Exploded view slider -->
+    <div id="explode-panel">
+      <div id="explode-panel-header">
+        <span>Exploded View</span>
+        <span id="explode-value">0%</span>
+      </div>
+      <input type="range" id="explode-slider" min="0" max="100" step="1" value="0" title="Drag to separate components">
+    </div>
+
+    <!-- View cube -->
+    <div id="view-cube-wrap">
+      <canvas id="view-cube-canvas" width="100" height="100" title="Click a face, edge or corner to set view"></canvas>
+      <div id="view-cube-hint">click to set view</div>
+    </div>
+
+    <!-- Measurement panel -->
+    <div id="measure-panel">
+      <div id="measure-panel-header">
+        <span>Measurements</span>
+        <button id="measure-clear-btn" title="Clear all measurements">Clear</button>
+      </div>
+      <div id="measure-legend">
+        <span><i style="background:#3ecf8e"></i>Vertex</span>
+        <span><i style="background:#f7d44f"></i>Edge</span>
+        <span><i style="background:#7c5cfc"></i>Center</span>
+        <span><i style="background:#ff6b6b"></i>Hole ⊕</span>
+        <span><i style="background:#ff9f43"></i>Hole rim</span>
+        <span><i style="background:#4f8ef7"></i>Free</span>
+      </div>
+      <div id="measure-list"></div>
+    </div>
+
     <!-- Error toast -->
     <div id="error-toast"></div>
   </div>
 </div>
 
 <!-- Three.js + OrbitControls from CDN -->
-<script async src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════
 //  Wait for Three.js to load, then load occt-import-js
@@ -452,8 +811,33 @@ let occt = null;
 let scene, camera, renderer, controls;
 let modelGroup = null;
 const parts = [];   // { name, mesh, color, visible }
-let selectedIndex = -1;
+let explodeScale = 1;
+let explodeFactor = 0; // 0..1
+let treeRoot = null; // hierarchical tree built from STEP assembly structure
+let selectedNode = null;
+let nodeUid = 0;
 let animFrameId = null;
+
+// ── Measurement tool state ───────────────────────────────────
+let measureMode = false;
+let measurePoints = [];   // 0-1 pending {point: Vector3, type}
+let measurements = [];    // completed [{a,b,dist}]
+let measureUid = 0;
+let hoverSnap = null;     // current live snap preview
+const measureRaycaster = new THREE.Raycaster();
+const measureNDC = new THREE.Vector2();
+const SNAP_PX_VERTEX = 16;
+const SNAP_PX_EDGE = 12;
+const SNAP_PX_CENTER = 18;
+const SNAP_PX_HOLE = 26;   // larger pick radius — holes project to ellipses on screen
+const SNAP_COLORS = {
+  vertex:       '#3ecf8e',
+  edge:         '#f7d44f',
+  center:       '#7c5cfc',
+  free:         '#4f8ef7',
+  hole_center:  '#ff6b6b',
+  hole_rim:     '#ff9f43',
+};
 
 // palette for auto-colouring parts
 const PALETTE = [
@@ -502,7 +886,7 @@ function initThree() {
   const canvas = document.getElementById('canvas');
   const viewport = document.getElementById('viewport');
 
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, logarithmicDepthBuffer: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setClearColor(0x0f1117, 1);
   renderer.shadowMap.enabled = true;
@@ -523,7 +907,11 @@ function initThree() {
   const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
   dirLight.position.set(100, 150, 80);
   dirLight.castShadow = true;
+  dirLight.shadow.mapSize.set(2048, 2048);
+  dirLight.shadow.bias = -0.0004;
+  dirLight.shadow.normalBias = 0.02;
   scene.add(dirLight);
+  window._dirLight = dirLight; // referenced by fitToModel to resize the shadow frustum
 
   const fillLight = new THREE.DirectionalLight(0x8ab4ff, 0.3);
   fillLight.position.set(-80, 40, -60);
@@ -551,14 +939,64 @@ function initThree() {
     animFrameId = requestAnimationFrame(animate);
     orbitTick();
     renderer.render(scene, camera);
+    drawMeasureOverlay();
+    if (window._viewCubeDraw) window._viewCubeDraw();
+    // keep zoom slider in sync with wheel/pinch zoom
+    const sl = document.getElementById('zoom-slider');
+    if (sl && orbitState) {
+      const t = (Math.log(orbitState.spherical.radius) - Math.log(0.5)) / (Math.log(5000) - Math.log(0.5));
+      sl.value = Math.round((1 - t) * 999 + 1);
+    }
   }
   animate();
 }
 
 // ── Minimal OrbitControls (no external dependency) ──────────
+// Camera orientation is driven by a pair of co-rotated vectors —
+// `offset` (camera position relative to target) and `up` — rather than
+// recomputing from spherical angles + a fixed world-up every frame.
+// Because `up` is rotated together with `offset` on every drag step,
+// the two stay mutually perpendicular no matter how the camera is
+// oriented, so the camera can spin freely past the poles (looking
+// straight down, flipping upside-down, etc.) with no hard limit and
+// no gimbal-lock flip. `spherical` is still kept in sync afterwards
+// purely so the view cube, view presets and zoom UI have a simple
+// (theta, phi, radius) snapshot to read.
 let orbitState = { rotating: false, panning: false, lastX: 0, lastY: 0,
                    spherical: { theta: 0.6, phi: 1.1, radius: 12 },
+                   offset: new THREE.Vector3(),
+                   up: new THREE.Vector3(0, 1, 0),
                    target: new THREE.Vector3() };
+
+// Jump the camera to a specific (theta, phi[, radius]) — used for view
+// presets, the view cube, and its click-to-animate transitions. Always
+// rebuilds a clean, canonical "up" vector so repeated jumps never drift.
+function setOrbitAngles(theta, phi, radius) {
+  const r = (radius !== undefined && radius !== null) ? radius : orbitState.spherical.radius;
+  orbitState.offset.set(
+    r * Math.sin(phi) * Math.sin(theta),
+    r * Math.cos(phi),
+    r * Math.sin(phi) * Math.cos(theta)
+  );
+  const z = orbitState.offset.clone().normalize();
+  // reference axis for building "up" — swap to world-Z right at the poles
+  // (top/bottom views) where world-Y would be parallel to the view direction
+  const ref = Math.abs(z.y) > 0.999 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0);
+  const right = new THREE.Vector3().crossVectors(ref, z).normalize();
+  orbitState.up.crossVectors(z, right).normalize();
+  orbitState.spherical.theta = theta;
+  orbitState.spherical.phi = phi;
+  orbitState.spherical.radius = r;
+}
+
+// Change distance from target without touching the current viewing angle.
+function setOrbitRadius(radius) {
+  const r = Math.max(1e-4, radius);
+  if (orbitState.offset.lengthSq() < 1e-12) orbitState.offset.set(0, 0, r);
+  else orbitState.offset.setLength(r);
+  orbitState.spherical.radius = r;
+}
+setOrbitAngles(orbitState.spherical.theta, orbitState.spherical.phi, orbitState.spherical.radius);
 
 function setupOrbitControls(canvas) {
   canvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -566,7 +1004,7 @@ function setupOrbitControls(canvas) {
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
     const factor = e.deltaY > 0 ? 1.12 : 0.89;
-    orbitState.spherical.radius = Math.max(0.5, Math.min(5000, orbitState.spherical.radius * factor));
+    setOrbitRadius(Math.max(0.5, Math.min(5000, orbitState.spherical.radius * factor)));
   }, { passive: false });
 
   canvas.addEventListener('pointerdown', e => {
@@ -589,8 +1027,20 @@ function setupOrbitControls(canvas) {
     orbitState.lastY = e.clientY;
 
     if (orbitState.rotating) {
-      orbitState.spherical.theta -= dx * 0.007;
-      orbitState.spherical.phi = Math.max(0.05, Math.min(Math.PI - 0.05, orbitState.spherical.phi - dy * 0.007));
+      // Rotate the camera's offset & up together (rigidly) so they stay
+      // perpendicular — this is what allows continuous, unlimited
+      // rotation on both axes with no pole-flip artifact and no hard stop.
+      const yaw = -dx * 0.007;
+      const pitch = -dy * 0.007;
+      const worldY = new THREE.Vector3(0, 1, 0);
+      orbitState.offset.applyAxisAngle(worldY, yaw);
+      orbitState.up.applyAxisAngle(worldY, yaw);
+      const right = new THREE.Vector3().crossVectors(orbitState.up, orbitState.offset);
+      if (right.lengthSq() > 1e-10) {
+        right.normalize();
+        orbitState.offset.applyAxisAngle(right, pitch);
+        orbitState.up.applyAxisAngle(right, pitch);
+      }
     }
     if (orbitState.panning) {
       const panSpeed = orbitState.spherical.radius * 0.0015;
@@ -611,11 +1061,26 @@ function setupOrbitControls(canvas) {
 
 function orbitTick() {
   if (!camera) return;
-  const s = orbitState.spherical;
-  camera.position.x = orbitState.target.x + s.radius * Math.sin(s.phi) * Math.sin(s.theta);
-  camera.position.y = orbitState.target.y + s.radius * Math.cos(s.phi);
-  camera.position.z = orbitState.target.z + s.radius * Math.sin(s.phi) * Math.cos(s.theta);
-  camera.lookAt(orbitState.target);
+  camera.position.copy(orbitState.target).add(orbitState.offset);
+
+  const len = orbitState.offset.length();
+  if (len < 1e-6) return;
+  const z = orbitState.offset.clone().divideScalar(len); // camera "backward" axis
+  let right = new THREE.Vector3().crossVectors(orbitState.up, z);
+  if (right.lengthSq() < 1e-10) {
+    // extremely unlikely (up and view direction momentarily coincide) —
+    // resync from the last-known angles rather than render a degenerate frame
+    setOrbitAngles(orbitState.spherical.theta, orbitState.spherical.phi, orbitState.spherical.radius);
+    right = new THREE.Vector3().crossVectors(orbitState.up, z);
+  }
+  right.normalize();
+  const up = new THREE.Vector3().crossVectors(z, right);
+  camera.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, up, z));
+
+  // keep the spherical snapshot in sync for the view cube / presets / zoom UI
+  orbitState.spherical.radius = len;
+  orbitState.spherical.theta = Math.atan2(orbitState.offset.x, orbitState.offset.z);
+  orbitState.spherical.phi = Math.acos(Math.max(-1, Math.min(1, orbitState.offset.y / len)));
 }
 
 function resizeRenderer() {
@@ -625,6 +1090,8 @@ function resizeRenderer() {
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  const mc = document.getElementById('measure-canvas');
+  if (mc) { mc.width = w; mc.height = h; }
 }
 
 // ── Fit camera to model ─────────────────────────────────────
@@ -638,7 +1105,7 @@ function fitToModel() {
   box.getSize(size);
   const maxDim = Math.max(size.x, size.y, size.z);
   orbitState.target.copy(center);
-  orbitState.spherical.radius = maxDim * 1.8;
+  setOrbitRadius(maxDim * 1.8);
 
   // move grid to model base
   const grid = scene.getObjectByName('__grid');
@@ -647,22 +1114,837 @@ function fitToModel() {
     const scale = maxDim / 20;
     grid.scale.set(scale, scale, scale);
   }
+
+  // Resize the shadow camera frustum to fit the model — a mismatched
+  // frustum (default is only a few units across) causes blocky/jagged
+  // or entirely missing shadows once a model is bigger or smaller than
+  // the default assumption.
+  const dirLight = window._dirLight;
+  if (dirLight) {
+    const radius = Math.max(maxDim * 0.75, 0.05);
+    dirLight.target.position.copy(center);
+    if (!dirLight.target.parent) scene.add(dirLight.target); // ensure target is in the scene graph
+    dirLight.target.updateMatrixWorld();
+    const dist = radius * 3;
+    dirLight.position.copy(center).add(new THREE.Vector3(dist, dist * 1.5, dist * 0.8));
+    const cam = dirLight.shadow.camera;
+    cam.left = -radius;
+    cam.right = radius;
+    cam.top = radius;
+    cam.bottom = -radius;
+    cam.near = dist * 0.1;
+    cam.far = dist * 4;
+    cam.updateProjectionMatrix();
+  }
 }
 
 // ── View presets ─────────────────────────────────────────────
 function setViewPreset(preset) {
   const PI = Math.PI;
   const presets = {
-    front: { theta: 0,       phi: PI / 2 },
-    right: { theta: -PI / 2, phi: PI / 2 },
-    top:   { theta: 0,       phi: 0.01   },
-    iso:   { theta: PI / 4,  phi: PI / 3 },
+    front:  { theta: 0,       phi: PI/2     },
+    back:   { theta: PI,      phi: PI/2     },
+    right:  { theta:  PI/2,   phi: PI/2     },
+    left:   { theta: -PI/2,   phi: PI/2     },
+    top:    { theta: 0,       phi: 0.01     },
+    bottom: { theta: 0,       phi: PI-0.01  },
+    iso:    { theta: PI/4,    phi: PI/3     },
   };
   if (presets[preset]) {
-    orbitState.spherical.theta = presets[preset].theta;
-    orbitState.spherical.phi   = presets[preset].phi;
+    setOrbitAngles(presets[preset].theta, presets[preset].phi);
   }
 }
+
+// ── Theme (dark / light) ────────────────────────────────────
+const THEME_COLORS = {
+  dark:  { clear: 0x0f1117, grid: 0x1a2030 },
+  light: { clear: 0xf4f5f8, grid: 0xd8dce5 },
+};
+
+function rebuildGrid() {
+  if (!scene) return;
+  const old = scene.getObjectByName('__grid');
+  let prevPos = null, prevScale = null;
+  if (old) {
+    prevPos = old.position.clone();
+    prevScale = old.scale.clone();
+    scene.remove(old);
+  }
+  const isLight = document.body.classList.contains('light');
+  const c = isLight ? THEME_COLORS.light : THEME_COLORS.dark;
+  const grid = new THREE.GridHelper(200, 40, c.grid, c.grid);
+  grid.name = '__grid';
+  if (prevPos) grid.position.copy(prevPos);
+  if (prevScale) grid.scale.copy(prevScale);
+  scene.add(grid);
+}
+
+function setTheme(isLight) {
+  document.body.classList.toggle('light', isLight);
+  const btn = document.getElementById('theme-toggle-btn');
+  btn.innerHTML = isLight ? '🌙 Dark' : '☀ Light';
+  try { localStorage.setItem('step-viewer-theme', isLight ? 'light' : 'dark'); } catch (e) {}
+  if (renderer) {
+    const c = isLight ? THEME_COLORS.light : THEME_COLORS.dark;
+    renderer.setClearColor(c.clear, 1);
+  }
+  rebuildGrid();
+}
+
+document.getElementById('theme-toggle-btn').addEventListener('click', () => {
+  setTheme(!document.body.classList.contains('light'));
+});
+
+(function initTheme() {
+  let saved = null;
+  try { saved = localStorage.getItem('step-viewer-theme'); } catch (e) {}
+  if (saved === 'light') {
+    document.body.classList.add('light');
+    document.getElementById('theme-toggle-btn').innerHTML = '🌙 Dark';
+  }
+})();
+
+// ── Smart measurement tool ───────────────────────────────────
+// Raycasts into the model and snaps the picked point to whichever is
+// closest on screen: a triangle vertex, the nearest point on a triangle
+// edge, a face/part centre, or — if nothing is close enough — the raw
+// pick point ("free" selection).
+function getAllVisibleMeshes() {
+  const out = [];
+  if (modelGroup) modelGroup.traverse(o => { if (o.isMesh && o.visible) out.push(o); });
+  return out;
+}
+
+function canvasRect() {
+  return document.getElementById('canvas').getBoundingClientRect();
+}
+
+function projectToScreen(v3, rect) {
+  const p = v3.clone().project(camera);
+  return { x: (p.x * 0.5 + 0.5) * rect.width, y: (-p.y * 0.5 + 0.5) * rect.height };
+}
+
+function closestPointOnSegment2D(px, py, ax, ay, bx, by) {
+  const abx = bx - ax, aby = by - ay;
+  const apx = px - ax, apy = py - ay;
+  const ab2 = abx * abx + aby * aby;
+  let t = ab2 > 0 ? (apx * abx + apy * aby) / ab2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  return { x: ax + abx * t, y: ay + aby * t, t };
+}
+
+function pickSnap(e) {
+  if (!modelGroup || !camera) return null;
+  const rect = canvasRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  measureNDC.x = (mx / rect.width) * 2 - 1;
+  measureNDC.y = -(my / rect.height) * 2 + 1;
+  measureRaycaster.setFromCamera(measureNDC, camera);
+
+  const meshes = getAllVisibleMeshes();
+  const screenRect = { width: rect.width, height: rect.height };
+
+  // ── Priority 0: hole centres & rims ─────────────────────
+  let bestHoleDist = SNAP_PX_HOLE;
+  let holeSnap = null;
+  for (const mesh of meshes) {
+    const holes = mesh.userData.holes;
+    if (!holes || !holes.length) continue;
+    for (const hole of holes) {
+      const worldCentre = hole.centerLocal.clone();
+      mesh.localToWorld(worldCentre);
+      const sc = projectToScreen(worldCentre, screenRect);
+      const dCentre = Math.hypot(sc.x - mx, sc.y - my);
+      if (dCentre < bestHoleDist) {
+        bestHoleDist = dCentre;
+        holeSnap = { point: worldCentre, type: 'hole_center', hole, mesh };
+      }
+      // 8 equidistant sample points around the rim in world space
+      const worldU = hole.u.clone().applyQuaternion(mesh.quaternion).multiplyScalar(hole.radius * mesh.scale.x);
+      const worldV = hole.v.clone().applyQuaternion(mesh.quaternion).multiplyScalar(hole.radius * mesh.scale.x);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const rimW = worldCentre.clone()
+          .addScaledVector(worldU, Math.cos(a))
+          .addScaledVector(worldV, Math.sin(a));
+        const sr = projectToScreen(rimW, screenRect);
+        const dr = Math.hypot(sr.x - mx, sr.y - my);
+        if (dr < bestHoleDist) {
+          bestHoleDist = dr;
+          holeSnap = { point: rimW, type: 'hole_rim', hole, mesh };
+        }
+      }
+    }
+  }
+  if (holeSnap) return holeSnap;
+
+  // ── Ray-cast for vertex / edge / centre / free ──────────
+  const hits = measureRaycaster.intersectObjects(meshes, false);
+  if (!hits.length) return null;
+  const hit = hits[0];
+  if (!hit.face) return { point: hit.point.clone(), type: 'free' };
+
+  const obj = hit.object;
+  const pos = obj.geometry.attributes.position;
+
+  function vertWorld(i) {
+    const v = new THREE.Vector3().fromBufferAttribute(pos, i);
+    obj.localToWorld(v);
+    return v;
+  }
+  const vA = vertWorld(hit.face.a), vB = vertWorld(hit.face.b), vC = vertWorld(hit.face.c);
+  const sA = projectToScreen(vA, screenRect), sB = projectToScreen(vB, screenRect), sC = projectToScreen(vC, screenRect);
+
+  let bestDist = Infinity, bestPoint = null, bestType = null;
+
+  for (const [v, s] of [[vA, sA], [vB, sB], [vC, sC]]) {
+    const d = Math.hypot(s.x - mx, s.y - my);
+    if (d < SNAP_PX_VERTEX && d < bestDist) { bestDist = d; bestPoint = v; bestType = 'vertex'; }
+  }
+  if (!bestPoint) {
+    for (const [p1, s1, p2, s2] of [[vA, sA, vB, sB], [vB, sB, vC, sC], [vC, sC, vA, sA]]) {
+      const cp = closestPointOnSegment2D(mx, my, s1.x, s1.y, s2.x, s2.y);
+      const d = Math.hypot(cp.x - mx, cp.y - my);
+      if (d < SNAP_PX_EDGE && d < bestDist) { bestDist = d; bestPoint = p1.clone().lerp(p2, cp.t); bestType = 'edge'; }
+    }
+  }
+  if (!bestPoint) {
+    const centroid = vA.clone().add(vB).add(vC).multiplyScalar(1 / 3);
+    const sc = projectToScreen(centroid, screenRect);
+    const d = Math.hypot(sc.x - mx, sc.y - my);
+    if (d < SNAP_PX_CENTER) { bestDist = d; bestPoint = centroid; bestType = 'center'; }
+  }
+  if (!bestPoint) {
+    const box = new THREE.Box3().setFromObject(obj);
+    const c = box.getCenter(new THREE.Vector3());
+    const sc = projectToScreen(c, screenRect);
+    const d = Math.hypot(sc.x - mx, sc.y - my);
+    if (d < SNAP_PX_CENTER) { bestDist = d; bestPoint = c; bestType = 'center'; }
+  }
+  if (!bestPoint) { bestPoint = hit.point.clone(); bestType = 'free'; }
+  return { point: bestPoint, type: bestType };
+}
+
+function handleMeasureClick(e) {
+  const snap = pickSnap(e);
+  if (!snap) return;
+  if (measurePoints.length === 0) {
+    measurePoints.push(snap);
+  } else {
+    measurePoints.push(snap);
+    const a = measurePoints[0], b = measurePoints[1];
+    // If both points are on the same hole, show Ø diameter instead of linear dist
+    const sameHoleCentre =
+      (a.type === 'hole_center' && b.type === 'hole_center' && a.hole === b.hole) ||
+      (a.type === 'hole_center' && !b.hole) || // centre → no hole snap → treat as distance
+      false;
+    let isDiameter = false, diameter = 0;
+    if (a.hole && b.hole && a.hole === b.hole) {
+      isDiameter = true;
+      diameter = a.hole.radius * 2;
+    } else if (a.type === 'hole_center' && b.type === 'hole_center' && a.hole && b.hole) {
+      // centre-to-centre distance between two different holes — keep as linear
+    }
+    measurements.push({
+      id: 'm' + (measureUid++), a, b,
+      dist: isDiameter ? diameter : a.point.distanceTo(b.point),
+      isDiameter,
+    });
+    measurePoints = [];
+    renderMeasureList();
+  }
+}
+
+// ── Overlay drawing ───────────────────────────────────────────
+function drawMarker(ctx, scr, type, snap) {
+  const color = SNAP_COLORS[type] || SNAP_COLORS.free;
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2;
+  if (type === 'vertex') {
+    ctx.beginPath(); ctx.arc(scr.x, scr.y, 5, 0, Math.PI * 2); ctx.fill();
+  } else if (type === 'edge') {
+    ctx.beginPath();
+    ctx.moveTo(scr.x - 6, scr.y - 6); ctx.lineTo(scr.x + 6, scr.y + 6);
+    ctx.moveTo(scr.x + 6, scr.y - 6); ctx.lineTo(scr.x - 6, scr.y + 6);
+    ctx.stroke();
+  } else if (type === 'center') {
+    ctx.beginPath(); ctx.arc(scr.x, scr.y, 7, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(scr.x - 9, scr.y); ctx.lineTo(scr.x + 9, scr.y);
+    ctx.moveTo(scr.x, scr.y - 9); ctx.lineTo(scr.x, scr.y + 9);
+    ctx.stroke();
+  } else if (type === 'hole_center') {
+    // bullseye — filled dot + outer ring + crosshair ticks
+    ctx.beginPath(); ctx.arc(scr.x, scr.y, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(scr.x, scr.y, 10, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(scr.x - 14, scr.y); ctx.lineTo(scr.x - 11, scr.y);
+    ctx.moveTo(scr.x + 11, scr.y); ctx.lineTo(scr.x + 14, scr.y);
+    ctx.moveTo(scr.x, scr.y - 14); ctx.lineTo(scr.x, scr.y - 11);
+    ctx.moveTo(scr.x, scr.y + 11); ctx.lineTo(scr.x, scr.y + 14);
+    ctx.stroke();
+  } else if (type === 'hole_rim') {
+    // diamond on the rim edge
+    ctx.beginPath();
+    ctx.moveTo(scr.x, scr.y - 6); ctx.lineTo(scr.x + 5, scr.y);
+    ctx.lineTo(scr.x, scr.y + 6); ctx.lineTo(scr.x - 5, scr.y); ctx.closePath();
+    ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.arc(scr.x, scr.y, 4, 0, Math.PI * 2); ctx.stroke();
+  }
+  // draw the hole's projected ellipse as a guide ring when hovering a hole
+  if ((type === 'hole_center' || type === 'hole_rim') && snap && snap.hole && snap.mesh) {
+    drawHoleRing(ctx, snap.hole, snap.mesh, color);
+  }
+}
+
+function drawHoleRing(ctx, hole, mesh, color) {
+  const rect = { width: document.getElementById('measure-canvas').width,
+                 height: document.getElementById('measure-canvas').height };
+  const worldCentre = hole.centerLocal.clone(); mesh.localToWorld(worldCentre);
+  const worldU = hole.u.clone().applyQuaternion(mesh.quaternion).multiplyScalar(hole.radius * mesh.scale.x);
+  const worldV = hole.v.clone().applyQuaternion(mesh.quaternion).multiplyScalar(hole.radius * mesh.scale.x);
+  const steps = 48;
+  ctx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const a = (i / steps) * Math.PI * 2;
+    const pt = worldCentre.clone().addScaledVector(worldU, Math.cos(a)).addScaledVector(worldV, Math.sin(a));
+    const s = projectToScreen(pt, rect);
+    i === 0 ? ctx.moveTo(s.x, s.y) : ctx.lineTo(s.x, s.y);
+  }
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+}
+
+function drawDistLabel(ctx, x, y, dist, live, isDiameter) {
+  const prefix = isDiameter ? 'Ø ' : '';
+  const text = prefix + dist.toFixed(2) + ' mm';
+  ctx.font = '600 12px Inter, system-ui, sans-serif';
+  const w = ctx.measureText(text).width + 16;
+  const h = 22;
+  ctx.fillStyle = isDiameter
+    ? 'rgba(255,107,107,.92)'
+    : (live ? 'rgba(79,142,247,.9)' : 'rgba(24,28,39,.92)');
+  ctx.strokeStyle = '#2a2f42';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x - w / 2, y - h - 6, w, h, 4);
+  else ctx.rect(x - w / 2, y - h - 6, w, h);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, x, y - h / 2 - 6);
+}
+
+function drawMeasureOverlay() {
+  const canvas = document.getElementById('measure-canvas');
+  if (!canvas || !camera) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!measureMode && measurements.length === 0 && measurePoints.length === 0) return;
+
+  const rect = { width: canvas.width, height: canvas.height };
+  const proj = v3 => projectToScreen(v3, rect);
+
+  // live hover preview (including hole ring)
+  if (measureMode && hoverSnap) {
+    drawMarker(ctx, proj(hoverSnap.point), hoverSnap.type, hoverSnap);
+  }
+
+  // pending first point + rubber-band
+  if (measurePoints.length >= 1) {
+    const p0 = measurePoints[0];
+    drawMarker(ctx, proj(p0.point), p0.type, p0);
+    if (hoverSnap) {
+      // check if hover is on same hole as p0 — show diameter preview
+      const sameHole = p0.hole && hoverSnap.hole && p0.hole === hoverSnap.hole;
+      const liveIsDiam = sameHole;
+      const liveDist = liveIsDiam ? p0.hole.radius * 2 : p0.point.distanceTo(hoverSnap.point);
+      if (liveIsDiam) {
+        // draw diameter line through centre
+        drawHoleRing(ctx, p0.hole, p0.mesh, SNAP_COLORS.hole_center);
+        const sc = proj(p0.hole.centerLocal.clone().applyMatrix4 ? (() => {
+          const w = p0.hole.centerLocal.clone(); p0.mesh.localToWorld(w); return w;
+        })() : p0.hole.centerLocal);
+        drawDistLabel(ctx, sc.x, sc.y - 18, liveDist, true, true);
+      } else {
+        const pa = proj(p0.point), pb = proj(hoverSnap.point);
+        ctx.setLineDash([5, 4]);
+        ctx.strokeStyle = '#9aa3c0'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+        ctx.setLineDash([]);
+        drawDistLabel(ctx, (pa.x + pb.x) / 2, (pa.y + pb.y) / 2, liveDist, true, false);
+      }
+    }
+  }
+
+  // completed measurements
+  for (const m of measurements) {
+    if (m.isDiameter && m.a.hole) {
+      // draw the ring and a diameter label at the hole centre
+      drawHoleRing(ctx, m.a.hole, m.a.mesh, SNAP_COLORS.hole_center);
+      const wc = m.a.hole.centerLocal.clone(); m.a.mesh.localToWorld(wc);
+      const sc = proj(wc);
+      drawMarker(ctx, sc, 'hole_center', m.a);
+      drawDistLabel(ctx, sc.x, sc.y - 18, m.dist, false, true);
+    } else {
+      const pa = proj(m.a.point), pb = proj(m.b.point);
+      ctx.strokeStyle = '#4f8ef7'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+      drawMarker(ctx, pa, m.a.type, m.a);
+      drawMarker(ctx, pb, m.b.type, m.b);
+      drawDistLabel(ctx, (pa.x + pb.x) / 2, (pa.y + pb.y) / 2, m.dist, false, false);
+    }
+  }
+}
+
+// ── Measurement panel list ───────────────────────────────────
+function renderMeasureList() {
+  const panel = document.getElementById('measure-panel');
+  const list = document.getElementById('measure-list');
+  list.innerHTML = '';
+  if (measurements.length === 0) {
+    panel.classList.remove('open');
+    return;
+  }
+  panel.classList.add('open');
+  measurements.forEach((m, i) => {
+    const row = document.createElement('div');
+    row.className = 'measure-item';
+    const label = document.createElement('span');
+    label.textContent = `#${i + 1}  ${m.isDiameter ? 'Ø ' : ''}${m.dist.toFixed(2)} mm`;
+    const del = document.createElement('button');
+    del.className = 'm-del';
+    del.textContent = '✕';
+    del.title = 'Remove this measurement';
+    del.addEventListener('click', () => { measurements.splice(i, 1); renderMeasureList(); });
+    row.append(label, del);
+    list.appendChild(row);
+  });
+}
+
+function setMeasureMode(on) {
+  measureMode = on;
+  measurePoints = [];
+  hoverSnap = null;
+  document.getElementById('measure-toggle-btn').classList.toggle('active', on);
+  document.getElementById('canvas').classList.toggle('measuring', on);
+}
+
+document.getElementById('measure-toggle-btn').addEventListener('click', () => {
+  setMeasureMode(!measureMode);
+});
+document.getElementById('measure-clear-btn').addEventListener('click', () => {
+  measurements = [];
+  renderMeasureList();
+});
+
+// ── Exploded view ──────────────────────────────────────────────
+// Moves every part outward along the line from the overall assembly
+// centre through that part's own centre, scaled by the slider —
+// the same "distance from centre" explode used in Autodesk Viewer.
+const EXPLODE_MAX_FRACTION = 0.9; // at slider=100%, offset ≈ 0.9x the model's bounding diagonal
+
+function computeExplodeData() {
+  if (!modelGroup || parts.length === 0) { explodeScale = 1; return; }
+  const overallBox = new THREE.Box3().setFromObject(modelGroup);
+  const overallCenter = overallBox.getCenter(new THREE.Vector3());
+  explodeScale = overallBox.getSize(new THREE.Vector3()).length() || 1;
+  parts.forEach(p => {
+    const box = new THREE.Box3().setFromObject(p.mesh);
+    const center = box.getCenter(new THREE.Vector3());
+    const dir = center.clone().sub(overallCenter);
+    if (dir.lengthSq() < 1e-8) dir.set(0, 1, 0); // part sits at the assembly centre
+    dir.normalize();
+    p.explodeDir = dir;
+    p.basePosition = p.mesh.position.clone();
+  });
+}
+
+function applyExplode(factor) {
+  explodeFactor = factor;
+  parts.forEach(p => {
+    if (!p.explodeDir) return;
+    p.mesh.position.copy(p.basePosition).addScaledVector(p.explodeDir, factor * explodeScale * EXPLODE_MAX_FRACTION);
+  });
+  document.getElementById('explode-value').textContent = `${Math.round(factor * 100)}%`;
+}
+
+function resetExplode() {
+  const slider = document.getElementById('explode-slider');
+  slider.value = 0;
+  applyExplode(0);
+}
+
+function setExplodeMode(on) {
+  document.getElementById('explode-toggle-btn').classList.toggle('active', on);
+  document.getElementById('explode-panel').classList.toggle('open', on);
+}
+
+document.getElementById('explode-toggle-btn').addEventListener('click', () => {
+  const isOpen = document.getElementById('explode-panel').classList.contains('open');
+  setExplodeMode(!isOpen);
+});
+document.getElementById('explode-slider').addEventListener('input', e => {
+  applyExplode(parseFloat(e.target.value) / 100);
+});
+
+window.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (measurePoints.length) { measurePoints = []; }
+  else if (measureMode) { setMeasureMode(false); }
+});
+
+// click vs. drag detection so orbiting still works while measuring
+(function setupMeasureInput() {
+  const canvasEl = document.getElementById('canvas');
+  let downX = 0, downY = 0, moved = false;
+
+  canvasEl.addEventListener('pointerdown', e => {
+    downX = e.clientX; downY = e.clientY; moved = false;
+  });
+  canvasEl.addEventListener('pointermove', e => {
+    if (Math.abs(e.clientX - downX) > 3 || Math.abs(e.clientY - downY) > 3) moved = true;
+    if (measureMode) hoverSnap = pickSnap(e);
+  });
+  canvasEl.addEventListener('pointerleave', () => { hoverSnap = null; });
+  canvasEl.addEventListener('pointerup', e => {
+    if (measureMode && e.button === 0 && !e.ctrlKey && !moved) handleMeasureClick(e);
+  });
+})();
+
+// ── Zoom slider ──────────────────────────────────────────────
+(function setupZoomSlider() {
+  const slider = document.getElementById('zoom-slider');
+  const inBtn  = document.getElementById('zoom-in-btn');
+  const outBtn = document.getElementById('zoom-out-btn');
+  let syncing = false;
+
+  // Convert log-scale slider → radius and back so small distances feel smooth
+  function sliderToRadius(v) {
+    const t = 1 - (v - 1) / 999;          // 0=closest, 1=furthest
+    return Math.exp(t * Math.log(5000) + (1 - t) * Math.log(0.5));
+  }
+  function radiusToSlider(r) {
+    const t = (Math.log(r) - Math.log(0.5)) / (Math.log(5000) - Math.log(0.5));
+    return Math.round((1 - t) * 999 + 1);
+  }
+
+  function syncSliderFromOrbit() {
+    if (!orbitState) return;
+    syncing = true;
+    slider.value = radiusToSlider(orbitState.spherical.radius);
+    syncing = false;
+  }
+
+  slider.addEventListener('input', () => {
+    if (!orbitState || syncing) return;
+    setOrbitRadius(sliderToRadius(parseFloat(slider.value)));
+  });
+
+  function zoomStep(factor) {
+    setOrbitRadius(Math.max(0.5, Math.min(5000, orbitState.spherical.radius * factor)));
+    syncSliderFromOrbit();
+  }
+  inBtn.addEventListener('click',  () => zoomStep(0.8));
+  outBtn.addEventListener('click', () => zoomStep(1.25));
+
+  // keep slider in sync when the user scrolls or model is fitted
+  const _origTick = window._orbitTickHook;
+  window._orbitTickHook = () => { syncSliderFromOrbit(); if (_origTick) _origTick(); };
+})();
+
+// ── View cube ─────────────────────────────────────────────────
+// A miniature 3D cube that mirrors the model's current orientation
+// and lets you click any face, edge or corner to jump to that standard
+// view — matching the SolidWorks / Autodesk Fusion style. Each face is
+// a single clean square; clicking near a corner or edge of that square
+// selects the corresponding cube corner/edge view (no floating markers).
+(function setupViewCube() {
+  const vc = document.getElementById('view-cube-canvas');
+  if (!vc) return;
+  const ctx = vc.getContext('2d');
+  const S = 100; // canvas size
+
+  // Cube face definitions: name, outward normal in model space,
+  // target spherical {theta, phi} for that canonical view.
+  // theta/phi follow the same convention as the real camera:
+  //   camera.x = r*sin(phi)*sin(theta), camera.z = r*sin(phi)*cos(theta)
+  const PI = Math.PI;
+  const FACES = [
+    { name: 'FRONT',  n: [ 0,  0,  1], theta: 0,        phi: PI/2     },
+    { name: 'BACK',   n: [ 0,  0, -1], theta: PI,        phi: PI/2     },
+    { name: 'RIGHT',  n: [ 1,  0,  0], theta:  PI/2,     phi: PI/2     },
+    { name: 'LEFT',   n: [-1,  0,  0], theta: -PI/2,     phi: PI/2     },
+    { name: 'TOP',    n: [ 0,  1,  0], theta: 0,         phi: 0.01     },
+    { name: 'BOTTOM', n: [ 0, -1,  0], theta: 0,         phi: PI-0.01  },
+  ];
+
+  // Given any direction vector, derive the matching spherical target —
+  // used for the on-the-fly corner/edge regions of each face.
+  function dirToTarget(n) {
+    const len = Math.hypot(n[0], n[1], n[2]) || 1;
+    const theta = Math.atan2(n[0], n[2]);
+    const phi   = Math.acos(Math.max(-1, Math.min(1, n[1] / len)));
+    return { theta, phi };
+  }
+
+  // Project a 3D point through the cube's view rotation to 2D canvas coords.
+  // We read theta/phi from orbitState to mirror the camera orientation.
+  // This rotation must be the inverse of the real camera's azimuth/elevation
+  // (the camera orbits the model, so the model — and this mini cube —
+  // appears to rotate the opposite way around a fixed viewer).
+  function project(x, y, z) {
+    if (!orbitState) return { x: S/2, y: S/2, vis: true };
+    const th = orbitState.spherical.theta;
+    const ph = orbitState.spherical.phi;
+    // rotate around Y by -theta (inverse of camera azimuth)
+    const x1 =  x * Math.cos(th) - z * Math.sin(th);
+    const y1 =  y;
+    const z1 =  x * Math.sin(th) + z * Math.cos(th);
+    // rotate around X by -(phi − π/2) (inverse of camera elevation)
+    const angle = ph - PI / 2;
+    const x2 =  x1;
+    const y2 =  y1 * Math.cos(angle) + z1 * Math.sin(angle);
+    const z2 = -y1 * Math.sin(angle) + z1 * Math.cos(angle);
+    // simple orthographic into canvas space
+    const scale = S * 0.28;
+    return { x: S/2 + x2 * scale, y: S/2 - y2 * scale, z: z2, vis: z2 > -1.5 };
+  }
+
+  function faceCenter(face) {
+    const [nx, ny, nz] = face.n;
+    return project(nx * 0.98, ny * 0.98, nz * 0.98);
+  }
+
+  // Returns true if the face's outward normal is pointing somewhat toward us
+  function faceVisible(face) {
+    const [nx, ny, nz] = face.n;
+    const c = project(nx, ny, nz);
+    return c.z > -0.1;
+  }
+
+  function cross3(a, b)      { return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+  function scale3(a, s)      { return [a[0]*s, a[1]*s, a[2]*s]; }
+  function add3(a, b)        { return [a[0]+b[0], a[1]+b[1], a[2]+b[2]]; }
+  function normalise3(a)     { const l = Math.hypot(...a)||1; a[0]/=l; a[1]/=l; a[2]/=l; }
+
+  const FACE_R = 0.95;
+
+  // Two perpendicular in-plane axes for a face (always ± a standard basis
+  // vector for axis-aligned cube faces, which keeps corner/edge math exact).
+  function faceBasis(face) {
+    const [, ny] = face.n;
+    const up0 = (Math.abs(ny) < 0.9) ? [0,1,0] : [1,0,0];
+    const ax = cross3(face.n, up0); normalise3(ax);
+    const ay = cross3(face.n, ax);  normalise3(ay);
+    return { ax, ay };
+  }
+
+  function facePoint3D(face, basis, u, v) {
+    return add3(scale3(face.n, FACE_R), add3(scale3(basis.ax, FACE_R * u), scale3(basis.ay, FACE_R * v)));
+  }
+
+  // Build a face polygon (4 verts) for a cube face
+  function facePoly(face) {
+    const basis = faceBasis(face);
+    const verts = [
+      facePoint3D(face, basis,  1,  1),
+      facePoint3D(face, basis, -1,  1),
+      facePoint3D(face, basis, -1, -1),
+      facePoint3D(face, basis,  1, -1),
+    ];
+    return verts.map(v => project(v[0], v[1], v[2]));
+  }
+
+  // Invert the (affine) face→screen mapping to recover local (u,v) in
+  // [-1,1] for a given screen point, so we can tell whether the cursor
+  // is over the face's center, an edge strip, or a corner square.
+  function faceLocalUV(face, basis, mx, my) {
+    const P00 = project(...facePoint3D(face, basis, 0, 0));
+    const Pu  = project(...facePoint3D(face, basis, 1, 0));
+    const Pv  = project(...facePoint3D(face, basis, 0, 1));
+    const Ax = Pu.x - P00.x, Ay = Pu.y - P00.y;
+    const Bx = Pv.x - P00.x, By = Pv.y - P00.y;
+    const det = Ax * By - Bx * Ay;
+    if (Math.abs(det) < 1e-6) return null;
+    const dx = mx - P00.x, dy = my - P00.y;
+    const u = (dx * By - Bx * dy) / det;
+    const v = (Ax * dy - dx * Ay) / det;
+    return { u, v };
+  }
+
+  // Threshold (in local [-1,1] units) beyond which we're in the
+  // edge/corner band rather than the flat face center.
+  const REGION_T = 0.55;
+
+  // Classify a local (u,v) into a face/edge/corner hit, returning the
+  // navigation target and the small region polygon (for hover highlight).
+  function classifyRegion(face, basis, u, v) {
+    if (u < -1 || u > 1 || v < -1 || v > 1) return null;
+    const farU = Math.abs(u) > REGION_T;
+    const farV = Math.abs(v) > REGION_T;
+    if (!farU && !farV) {
+      return { type: 'face', target: face, poly: [[-REGION_T,-REGION_T],[REGION_T,-REGION_T],[REGION_T,REGION_T],[-REGION_T,REGION_T]] };
+    }
+    const su = Math.sign(u) || 1, sv = Math.sign(v) || 1;
+    if (farU && farV) {
+      const n = add3(face.n, add3(scale3(basis.ax, su), scale3(basis.ay, sv)));
+      const poly = [[su*REGION_T,sv*REGION_T],[su,sv*REGION_T],[su,sv],[su*REGION_T,sv]];
+      return { type: 'corner', target: dirToTarget(n), poly };
+    }
+    if (farU) {
+      const n = add3(face.n, scale3(basis.ax, su));
+      const poly = [[su*REGION_T,-REGION_T],[su,-REGION_T],[su,REGION_T],[su*REGION_T,REGION_T]];
+      return { type: 'edge', target: dirToTarget(n), poly };
+    }
+    const n = add3(face.n, scale3(basis.ay, sv));
+    const poly = [[-REGION_T,sv*REGION_T],[REGION_T,sv*REGION_T],[REGION_T,sv],[-REGION_T,sv]];
+    return { type: 'edge', target: dirToTarget(n), poly };
+  }
+
+  function regionScreenPoly(face, basis, poly) {
+    return poly.map(([u, v]) => project(...facePoint3D(face, basis, u, v)));
+  }
+
+  let hover = null; // { face, type, target, poly }
+
+  function visibleFacesSorted() {
+    return FACES.filter(faceVisible).sort((a, b) => {
+      const [ax,ay,az]=a.n, [bx,by,bz]=b.n;
+      return project(bx,by,bz).z - project(ax,ay,az).z;
+    });
+  }
+
+  function draw() {
+    const isLight = document.body.classList.contains('light');
+    const bg       = isLight ? 'rgba(240,242,248,.92)' : 'rgba(20,24,36,.92)';
+    const faceHov  = isLight ? 'rgba(180,205,255,.95)' : 'rgba(60,100,200,.55)';
+    const faceFront= isLight ? 'rgba(220,230,250,.95)' : 'rgba(35,45,65,.9)';
+    const edgeCol  = isLight ? '#9aa8c0'               : '#3a4160';
+    const textCol  = isLight ? '#2a3a5c'               : '#c8d0e8';
+    const accentC  = '#4f8ef7';
+
+    ctx.clearRect(0, 0, S, S);
+
+    // Outer rounded background
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(0, 0, S, S, 12);
+    else ctx.rect(0, 0, S, S);
+    ctx.fill();
+    ctx.restore();
+
+    const visibleFaces = visibleFacesSorted();
+
+    for (const face of visibleFaces) {
+      const poly = facePoly(face);
+      ctx.beginPath();
+      poly.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+      ctx.closePath();
+      const isFaceHov = hover && hover.face === face && hover.type === 'face';
+      ctx.fillStyle = isFaceHov ? faceHov : faceFront;
+      ctx.fill();
+      ctx.strokeStyle = edgeCol;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // face label
+      const fc = faceCenter(face);
+      ctx.fillStyle = isFaceHov ? accentC : textCol;
+      ctx.font = `${isFaceHov ? 700 : 600} 9px Inter, system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(face.name, fc.x, fc.y);
+    }
+
+    // Highlight the hovered edge/corner region (only one at a time)
+    if (hover && hover.type !== 'face') {
+      const screenPoly = regionScreenPoly(hover.face, hover.basis, hover.poly);
+      ctx.beginPath();
+      screenPoly.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+      ctx.closePath();
+      ctx.fillStyle = faceHov;
+      ctx.fill();
+      ctx.strokeStyle = accentC;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // thin compass ring at the bottom edge
+    ctx.beginPath();
+    ctx.arc(S/2, S - 10, 6, 0, PI*2);
+    ctx.strokeStyle = edgeCol;
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    ctx.fillStyle = textCol;
+    ctx.font = '7px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('N', S/2, S - 10);
+  }
+
+  // Animate the cube every frame in sync with the main renderer
+  window._viewCubeDraw = draw;
+
+  // Hit-testing: find which face/edge/corner region the cursor is over
+  function hitTest(ex, ey) {
+    const rect = vc.getBoundingClientRect();
+    const mx = (ex - rect.left) * (S / rect.width);
+    const my = (ey - rect.top)  * (S / rect.height);
+
+    // front-to-back so the nearest face under the cursor wins
+    for (const face of [...visibleFacesSorted()].reverse()) {
+      const poly = facePoly(face);
+      // point-in-polygon
+      let inside = false;
+      for (let i=0, j=poly.length-1; i<poly.length; j=i++) {
+        const xi=poly[i].x,yi=poly[i].y,xj=poly[j].x,yj=poly[j].y;
+        if (((yi>my)!==(yj>my)) && (mx<(xj-xi)*(my-yi)/(yj-yi)+xi)) inside=!inside;
+      }
+      if (!inside) continue;
+      const basis = faceBasis(face);
+      const uv = faceLocalUV(face, basis, mx, my);
+      if (!uv) continue;
+      const region = classifyRegion(face, basis, uv.u, uv.v);
+      if (!region) continue;
+      return { face, basis, type: region.type, target: region.target, poly: region.poly };
+    }
+    return null;
+  }
+
+  vc.addEventListener('mousemove', e => {
+    hover = hitTest(e.clientX, e.clientY);
+    vc.style.cursor = hover ? 'pointer' : 'default';
+  });
+  vc.addEventListener('mouseleave', () => { hover = null; });
+
+  vc.addEventListener('click', e => {
+    const hit = hitTest(e.clientX, e.clientY);
+    if (!hit || !orbitState) return;
+    const target = hit.target;
+    // Animate smoothly to target spherical coords
+    const fromTh = orbitState.spherical.theta;
+    const fromPh = orbitState.spherical.phi;
+    let toTh = target.theta, toPh = target.phi;
+    // Always rotate the short way around
+    while (toTh - fromTh >  PI) toTh -= PI*2;
+    while (toTh - fromTh < -PI) toTh += PI*2;
+    const dur = 350, start = performance.now();
+    function ease(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+    function step(now) {
+      const t = Math.min(1, (now - start) / dur);
+      const et = ease(t);
+      setOrbitAngles(fromTh + (toTh - fromTh) * et, fromPh + (toPh - fromPh) * et);
+      if (t < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+
+  // Hook into the main animate loop
+  window._viewCubeActive = true;
+})();
 
 // ── Load occt-import-js ──────────────────────────────────────
 function loadOcctScript() {
@@ -672,12 +1954,12 @@ function loadOcctScript() {
     script.src = OCCT_CDN;
     script.onload = () => {
       setLoadingMsg('Starting geometry kernel…', 'Loading WebAssembly module');
-      // occt-import-js exposes OcctImportJs global
-      if (typeof OcctImportJs === 'undefined') {
+      // occt-import-js exposes a lowercase `occtimportjs` factory global
+      if (typeof occtimportjs === 'undefined') {
         reject(new Error('occt-import-js failed to load'));
         return;
       }
-      OcctImportJs().then(instance => {
+      occtimportjs().then(instance => {
         occt = instance;
         resolve(occt);
       }).catch(reject);
@@ -688,6 +1970,130 @@ function loadOcctScript() {
 }
 
 // ── Parse STEP + build Three.js meshes ──────────────────────
+// ── Hole detection ────────────────────────────────────────────
+// occt-import-js only gives us a triangulated mesh, not the original
+// BREP curves, so "holes" are inferred geometrically: a drilled hole
+// leaves a free (single-triangle-owned) boundary loop of edges around
+// its rim. We walk those boundary loops, and for any loop that is
+// closed, planar, and roughly equidistant from its centroid (i.e. it
+// looks like a circle, not an arbitrary cutout or the part's outer
+// silhouette), we fit a circle to it and record its centre/radius/normal
+// in the mesh's *local* space.
+function detectHoles(geometry) {
+  try {
+    const pos = geometry.attributes.position;
+    const idxAttr = geometry.index;
+    const triCount = idxAttr ? idxAttr.count / 3 : pos.count / 3;
+    const triVert = idxAttr
+      ? (t, c) => idxAttr.array[t * 3 + c]
+      : (t, c) => t * 3 + c;
+
+    // merge coincident vertices (tessellation duplicates verts at seams)
+    const vertMap = new Map();
+    const uniquePts = [];
+    const remap = new Int32Array(pos.count);
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      const k = Math.round(x * 1e4) + '_' + Math.round(y * 1e4) + '_' + Math.round(z * 1e4);
+      let id = vertMap.get(k);
+      if (id === undefined) {
+        id = uniquePts.length;
+        uniquePts.push(new THREE.Vector3(x, y, z));
+        vertMap.set(k, id);
+      }
+      remap[i] = id;
+    }
+
+    // count edge usage; an edge used by only one triangle is a boundary edge
+    const edgeKey = (a, b) => (a < b ? a + '_' + b : b + '_' + a);
+    const edgeCount = new Map();
+    for (let t = 0; t < triCount; t++) {
+      const a = remap[triVert(t, 0)], b = remap[triVert(t, 1)], c = remap[triVert(t, 2)];
+      for (const [x, y] of [[a, b], [b, c], [c, a]]) {
+        const k = edgeKey(x, y);
+        edgeCount.set(k, (edgeCount.get(k) || 0) + 1);
+      }
+    }
+    const boundaryAdj = new Map();
+    for (let t = 0; t < triCount; t++) {
+      const a = remap[triVert(t, 0)], b = remap[triVert(t, 1)], c = remap[triVert(t, 2)];
+      for (const [x, y] of [[a, b], [b, c], [c, a]]) {
+        if (edgeCount.get(edgeKey(x, y)) === 1) {
+          if (!boundaryAdj.has(x)) boundaryAdj.set(x, []);
+          if (!boundaryAdj.has(y)) boundaryAdj.set(y, []);
+          boundaryAdj.get(x).push(y);
+          boundaryAdj.get(y).push(x);
+        }
+      }
+    }
+
+    // walk boundary edges into closed loops
+    const visited = new Set();
+    const loops = [];
+    for (const start of boundaryAdj.keys()) {
+      if (visited.has(start)) continue;
+      const loop = [start];
+      visited.add(start);
+      let prev = -1, cur = start, closed = false;
+      for (let guard = 0; guard < 20000; guard++) {
+        const neighbors = boundaryAdj.get(cur) || [];
+        const next = neighbors.find(n => n !== prev);
+        if (next === undefined) break;
+        if (next === start) { closed = true; break; }
+        if (visited.has(next)) break;
+        loop.push(next);
+        visited.add(next);
+        prev = cur; cur = next;
+      }
+      if (closed && loop.length >= 8) loops.push(loop.map(id => uniquePts[id]));
+    }
+
+    // fit a circle to each loop, keep only the ones that are actually circular
+    const holes = [];
+    for (const loopPts of loops) {
+      const centroid = new THREE.Vector3();
+      for (const p of loopPts) centroid.add(p);
+      centroid.multiplyScalar(1 / loopPts.length);
+
+      // Newell's method for a robust best-fit plane normal
+      const normal = new THREE.Vector3();
+      for (let i = 0; i < loopPts.length; i++) {
+        const p1 = loopPts[i], p2 = loopPts[(i + 1) % loopPts.length];
+        normal.x += (p1.y - p2.y) * (p1.z + p2.z);
+        normal.y += (p1.z - p2.z) * (p1.x + p2.x);
+        normal.z += (p1.x - p2.x) * (p1.y + p2.y);
+      }
+      if (normal.lengthSq() < 1e-12) continue;
+      normal.normalize();
+
+      let u = Math.abs(normal.dot(new THREE.Vector3(1, 0, 0))) > 0.9
+        ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+      u = u.clone().sub(normal.clone().multiplyScalar(normal.dot(u))).normalize();
+      const v = new THREE.Vector3().crossVectors(normal, u).normalize();
+
+      let sumR = 0;
+      const radii = [];
+      for (const p of loopPts) {
+        const d = p.clone().sub(centroid);
+        const r = Math.hypot(d.dot(u), d.dot(v));
+        radii.push(r);
+        sumR += r;
+      }
+      const meanR = sumR / radii.length;
+      if (meanR < 0.05) continue; // ignore noise-scale loops
+      const variance = radii.reduce((s, r) => s + (r - meanR) ** 2, 0) / radii.length;
+      const stdDev = Math.sqrt(variance);
+      if (stdDev / meanR > 0.12) continue; // not circular enough — skip (cutout, outer edge, etc.)
+
+      holes.push({ id: 'h' + holes.length + '_' + Math.round(meanR * 1000), centerLocal: centroid, u, v, radius: meanR });
+    }
+    return holes;
+  } catch (e) {
+    return [];
+  }
+}
+
+
 async function loadStepFile(file) {
   showLoading(true);
   setLoadingMsg('Reading file…', file.name);
@@ -702,11 +2108,16 @@ async function loadStepFile(file) {
     const buffer = await file.arrayBuffer();
     const uint8 = new Uint8Array(buffer);
 
-    // 3. call occt
-    const fileBuffer = occt._malloc(uint8.length);
-    occt.HEAPU8.set(uint8, fileBuffer);
-    const result = occt.ReadStepFile(fileBuffer, uint8.length, null);
-    occt._free(fileBuffer);
+    // 3. call occt — explicit (finer than default-auto) tessellation so
+    // curved surfaces (fillets, cylinders, bores) render smoothly instead
+    // of visibly faceted.
+    const tessellationParams = {
+      linearUnit: 'millimeter',
+      linearDeflectionType: 'bounding_box_ratio',
+      linearDeflection: 0.0012,
+      angularDeflection: 0.15,
+    };
+    const result = occt.ReadStepFile(uint8, tessellationParams);
 
     if (!result || !result.success) {
       throw new Error('STEP parsing failed — file may be corrupt or unsupported');
@@ -719,7 +2130,13 @@ async function loadStepFile(file) {
       scene.remove(modelGroup);
     }
     parts.length = 0;
-    selectedIndex = -1;
+    treeRoot = null;
+    selectedNode = null;
+    closePropsPanel();
+    measurements = [];
+    measurePoints = [];
+    hoverSnap = null;
+    renderMeasureList();
 
     modelGroup = new THREE.Group();
     scene.add(modelGroup);
@@ -764,21 +2181,29 @@ async function loadStepFile(file) {
       const mesh = new THREE.Mesh(geometry, material);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
+      mesh.userData.holes = detectHoles(geometry);
       modelGroup.add(mesh);
 
       const name = meshData.name || `Part ${mi + 1}`;
       parts.push({ name, mesh, color, visible: true, index: mi });
     }
 
-    // 5. update UI
+    // 5. build assembly tree from STEP hierarchy
+    treeRoot = result.root ? buildTree(result.root) : {
+      id: 'n0', name: file.name, meshIndices: parts.map((_, i) => i), children: [], expanded: true
+    };
+
+    // 6. update UI
     document.getElementById('filename-label').textContent = file.name;
     document.getElementById('drop-overlay').classList.add('hidden');
     document.getElementById('statusbar').style.display = 'block';
     document.getElementById('part-count').textContent = `${parts.length}`;
-    rebuildPartList();
+    renderTree();
     updateCornerInfo();
+    computeExplodeData();
+    resetExplode();
 
-    // 6. fit view
+    // 7. fit view
     fitToModel();
 
   } catch (err) {
@@ -789,93 +2214,260 @@ async function loadStepFile(file) {
   }
 }
 
-// ── Part list UI ─────────────────────────────────────────────
-function rebuildPartList() {
-  const list = document.getElementById('part-list');
-  const empty = document.getElementById('empty-state');
-  empty.style.display = 'none';
+// ── Tree building ──────────────────────────────────────────────
+// occt-import-js groups one or more meshes onto a single hierarchy node.
+// When a node owns more than one mesh (e.g. "BOTTOM-HDPE_1048 (2)"), we
+// expose each mesh as its own selectable leaf so individual parts/bodies
+// can be expanded into and inspected, matching how other STEP viewers
+// (e.g. Autodesk) present multi-body components.
+function buildTree(occtNode) {
+  const node = {
+    id: 'n' + (nodeUid++),
+    name: occtNode.name || 'Unnamed',
+    meshIndices: [],
+    children: [],
+    expanded: true,
+  };
 
-  // remove old items
-  Array.from(list.querySelectorAll('.part-item')).forEach(n => n.remove());
+  const rawMeshIdxs = occtNode.meshes ? occtNode.meshes.slice() : [];
+  const rawChildren = occtNode.children || [];
 
-  for (let i = 0; i < parts.length; i++) {
-    const p = parts[i];
-    const item = document.createElement('div');
-    item.className = 'part-item' + (p.visible ? '' : ' hidden-part') + (i === selectedIndex ? ' selected' : '');
-    item.dataset.index = i;
-
-    const dot = document.createElement('div');
-    dot.className = 'part-color-dot';
-    dot.style.background = '#' + p.color.toString(16).padStart(6, '0');
-
-    const label = document.createElement('div');
-    label.className = 'part-name';
-    label.textContent = p.name;
-    label.title = p.name;
-
-    const tog = document.createElement('div');
-    tog.className = 'vis-toggle' + (p.visible ? '' : ' off');
-    tog.title = p.visible ? 'Hide' : 'Show';
-    tog.innerHTML = p.visible
-      ? `<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><ellipse cx="5" cy="4" rx="4" ry="2.5" stroke="white" stroke-width="1.2"/><circle cx="5" cy="4" r="1.3" fill="white"/></svg>`
-      : `<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 1l8 6M2 5.5C3.2 6.5 4 7 5 7c2 0 3.5-1.5 4-3M1.5 3C2.2 1.7 3.4 1 5 1" stroke="#6b7394" stroke-width="1.2" stroke-linecap="round"/></svg>`;
-
-    tog.addEventListener('click', e => {
-      e.stopPropagation();
-      togglePartVisibility(i);
-    });
-
-    item.addEventListener('click', () => selectPart(i));
-
-    item.append(dot, label, tog);
-    list.appendChild(item);
+  if (rawMeshIdxs.length === 1 && rawChildren.length === 0) {
+    // simplest case: single body, no sub-assembly — keep mesh on this node
+    node.meshIndices = rawMeshIdxs;
+  } else {
+    // multi-body and/or has sub-assembly children — give each mesh its
+    // own expandable leaf node so it can be selected individually
+    for (const idx of rawMeshIdxs) {
+      node.children.push({
+        id: 'n' + (nodeUid++),
+        name: (parts[idx] && parts[idx].name) || `Body ${idx + 1}`,
+        meshIndices: [idx],
+        children: [],
+        expanded: true,
+      });
+    }
+    for (const child of rawChildren) {
+      node.children.push(buildTree(child));
+    }
   }
 
-  if (parts.length === 0) {
+  return node;
+}
+
+function getAllMeshIndices(node) {
+  let out = node.meshIndices.slice();
+  for (const c of node.children) out = out.concat(getAllMeshIndices(c));
+  return out;
+}
+
+function nodeVisible(node) {
+  const idxs = getAllMeshIndices(node);
+  if (idxs.length === 0) return true;
+  return idxs.some(i => parts[i] && parts[i].visible);
+}
+
+const EYE_ON_SVG  = `<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><ellipse cx="5" cy="4" rx="4" ry="2.5" stroke="white" stroke-width="1.2"/><circle cx="5" cy="4" r="1.3" fill="white"/></svg>`;
+const EYE_OFF_SVG = `<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 1l8 6M2 5.5C3.2 6.5 4 7 5 7c2 0 3.5-1.5 4-3M1.5 3C2.2 1.7 3.4 1 5 1" stroke="#6b7394" stroke-width="1.2" stroke-linecap="round"/></svg>`;
+
+// ── Tree UI ───────────────────────────────────────────────────
+function renderTree() {
+  const list = document.getElementById('part-list');
+  const empty = document.getElementById('empty-state');
+
+  Array.from(list.querySelectorAll('.part-item')).forEach(n => n.remove());
+
+  if (!treeRoot || (treeRoot.children.length === 0 && treeRoot.meshIndices.length === 0)) {
     empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+  renderNode(treeRoot, list, 0);
+}
+
+function renderNode(node, container, depth) {
+  const row = document.createElement('div');
+  const visible = nodeVisible(node);
+  row.className = 'part-item' + (visible ? '' : ' hidden-part') + (selectedNode === node ? ' selected' : '');
+  row.style.paddingLeft = (14 + depth * 20) + 'px';
+
+  const hasChildren = node.children.length > 0;
+  const toggle = document.createElement('span');
+  toggle.className = 'tree-toggle';
+  if (hasChildren) {
+    toggle.textContent = node.expanded ? '▾' : '▸';
+    toggle.addEventListener('click', e => {
+      e.stopPropagation();
+      node.expanded = !node.expanded;
+      renderTree();
+    });
+  } else {
+    toggle.style.visibility = 'hidden';
+  }
+
+  const dot = document.createElement('div');
+  dot.className = 'part-color-dot';
+  const soloMeshIdx = (node.meshIndices.length === 1 && node.children.length === 0) ? node.meshIndices[0] : undefined;
+  if (soloMeshIdx !== undefined && parts[soloMeshIdx]) {
+    dot.style.background = '#' + parts[soloMeshIdx].color.toString(16).padStart(6, '0');
+  } else {
+    dot.style.background = 'transparent';
+    dot.style.borderColor = 'var(--border)';
+  }
+
+  const label = document.createElement('div');
+  label.className = 'part-name';
+  label.textContent = node.name;
+  label.title = node.name;
+
+  const tog = document.createElement('div');
+  tog.className = 'vis-toggle' + (visible ? '' : ' off');
+  tog.title = visible ? 'Hide' : 'Show';
+  tog.innerHTML = visible ? EYE_ON_SVG : EYE_OFF_SVG;
+  tog.addEventListener('click', e => {
+    e.stopPropagation();
+    toggleNodeVisibility(node);
+  });
+
+  row.append(toggle, dot, label, tog);
+  row.addEventListener('click', () => selectNode(node));
+  container.appendChild(row);
+
+  if (hasChildren && node.expanded) {
+    for (const child of node.children) renderNode(child, container, depth + 1);
   }
 }
 
-function togglePartVisibility(i) {
-  const p = parts[i];
-  p.visible = !p.visible;
-  p.mesh.visible = p.visible;
-  rebuildPartList();
+function toggleNodeVisibility(node) {
+  const idxs = getAllMeshIndices(node);
+  const target = !nodeVisible(node);
+  for (const i of idxs) {
+    if (parts[i]) {
+      parts[i].visible = target;
+      parts[i].mesh.visible = target;
+    }
+  }
+  renderTree();
   updateCornerInfo();
 }
 
-function selectPart(i) {
-  // deselect previous
-  if (selectedIndex >= 0 && parts[selectedIndex]) {
-    parts[selectedIndex].mesh.material.emissive = new THREE.Color(0x000000);
-    parts[selectedIndex].mesh.material.emissiveIntensity = 0;
+function clearSelectionHighlight() {
+  if (!selectedNode) return;
+  for (const i of getAllMeshIndices(selectedNode)) {
+    if (parts[i]) {
+      parts[i].mesh.material.emissive = new THREE.Color(0x000000);
+      parts[i].mesh.material.emissiveIntensity = 0;
+    }
   }
-  selectedIndex = (selectedIndex === i) ? -1 : i;
-  if (selectedIndex >= 0) {
-    parts[selectedIndex].mesh.material.emissive = new THREE.Color(0x4f8ef7);
-    parts[selectedIndex].mesh.material.emissiveIntensity = 0.18;
-  }
-  rebuildPartList();
 }
+
+function selectNode(node) {
+  clearSelectionHighlight();
+  selectedNode = (selectedNode === node) ? null : node;
+  if (selectedNode) {
+    for (const i of getAllMeshIndices(selectedNode)) {
+      if (parts[i]) {
+        parts[i].mesh.material.emissive = new THREE.Color(0x4f8ef7);
+        parts[i].mesh.material.emissiveIntensity = 0.18;
+      }
+    }
+    showNodeProperties(selectedNode);
+  } else {
+    closePropsPanel();
+  }
+  renderTree();
+}
+
+// ── Properties panel ──────────────────────────────────────────
+function openPropsPanel() {
+  document.getElementById('props-panel').classList.add('open');
+}
+function closePropsPanel() {
+  document.getElementById('props-panel').classList.remove('open');
+  document.getElementById('props-title').textContent = 'Properties';
+  document.getElementById('props-body').innerHTML = '<div id="props-empty">Select a component to view its properties</div>';
+}
+
+function addPropsSection(body, title, rows) {
+  const t = document.createElement('div');
+  t.className = 'props-section-title';
+  t.textContent = title;
+  body.appendChild(t);
+  for (const [k, v] of rows) {
+    const row = document.createElement('div');
+    row.className = 'props-row';
+    const kEl = document.createElement('span');
+    kEl.className = 'k';
+    kEl.textContent = k;
+    const vEl = document.createElement('span');
+    vEl.className = 'v';
+    vEl.textContent = v;
+    row.append(kEl, vEl);
+    body.appendChild(row);
+  }
+}
+
+function showNodeProperties(node) {
+  document.getElementById('props-title').textContent = node.name;
+  const body = document.getElementById('props-body');
+  body.innerHTML = '';
+
+  const meshIdxs = getAllMeshIndices(node);
+  const isLeaf = node.children.length === 0 && meshIdxs.length === 1;
+
+  addPropsSection(body, 'General', [
+    ['Name', node.name],
+    ['Type', isLeaf ? 'Part' : 'Assembly'],
+  ]);
+
+  if (isLeaf && parts[meshIdxs[0]]) {
+    const p = parts[meshIdxs[0]];
+    const r = (p.color >> 16) & 255, g = (p.color >> 8) & 255, b = p.color & 255;
+    const geo = p.mesh.geometry;
+    const triCount = geo.index ? geo.index.count / 3 : geo.attributes.position.count / 3;
+
+    addPropsSection(body, 'Appearance', [
+      ['Color (RGB)', `${r}, ${g}, ${b}`],
+    ]);
+    addPropsSection(body, 'Geometry', [
+      ['Vertices', geo.attributes.position.count.toLocaleString()],
+      ['Triangles', Math.round(triCount).toLocaleString()],
+      ['Visibility', p.visible ? 'Shown' : 'Hidden'],
+    ]);
+  } else {
+    addPropsSection(body, 'Contents', [
+      ['Child nodes', String(node.children.length)],
+      ['Parts', String(meshIdxs.length)],
+    ]);
+  }
+
+  openPropsPanel();
+}
+
+document.getElementById('props-toggle-btn').addEventListener('click', () => {
+  document.getElementById('props-panel').classList.toggle('open');
+});
+document.getElementById('props-close').addEventListener('click', closePropsPanel);
 
 // ── Sidebar controls ─────────────────────────────────────────
 document.getElementById('show-all-btn').addEventListener('click', () => {
   for (const p of parts) { p.visible = true; p.mesh.visible = true; }
-  rebuildPartList(); updateCornerInfo();
+  renderTree(); updateCornerInfo();
 });
 
 document.getElementById('hide-all-btn').addEventListener('click', () => {
   for (const p of parts) { p.visible = false; p.mesh.visible = false; }
-  rebuildPartList(); updateCornerInfo();
+  renderTree(); updateCornerInfo();
 });
 
 document.getElementById('isolate-btn').addEventListener('click', () => {
-  if (selectedIndex < 0) return;
+  if (!selectedNode) return;
+  const keep = new Set(getAllMeshIndices(selectedNode));
   for (let i = 0; i < parts.length; i++) {
-    parts[i].visible = (i === selectedIndex);
+    parts[i].visible = keep.has(i);
     parts[i].mesh.visible = parts[i].visible;
   }
-  rebuildPartList(); updateCornerInfo();
+  renderTree(); updateCornerInfo();
 });
 
 // ── View preset buttons ───────────────────────────────────────
@@ -936,6 +2528,10 @@ function waitForThreeAndInit() {
   if (typeof THREE !== 'undefined') {
     initThree();
     resizeRenderer();
+    const isLight = document.body.classList.contains('light');
+    const c = isLight ? THEME_COLORS.light : THEME_COLORS.dark;
+    renderer.setClearColor(c.clear, 1);
+    rebuildGrid();
   } else {
     setTimeout(waitForThreeAndInit, 50);
   }

@@ -1,6 +1,9 @@
 
 <style>
-  .calc-wrap { font-family: sans-serif; padding: 1rem 0; max-width: 580px; width: 100%; margin: 0 auto; }
+  .calc-wrap { font-family: sans-serif; padding: 1rem 0; max-width: 620px; width: 100%; margin: 0 auto; }
+  .page-header { text-align: center; margin-bottom: 1rem; }
+  .page-title { font-size: 20px; font-weight: 600; color: #111; margin: 0 0 4px; }
+  .page-author { font-size: 13px; color: #888; margin: 0; }
   .section-title { font-size: 13px; font-weight: 500; color: #666; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 10px; }
   .card { background: #fff; border: 1px solid #d0d0d0; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
   .options-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 0.5rem; }
@@ -30,14 +33,22 @@
   .real-table th:first-child { text-align: left; }
   .real-table td { padding: 8px; border: 1px solid #bbb; color: #111; text-align: center; background: #fff; }
   .real-table td:first-child { font-weight: 600; text-align: left; background: #f0f0f0; color: #333; }
-  .col-max { color: #c0392b !important; font-weight: 500; }
   .col-min { color: #27ae60 !important; font-weight: 500; }
+  .col-max { color: #c0392b !important; font-weight: 500; }
   .err { font-size: 13px; color: #c0392b; padding: 8px 0; display: none; }
   .schematic { display: flex; justify-content: center; margin-bottom: 1rem; }
-  .preferred-note { font-size: 12px; color: #666; padding: 6px 0 10px; display: none; }
-  .preferred-val { font-weight: 500; color: #111; }
-  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+  .top20-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+  .top20-table th { text-align: center; font-weight: 600; font-size: 12px; padding: 7px 6px; border: 2px solid #999; background: #e8e8e8; color: #333; }
+  .top20-table td { padding: 7px 6px; border: 1px solid #bbb; color: #111; text-align: center; background: #fff; }
+  .top20-table tr:first-child td { background: #fffbe6; font-weight: 600; }
+  .rank-badge { display: inline-block; width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 700; line-height: 20px; text-align: center; background: #e0e0e0; color: #555; }
+  .top20-table tr:first-child td .rank-badge { background: #f0c040; color: #7a5800; }
+  .err-pct-good { color: #27ae60; font-weight: 500; }
+  .err-pct-ok   { color: #e67e22; font-weight: 500; }
+  .err-pct-bad  { color: #c0392b; font-weight: 500; }
   @media (prefers-color-scheme: dark) {
+    .page-title { color: #eee; }
+    .page-author { color: #777; }
     .calc-wrap { color: #eee; }
     .card { background: #1e1e1e; border-color: #444; }
     .section-title, .opt-group label, .field label, .unit { color: #aaa; }
@@ -49,19 +60,23 @@
     .metric-card { background: #2a2a2a; }
     .metric-label { color: #888; }
     .metric-value { color: #eee; }
-    .real-table th { background: #2e2e2e; color: #ccc; border-color: #555; }
-    .real-table td { background: #1e1e1e; color: #ddd; border-color: #444; }
+    .real-table th, .top20-table th { background: #2e2e2e; color: #ccc; border-color: #555; }
+    .real-table td, .top20-table td { background: #1e1e1e; color: #ddd; border-color: #444; }
     .real-table td:first-child { background: #2a2a2a; color: #ccc; }
+    .top20-table tr:first-child td { background: #2e2800; }
     .col-max { color: #e74c3c !important; }
     .col-min { color: #2ecc71 !important; }
-    .preferred-note { color: #aaa; }
-    .preferred-val { color: #eee; }
+    .rank-badge { background: #444; color: #ccc; }
+    .top20-table tr:first-child td .rank-badge { background: #b8860b; color: #ffe; }
   }
 </style>
 
 <div class="calc-wrap">
-  <h1>Duncan's Resistor Divider Calculator<h1>
-  <h2 class="sr-only">Potential Divider Calculator</h2>
+
+  <div class="page-header">
+    <p class="page-title">Potential Divider Calculator</p>
+    <p class="page-author">Duncan Johnson</p>
+  </div>
 
   <div class="schematic">
     <svg viewBox="0 0 180 260" width="140" height="210" xmlns="http://www.w3.org/2000/svg">
@@ -97,7 +112,6 @@
     <div class="options-row">
       <div class="opt-group"><label>Preferred value series</label><select id="eseries"><option value="E6">E6</option><option value="E12">E12</option><option value="E24" selected>E24</option><option value="E48">E48</option><option value="E96">E96</option></select></div>
       <div class="opt-group"><label>Resistor tolerance</label><select id="rtol"><option value="5">5%</option><option value="1" selected>1%</option><option value="0.5">0.5%</option><option value="0.1">0.1%</option></select></div>
-      <div class="opt-group"><label>Fixed voltage</label><select id="fixedV"><option value="vin">Vin</option><option value="vout">Vout</option></select></div>
       <div class="opt-group"><label>Voltage tolerance</label><select id="vtol"><option value="5">5%</option><option value="1" selected>1%</option><option value="0.5">0.5%</option><option value="0">0%</option></select></div>
     </div>
   </div>
@@ -111,6 +125,7 @@
       <div class="field"><label>R2</label><div class="input-row"><input type="number" id="r2" placeholder="e.g. 5" step="any" min="0"><span class="unit">kΩ</span></div></div>
     </div>
     <div class="btn-row">
+      <button class="btn-primary" onclick="calcVin()">Calculate Vin</button>
       <button class="btn-primary" onclick="calcVout()">Calculate Vout</button>
       <button class="btn-primary" onclick="calcR1()">Calculate R1</button>
       <button class="btn-primary" onclick="calcR2()">Calculate R2</button>
@@ -122,15 +137,22 @@
 
   <div class="results-section card" id="results">
     <p class="section-title">Results</p>
-    <div class="preferred-note" id="preferred-note"></div>
-    <p style="font-size:13px;font-weight:500;color:#666;margin:0 0 8px;">Ideal values</p>
     <div class="ideal-grid" id="ideal-grid"></div>
     <p style="font-size:13px;font-weight:500;color:#666;margin:1rem 0 8px;">Real values (with tolerances)</p>
     <table class="real-table">
-      <thead><tr><th></th><th class="col-max">Maximum</th><th>Typical</th><th class="col-min">Minimum</th></tr></thead>
+      <thead><tr><th></th><th class="col-min">Minimum</th><th>Typical</th><th class="col-max">Maximum</th></tr></thead>
       <tbody id="real-tbody"></tbody>
     </table>
   </div>
+
+  <div class="results-section card" id="top20-section">
+    <p class="section-title">Top 20 preferred value pairs</p>
+    <table class="top20-table">
+      <thead><tr><th>#</th><th>R1</th><th>R2</th><th>Vout (actual)</th><th>Error</th></tr></thead>
+      <tbody id="top20-tbody"></tbody>
+    </table>
+  </div>
+
 </div>
 
 <script>
@@ -151,6 +173,7 @@ function showErr(msg){
   const e=document.getElementById('err');
   e.textContent=msg; e.style.display=msg?'block':'none';
   document.getElementById('results').classList.remove('visible');
+  document.getElementById('top20-section').classList.remove('visible');
 }
 function fmtR(kΩ){
   if(kΩ>=1000) return (kΩ/1000).toPrecision(4)+' MΩ';
@@ -161,59 +184,92 @@ function fmtV(v){ return v.toPrecision(5)+' V'; }
 function getVal(id){ const v=parseFloat(document.getElementById(id).value); return isNaN(v)?null:v; }
 function setVal(id,val){ if(val!==null&&!isNaN(val)) document.getElementById(id).value=parseFloat(val.toPrecision(6)); }
 function voutFromR(R1,R2,Vin){ return Vin*R2/(R1+R2); }
+function vinFromR(Vout,R1,R2){ return Vout*(R1+R2)/R2; }
 
-function showResults(vin,vout,r1,r2,prefNote){
+function isDecadeMultiple(r1a,r2a,r1b,r2b){
+  const ratio1=r1b/r1a, ratio2=r2b/r2a;
+  if(Math.abs(ratio1-ratio2)>1e-9) return false;
+  if(Math.abs(ratio1-1)<1e-9) return false;
+  const n=Math.log10(ratio1);
+  return Math.abs(n-Math.round(n))<1e-9 && Math.round(n)!==0;
+}
+
+function buildTop20(vin,vout){
+  const vals=getESeries();
+  const candidates=[];
+  for(const r2 of vals) for(const r1 of vals){
+    const actualVout=voutFromR(r1,r2,vin);
+    const signedErr=(actualVout-vout)/vout*100;
+    const absErr=Math.abs(signedErr);
+    candidates.push({r1,r2,actualVout,signedErr,absErr});
+  }
+  candidates.sort((a,b)=>a.absErr-b.absErr);
+  const accepted=[];
+  for(const c of candidates){
+    const isDupe=accepted.some(a=>isDecadeMultiple(a.r1,a.r2,c.r1,c.r2));
+    if(!isDupe) accepted.push(c);
+    if(accepted.length>=20) break;
+  }
+  return accepted;
+}
+
+function errClass(absErr){
+  if(absErr<0.5) return 'err-pct-good';
+  if(absErr<2)   return 'err-pct-ok';
+  return 'err-pct-bad';
+}
+function fmtErr(signedErr){
+  const sign=signedErr>=0?'+':'−';
+  return sign+Math.abs(signedErr).toFixed(4)+'%';
+}
+
+function showResults(vin,vout,r1,r2,showTop20){
   const rtol=parseFloat(document.getElementById('rtol').value)/100;
   const vtol=parseFloat(document.getElementById('vtol').value)/100;
-
-  const pn=document.getElementById('preferred-note');
-  if(prefNote){pn.innerHTML=prefNote;pn.style.display='block';}else pn.style.display='none';
 
   const ig=document.getElementById('ideal-grid');
   ig.innerHTML='';
   [{label:'Vin',value:fmtV(vin)},{label:'Vout',value:fmtV(vout)},{label:'R1',value:fmtR(r1)},{label:'R2',value:fmtR(r2)}]
-    .forEach(m=>{ ig.innerHTML+=`<div class="metric-card"><p class="metric-label">${m.label}</p><p class="metric-value">${m.value}</p></div>`; });
+    .forEach(m=>{ig.innerHTML+=`<div class="metric-card"><p class="metric-label">${m.label}</p><p class="metric-value">${m.value}</p></div>`;});
 
-  // Vin always has voltage tolerance applied regardless of which is "fixed"
-  // "Fixed" only controls which voltage the user supplies as a known reference
-  const vin_max = vin * (1 + vtol);
-  const vin_typ = vin;
-  const vin_min = vin * (1 - vtol);
-
-  // Resistor extremes
-  const r1_hi = r1 * (1 + rtol);  // higher R1 → lower Vout
-  const r1_lo = r1 * (1 - rtol);  // lower  R1 → higher Vout
-  const r2_hi = r2 * (1 + rtol);  // higher R2 → higher Vout
-  const r2_lo = r2 * (1 - rtol);  // lower  R2 → lower Vout
-
-  // Max Vout: highest Vin + lowest R1 + highest R2
-  // Min Vout: lowest  Vin + highest R1 + lowest R2
-  const vout_max = voutFromR(r1_lo, r2_hi, vin_max);
-  const vout_typ = voutFromR(r1,    r2,    vin_typ);
-  const vout_min = voutFromR(r1_hi, r2_lo, vin_min);
+  const vin_min=vin*(1-vtol),vin_typ=vin,vin_max=vin*(1+vtol);
+  const r1_hi=r1*(1+rtol),r1_lo=r1*(1-rtol);
+  const r2_hi=r2*(1+rtol),r2_lo=r2*(1-rtol);
+  const vout_min=voutFromR(r1_hi,r2_lo,vin_min);
+  const vout_typ=voutFromR(r1,r2,vin_typ);
+  const vout_max=voutFromR(r1_lo,r2_hi,vin_max);
 
   const rows=[
-    ['Vin',  fmtV(vin_max),  fmtV(vin_typ),  fmtV(vin_min)],
-    ['Vout', fmtV(vout_max), fmtV(vout_typ), fmtV(vout_min)],
-    ['R1',   fmtR(r1_lo),    fmtR(r1),       fmtR(r1_hi)],
-    ['R2',   fmtR(r2_hi),    fmtR(r2),       fmtR(r2_lo)],
+    ['Vin', fmtV(vin_min), fmtV(vin_typ), fmtV(vin_max)],
+    ['Vout',fmtV(vout_min),fmtV(vout_typ),fmtV(vout_max)],
+    ['R1',  fmtR(r1_hi),   fmtR(r1),      fmtR(r1_lo)],
+    ['R2',  fmtR(r2_lo),   fmtR(r2),      fmtR(r2_hi)],
   ];
-
   document.getElementById('real-tbody').innerHTML=rows.map(r=>
-    `<tr><td>${r[0]}</td><td class="col-max">${r[1]}</td><td>${r[2]}</td><td class="col-min">${r[3]}</td></tr>`
+    `<tr><td>${r[0]}</td><td class="col-min">${r[1]}</td><td>${r[2]}</td><td class="col-max">${r[3]}</td></tr>`
   ).join('');
 
   document.getElementById('results').classList.add('visible');
   document.getElementById('err').style.display='none';
+  document.getElementById('top20-section').classList[showTop20?'add':'remove']('visible');
 }
 
+function calcVin(){
+  const vout=getVal('vout'),r1=getVal('r1'),r2=getVal('r2');
+  if(vout===null||r1===null||r2===null) return showErr('Enter Vout, R1 and R2.');
+  if(r2===0) return showErr('R2 cannot be zero.');
+  if(vout<=0) return showErr('Vout must be greater than 0.');
+  const vin=vinFromR(vout,r1,r2);
+  setVal('vin',vin);
+  showResults(vin,vout,r1,r2,false);
+}
 function calcVout(){
   const vin=getVal('vin'),r1=getVal('r1'),r2=getVal('r2');
   if(vin===null||r1===null||r2===null) return showErr('Enter Vin, R1 and R2.');
   if(r1+r2===0) return showErr('R1 + R2 cannot be zero.');
   const vout=voutFromR(r1,r2,vin);
   setVal('vout',vout);
-  showResults(vin,vout,r1,r2,null);
+  showResults(vin,vout,r1,r2,false);
 }
 function calcR1(){
   const vin=getVal('vin'),vout=getVal('vout'),r2=getVal('r2');
@@ -222,7 +278,7 @@ function calcR1(){
   if(vout<=0) return showErr('Vout must be greater than 0.');
   const r1=r2*(vin-vout)/vout;
   setVal('r1',r1);
-  showResults(vin,vout,r1,r2,null);
+  showResults(vin,vout,r1,r2,false);
 }
 function calcR2(){
   const vin=getVal('vin'),vout=getVal('vout'),r1=getVal('r1');
@@ -231,31 +287,25 @@ function calcR2(){
   if(vout<=0) return showErr('Vout must be greater than 0.');
   const r2=r1*vout/(vin-vout);
   setVal('r2',r2);
-  showResults(vin,vout,r1,r2,null);
+  showResults(vin,vout,r1,r2,false);
 }
 function calcR1R2(){
   const vin=getVal('vin'),vout=getVal('vout');
   if(vin===null||vout===null) return showErr('Enter Vin and Vout.');
   if(vout>=vin) return showErr('Vout must be less than Vin.');
   if(vout<=0) return showErr('Vout must be greater than 0.');
-  const targetRatio=vout/vin;
-  const vals=getESeries();
-  let bestR1=null,bestR2=null,bestErr=Infinity;
-  for(const r2 of vals) for(const r1 of vals){
-    const err=Math.abs(r2/(r1+r2)-targetRatio);
-    if(err<bestErr){bestErr=err;bestR1=r1;bestR2=r2;}
-  }
-  const actualVout=vin*bestR2/(bestR1+bestR2);
-  const errPct=((actualVout-vout)/vout*100).toFixed(3);
-  setVal('r1',bestR1); setVal('r2',bestR2);
-  const series=document.getElementById('eseries').value;
-  const note=`Best ${series} pair: <span class="preferred-val">R1 = ${fmtR(bestR1)}, R2 = ${fmtR(bestR2)}</span> → actual Vout = <span class="preferred-val">${actualVout.toPrecision(5)} V</span> (error: ${errPct}%)`;
-  showResults(vin,actualVout,bestR1,bestR2,note);
+  const top20=buildTop20(vin,vout);
+  const best=top20[0];
+  setVal('r1',best.r1); setVal('r2',best.r2);
+  document.getElementById('top20-tbody').innerHTML=top20.map((c,i)=>
+    `<tr><td><span class="rank-badge">${i+1}</span></td><td>${fmtR(c.r1)}</td><td>${fmtR(c.r2)}</td><td>${fmtV(c.actualVout)}</td><td class="${errClass(c.absErr)}">${fmtErr(c.signedErr)}</td></tr>`
+  ).join('');
+  showResults(vin,best.actualVout,best.r1,best.r2,true);
 }
 function clearAll(){
   ['vin','vout','r1','r2'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('results').classList.remove('visible');
+  document.getElementById('top20-section').classList.remove('visible');
   document.getElementById('err').style.display='none';
-  document.getElementById('preferred-note').style.display='none';
 }
 </script>
