@@ -404,6 +404,51 @@
   }
   .beat-divider { width: 1px; height: 40px; background: var(--border); flex-shrink: 0; }
 
+  .beat-panel-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    box-shadow: 0 1px 4px rgba(160,120,40,0.06);
+    overflow: hidden;
+  }
+  .beat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+  }
+  .beat-row.cumulative {
+    border-top: 1px solid var(--border);
+    padding: 12px 20px;
+  }
+  .beat-row.cumulative .beat-item-label { opacity: 0.55; }
+  .beat-row.cumulative .beat-item-value {
+    font-size: 1.2rem;
+    color: var(--text-dim);
+  }
+  .beat-row.cumulative .beat-divider { height: 32px; }
+
+  .reset-beat-btn {
+    background: transparent;
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.15em;
+    padding: 8px 14px;
+    cursor: pointer;
+    text-transform: uppercase;
+    border-radius: 2px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    white-space: nowrap;
+  }
+  .reset-beat-btn:active { opacity: 0.6; }
+
   /* ── Audio section ── */
   .vu-section {
     background: var(--bg2);
@@ -820,25 +865,40 @@
   </div>
 
   <!-- Beat stats -->
-  <div class="beat-panel">
-    <div class="beat-item">
-      <div class="beat-item-label">BPM</div>
-      <div class="beat-item-value" id="bpm">--</div>
+  <div class="beat-panel-wrap">
+    <div class="beat-row">
+      <div class="beat-item">
+        <div class="beat-item-label">BPM</div>
+        <div class="beat-item-value" id="bpm">--</div>
+      </div>
+      <div class="beat-divider"></div>
+      <div class="beat-item">
+        <div class="beat-item-label">Period (ms)</div>
+        <div class="beat-item-value" id="period">---</div>
+      </div>
+      <div class="beat-divider"></div>
+      <div class="beat-item">
+        <div class="beat-item-label">Beat Error</div>
+        <div class="beat-item-value" id="beatErr">--</div>
+      </div>
+      <div class="beat-divider"></div>
+      <button class="reset-beat-btn" id="resetBeatBtn">↺ Reset</button>
     </div>
-    <div class="beat-divider"></div>
-    <div class="beat-item">
-      <div class="beat-item-label">Period (ms)</div>
-      <div class="beat-item-value" id="period">---</div>
-    </div>
-    <div class="beat-divider"></div>
-    <div class="beat-item">
-      <div class="beat-item-label">Beat Error</div>
-      <div class="beat-item-value" id="beatErr">--</div>
-    </div>
-    <div class="beat-divider"></div>
-    <div class="beat-item">
-      <div class="beat-item-label">Beats</div>
-      <div class="beat-item-value" id="beatCount">0</div>
+    <div class="beat-row cumulative">
+      <div class="beat-item">
+        <div class="beat-item-label">Avg BPM</div>
+        <div class="beat-item-value" id="bpmCum">--</div>
+      </div>
+      <div class="beat-divider"></div>
+      <div class="beat-item">
+        <div class="beat-item-label">Avg Period</div>
+        <div class="beat-item-value" id="periodCum">---</div>
+      </div>
+      <div class="beat-divider"></div>
+      <div class="beat-item">
+        <div class="beat-item-label">Avg Error</div>
+        <div class="beat-item-value" id="beatErrCum">--</div>
+      </div>
     </div>
   </div>
 
@@ -881,7 +941,7 @@
 
   <!-- Waveform -->
   <div class="wave-section">
-    <div class="section-title" style="margin-bottom:8px">Waveform</div>
+    <div class="section-title" style="margin-bottom:8px">Waveform <span style="opacity:0.5;font-weight:normal;text-transform:none;letter-spacing:0.05em;">(selected band only)</span></div>
     <canvas id="waveCanvas"></canvas>
   </div>
 
@@ -949,6 +1009,45 @@ var cooldownTimer = null;
 // Band filter state (fraction of Nyquist, 0–1)
 var bandLo = 0.0;   // 0 Hz
 var bandHi = 1.0;   // Nyquist (≈22kHz at 44.1kHz SR)
+var bandHighpass = null, bandLowpass = null, waveAnalyser = null;
+var heldWaveform = null;   // frozen time-domain snapshot, captured on each beat
+var wakeLock = null;
+
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', function() { wakeLock = null; });
+    }
+  } catch (e) {
+    // Wake lock not available or denied — silently ignore, mic still works
+    wakeLock = null;
+  }
+}
+
+function releaseWakeLock() {
+  if (wakeLock) {
+    try { wakeLock.release(); } catch(e) {}
+    wakeLock = null;
+  }
+}
+
+// Re-acquire the wake lock if the tab regains visibility while still listening
+// (the OS auto-releases it when the page is hidden/backgrounded)
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible' && isListening && !wakeLock) {
+    requestWakeLock();
+  }
+});
+
+function updateBandFilters() {
+  if (!bandHighpass || !bandLowpass || !audioCtx) return;
+  var nyquist = audioCtx.sampleRate / 2;
+  var loHz = Math.max(20, bandLo * nyquist);
+  var hiHz = Math.min(nyquist - 20, bandHi * nyquist);
+  bandHighpass.frequency.value = loHz;
+  bandLowpass.frequency.value  = hiHz;
+}
 
 // ── Threshold slider (logarithmic) ──
 // Slider 0–1000 → THRESHOLD 0.001–1.0 (log scale, fine at low end)
@@ -1007,6 +1106,8 @@ function updateBandOverlay() {
   var nyquist = audioCtx ? audioCtx.sampleRate / 2 : 22050;
   document.getElementById('bandLoHz').textContent = Math.round(bandLo * nyquist);
   document.getElementById('bandHiHz').textContent = Math.round(bandHi * nyquist);
+  updateBandFilters();
+  renderFft();
 }
 
 // Drag logic using Pointer Events (reliable on Android Chrome)
@@ -1053,6 +1154,18 @@ function getBandPeak() {
 var tickBuf = [], tockBuf = [];
 var BUF_SIZE = 6;
 var lastTickMs = null, lastTockMs = null;  // raw live values for the big display
+
+// Cumulative (whole-session) averages
+var cumPeriodSum = 0, cumPeriodN = 0;   // sum of (tick+tock) full cycles
+var cumErrSum = 0,    cumErrN = 0;      // sum of |tick-tock| errors
+
+document.getElementById('resetBeatBtn').addEventListener('click', function() {
+  cumPeriodSum = 0; cumPeriodN = 0;
+  cumErrSum = 0;    cumErrN = 0;
+  document.getElementById('bpmCum').textContent      = '--';
+  document.getElementById('periodCum').textContent   = '---';
+  document.getElementById('beatErrCum').textContent  = '--';
+});
 
 // ── Tick & Tock FFT accumulators ──
 var tickFftAccum = null, tockFftAccum = null;
@@ -1128,9 +1241,10 @@ function renderFft() {
 
   var bins     = hasT ? tickFftAccum.length : tockFftAccum.length;
   var hzPerBin = nyquist / bins;
-  var startBin    = Math.ceil(1000 / hzPerBin);          // first bin to display (≥1 kHz)
-  var endBin      = Math.min(bins, Math.ceil(8000 / hzPerBin) + 20);
-  var displayBins = endBin - startBin;
+  // Restrict to the user-selected band-pass range (set via the spectrum drag handles)
+  var startBin    = Math.max(0, Math.floor(bandLo * bins));
+  var endBin      = Math.min(bins, Math.ceil(bandHi * bins));
+  var displayBins = Math.max(1, endBin - startBin);
   var barW = cW / displayBins;
 
   // Build normalised averaged arrays (only the displayed slice)
@@ -1218,15 +1332,19 @@ function renderFft() {
   if (hasT && tickHz1 !== null) document.getElementById('fftTickPeak').textContent = fmtHz(tickHz1);
   if (hasK && tockHz1 !== null) document.getElementById('fftTockPeak').textContent = fmtHz(tockHz1);
 
-  // X-axis Hz labels (1 kHz and above only)
+  // X-axis Hz labels — evenly spaced across the selected band
   tfCtx.fillStyle = '#b0a888';
   tfCtx.font = Math.round(9 * dpr) + 'px Courier Prime, monospace';
   tfCtx.textAlign = 'center';
-  [1000, 2000, 3000, 4000, 6000, 8000].forEach(function(hz) {
+  var loHz = startBin * hzPerBin, hiHz = endBin * hzPerBin;
+  var numTicks = 5;
+  for (var t = 0; t <= numTicks; t++) {
+    var hz = loHz + (hiHz - loHz) * (t / numTicks);
     var sliceIdx = Math.round(hz / hzPerBin) - startBin;
-    if (sliceIdx < 0 || sliceIdx >= displayBins) return;
-    tfCtx.fillText((hz/1000) + 'k', (sliceIdx + 0.5) * barW, cH - 2);
-  });
+    if (sliceIdx < 0 || sliceIdx >= displayBins) continue;
+    var label = hz >= 1000 ? (hz/1000).toFixed(hz % 1000 === 0 ? 0 : 1) + 'k' : Math.round(hz);
+    tfCtx.fillText(label, (sliceIdx + 0.5) * barW, cH - 2);
+  }
 
   // Update counters and meta
   document.getElementById('fftAvgN').textContent = tickFftCount + ' / ' + tockFftCount;
@@ -1290,10 +1408,28 @@ function startMic() {
     var resume = audioCtx.state === 'suspended' ? audioCtx.resume() : Promise.resolve();
     resume.then(function() {
       var source = audioCtx.createMediaStreamSource(stream);
+
+      // Main analyser — unfiltered, used for FFT capture and beat detection
       analyser = audioCtx.createAnalyser();
       analyser.fftSize = 2048;
       analyser.smoothingTimeConstant = 0.1;
       source.connect(analyser);
+
+      // Band-pass filter chain (highpass + lowpass) feeding a second analyser,
+      // used only to draw the waveform limited to the selected frequency band.
+      bandHighpass = audioCtx.createBiquadFilter();
+      bandHighpass.type = 'highpass';
+      bandLowpass = audioCtx.createBiquadFilter();
+      bandLowpass.type = 'lowpass';
+      waveAnalyser = audioCtx.createAnalyser();
+      waveAnalyser.fftSize = 2048;
+      waveAnalyser.smoothingTimeConstant = 0.1;
+
+      source.connect(bandHighpass);
+      bandHighpass.connect(bandLowpass);
+      bandLowpass.connect(waveAnalyser);
+
+      updateBandFilters();
       updateBandOverlay();
 
       isListening = true;
@@ -1303,6 +1439,7 @@ function startMic() {
       document.getElementById('statusBadge').className = 'status-badge listening';
       setMsg('Listening · Place phone near the clock · Use sync if swing direction is wrong');
 
+      requestWakeLock();
       resetState();
       drawLoop();
     });
@@ -1317,7 +1454,10 @@ function stopMic() {
   if (animId) cancelAnimationFrame(animId);
   if (micStream) micStream.getTracks().forEach(function(t) { t.stop(); });
   if (audioCtx) { try { audioCtx.close(); } catch(e) {} }
+  releaseWakeLock();
   audioCtx = null; analyser = null; micStream = null; animId = null;
+  bandHighpass = null; bandLowpass = null; waveAnalyser = null;
+  heldWaveform = null;
   isListening = false;
   document.getElementById('toggleBtn').textContent = '▶ Start Listening';
   document.getElementById('toggleBtn').classList.remove('active');
@@ -1336,8 +1476,14 @@ function resetState() {
   tickBuf = []; tockBuf = [];
   lastTickMs = null; lastTockMs = null;
   COOLDOWN = false;
+  heldWaveform = null;
   tickFftAccum = null; tockFftAccum = null;
   tickFftCount = 0;    tockFftCount = 0;
+  cumPeriodSum = 0; cumPeriodN = 0;
+  cumErrSum = 0;    cumErrN = 0;
+  document.getElementById('bpmCum').textContent      = '--';
+  document.getElementById('periodCum').textContent   = '---';
+  document.getElementById('beatErrCum').textContent  = '--';
   document.getElementById('fftMeta').textContent     = 'Waiting for beats…';
   document.getElementById('fftTickPeak').textContent = '---';
   document.getElementById('fftTockPeak').textContent = '---';
@@ -1382,7 +1528,6 @@ function onBeat(now) {
   cooldownTimer = setTimeout(function() { COOLDOWN = false; }, MIN_BEAT_GAP);
 
   beatCount++;
-  document.getElementById('beatCount').textContent = beatCount;
 
   var dt = lastBeatTime ? (now - lastBeatTime) : null;
   var type = (!lastBeatType || lastBeatType === 'tock') ? 'tick' : 'tock';
@@ -1401,6 +1546,14 @@ function onBeat(now) {
   // Capture FFT snapshot on every beat
   captureFft(type);
 
+  // Freeze a waveform snapshot — this stays on screen until the next beat
+  var waveSource = waveAnalyser || analyser;
+  if (waveSource) {
+    var snap = new Float32Array(waveSource.fftSize);
+    waveSource.getFloatTimeDomainData(snap);
+    heldWaveform = { data: snap, type: type };
+  }
+
   if (dt !== null) {
     historyLog.unshift({
       n: beatCount, type: type, dt: Math.round(dt),
@@ -1408,6 +1561,17 @@ function onBeat(now) {
       tock: bufAvg(tockBuf) ? Math.round(bufAvg(tockBuf)) : null
     });
     if (historyLog.length > MAX_HISTORY) historyLog.pop();
+  }
+
+  // Cumulative session averages — once per completed tick+tock cycle
+  if (type === 'tock' && lastTickMs !== null && lastTockMs !== null) {
+    var cyclePeriod = lastTickMs + lastTockMs;
+    var cycleErr    = Math.abs(lastTickMs - lastTockMs);
+    cumPeriodSum += cyclePeriod; cumPeriodN++;
+    cumErrSum    += cycleErr;    cumErrN++;
+    document.getElementById('periodCum').textContent = Math.round(cumPeriodSum / cumPeriodN);
+    document.getElementById('bpmCum').textContent     = (60000 / (cumPeriodSum / cumPeriodN)).toFixed(1);
+    document.getElementById('beatErrCum').textContent = Math.round(cumErrSum / cumErrN) + 'ms';
   }
 
   updateUI();
@@ -1537,10 +1701,16 @@ function drawLoop() {
     fCtx.fillRect(x, fH - bH, Math.max(1, barW - 1), bH);
   }
 
-  // ── Waveform ──
+  // ── Waveform (band-pass filtered, held from last detected beat) ──
   var wW = waveCanvas.width, wH = waveCanvas.height;
-  var timeData = new Uint8Array(analyser.fftSize);
-  analyser.getByteTimeDomainData(timeData);
+  var waveSource = waveAnalyser || analyser;
+  var timeData;
+  if (heldWaveform) {
+    timeData = heldWaveform.data;
+  } else {
+    timeData = new Float32Array(waveSource.fftSize);
+    waveSource.getFloatTimeDomainData(timeData);
+  }
 
   wCtx.clearRect(0, 0, wW, wH);
   wCtx.strokeStyle = '#e8e0cc'; wCtx.lineWidth = 1;
@@ -1559,16 +1729,28 @@ function drawLoop() {
   wCtx.beginPath(); wCtx.moveTo(0, wH/2 + threshY); wCtx.lineTo(wW, wH/2 + threshY); wCtx.stroke();
   wCtx.setLineDash([]);
 
-  var wColor = bandPeak > THRESHOLD ? '#8a6820' : '#c8b880';
+  var wColor = heldWaveform
+    ? (heldWaveform.type === 'tick' ? '#7a5010' : '#3a6030')
+    : '#c8b880';
   wCtx.lineWidth = 1.5 * dpr;
   wCtx.strokeStyle = wColor;
-  wCtx.shadowBlur = bandPeak > THRESHOLD ? 6 * dpr : 0;
-  wCtx.shadowColor = '#a07828';
+  wCtx.shadowBlur = heldWaveform ? 6 * dpr : 0;
+  wCtx.shadowColor = wColor;
+
+  // Auto-scale: find peak absolute amplitude in this snapshot (range -1..1),
+  // then scale so that peak fills ~90% of the canvas half-height.
+  var peakDev = 0.0005; // avoid divide-by-zero / runaway gain on pure silence
+  for (var i = 0; i < timeData.length; i++) {
+    var dev = Math.abs(timeData[i]);
+    if (dev > peakDev) peakDev = dev;
+  }
+  var scale = (1 / peakDev) * 0.9;
+
   wCtx.beginPath();
   var sw = wW / timeData.length;
   for (var i = 0; i < timeData.length; i++) {
-    var v = timeData[i] / 128.0;
-    var y = (v * wH) / 2;
+    var v = timeData[i] * scale;
+    var y = wH / 2 - (v * wH) / 2;
     if (i === 0) wCtx.moveTo(0, y); else wCtx.lineTo(i * sw, y);
   }
   wCtx.stroke();
