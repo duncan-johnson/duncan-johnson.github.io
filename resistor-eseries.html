@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resistor E-Series Reference</title>
+<style>
+  :root{
+    --bg:#f4f5f7;
+    --panel:#ffffff;
+    --panel-2:#eef0f3;
+    --text:#1b1e24;
+    --text-dim:#6b7280;
+    --border:#dde1e6;
+    --accent:#2563eb;
+    --accent-2:#1d4ed8;
+    --card-shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08);
+    --resistor-body:#d8bd8e;
+    --resistor-body-dark:#c9a877;
+    --lead:#9a9a9a;
+  }
+  [data-theme="dark"]{
+    --bg:#14161a;
+    --panel:#1c1f26;
+    --panel-2:#22262e;
+    --text:#e8eaed;
+    --text-dim:#9aa1ac;
+    --border:#2c3038;
+    --accent:#5b8def;
+    --accent-2:#7ba2f5;
+    --card-shadow: 0 1px 2px rgba(0,0,0,.4), 0 1px 3px rgba(0,0,0,.4);
+    --resistor-body:#8a7350;
+    --resistor-body-dark:#6f5b3e;
+    --lead:#c9c9c9;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    min-height:100vh;
+    transition:background .2s ease,color .2s ease;
+  }
+  header{
+    position:sticky; top:0; z-index:20;
+    background:var(--panel);
+    border-bottom:1px solid var(--border);
+    padding:14px 20px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  .title-block h1{
+    margin:0; font-size:19px; font-weight:700; letter-spacing:-.01em;
+  }
+  .title-block p{
+    margin:2px 0 0; font-size:12.5px; color:var(--text-dim);
+  }
+  .theme-btn{
+    border:1px solid var(--border);
+    background:var(--panel-2);
+    color:var(--text);
+    padding:8px 12px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:13px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .theme-btn:hover{border-color:var(--accent);}
+
+  main{max-width:1200px; margin:0 auto; padding:20px;}
+
+  .controls{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px;
+    display:flex; flex-wrap:wrap; gap:20px; align-items:flex-end;
+    box-shadow:var(--card-shadow);
+    margin-bottom:18px;
+  }
+  .control-group{display:flex; flex-direction:column; gap:8px;}
+  .control-group label{font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--text-dim);}
+  .series-tabs{display:flex; gap:6px; flex-wrap:wrap;}
+  .series-tab{
+    border:1px solid var(--border);
+    background:var(--panel-2);
+    color:var(--text);
+    padding:8px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:13.5px;
+    font-weight:600;
+    min-width:64px;
+    text-align:center;
+  }
+  .series-tab .sub{display:block; font-size:10px; font-weight:500; color:var(--text-dim); margin-top:1px;}
+  .series-tab.active{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#fff;
+  }
+  .series-tab.active .sub{color:#dbe6ff;}
+
+  select{
+    border:1px solid var(--border);
+    background:var(--panel-2);
+    color:var(--text);
+    padding:8px 10px;
+    border-radius:8px;
+    font-size:13.5px;
+    min-width:170px;
+  }
+
+  .summary{
+    font-size:13px; color:var(--text-dim); margin-left:auto;
+    display:flex; align-items:center; gap:6px;
+  }
+  .summary b{color:var(--text);}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(168px,1fr));
+    gap:12px;
+    margin-bottom:26px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:12px 10px 10px;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    box-shadow:var(--card-shadow);
+    cursor:pointer;
+    position:relative;
+    transition:transform .1s ease, border-color .15s ease;
+  }
+  .card:hover{border-color:var(--accent); transform:translateY(-2px);}
+  .card svg{width:100%; height:auto; display:block;}
+  .card .value{font-size:16px; font-weight:700;}
+  .card .tol{font-size:11px; color:var(--text-dim);}
+  .copied-toast{
+    position:absolute; top:-10px; right:-6px;
+    background:#16a34a; color:#fff; font-size:10px; font-weight:700;
+    padding:3px 7px; border-radius:20px;
+    opacity:0; transform:translateY(4px); transition:all .15s ease;
+    pointer-events:none;
+  }
+  .copied-toast.show{opacity:1; transform:translateY(0);}
+
+  .legend{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px;
+    box-shadow:var(--card-shadow);
+    margin-bottom:24px;
+  }
+  .legend h2{margin:0 0 12px; font-size:14.5px;}
+  .legend-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(230px,1fr));
+    gap:18px;
+  }
+  .legend-col table{border-collapse:collapse; width:100%; font-size:12.5px;}
+  .legend-col td{padding:3px 6px; vertical-align:middle;}
+  .swatch{
+    display:inline-block; width:16px; height:16px; border-radius:3px;
+    border:1px solid rgba(0,0,0,.25); vertical-align:middle;
+  }
+  .legend-col h3{margin:0 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-dim);}
+
+  footer{
+    text-align:center; color:var(--text-dim); font-size:11.5px; padding:10px 0 24px;
+  }
+
+  @media (max-width:560px){
+    header{padding:12px 14px;}
+    main{padding:14px;}
+    .summary{margin-left:0; width:100%;}
+    .controls{gap:14px;}
+  }
+</style>
+</head>
+<body data-theme="light">
+
+<header>
+  <div class="title-block">
+    <h1>Resistor E-Series Reference</h1>
+    <p>Duncan Johnson · E6 · E12 · E24 · E48 · E96 preferred values, colour-band coded</p>
+  </div>
+  <button class="theme-btn" id="themeToggle">🌙 Dark</button>
+</header>
+
+<main>
+  <div class="controls">
+    <div class="control-group">
+      <label>Series</label>
+      <div class="series-tabs" id="seriesTabs"></div>
+    </div>
+    <div class="control-group">
+      <label>Decade / Multiplier</label>
+      <select id="decadeSelect"></select>
+    </div>
+    <div class="summary" id="summary"></div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="legend">
+    <h2>How to read the bands</h2>
+    <div class="legend-grid">
+      <div class="legend-col">
+        <h3>Digit colours</h3>
+        <table id="digitLegend"></table>
+      </div>
+      <div class="legend-col">
+        <h3>Multiplier colours</h3>
+        <table id="multLegend"></table>
+      </div>
+      <div class="legend-col">
+        <h3>Tolerance band (by series)</h3>
+        <table id="tolLegend"></table>
+      </div>
+    </div>
+  </div>
+
+  <footer>Click any resistor to copy its value. Values follow IEC 60063 preferred number series.</footer>
+</main>
+
+<script>
+/* ---------------- E-series base values (1.00–9.99 decade) ---------------- */
+const SERIES = {
+  E6:  { digits: 2, tolerance: '20%', tolColor: null,
+    values: [1.0,1.5,2.2,3.3,4.7,6.8] },
+  E12: { digits: 2, tolerance: '10%', tolColor: {name:'Silver', hex:'#C0C0C0'},
+    values: [1.0,1.2,1.5,1.8,2.2,2.7,3.3,3.9,4.7,5.6,6.8,8.2] },
+  E24: { digits: 2, tolerance: '5%', tolColor: {name:'Gold', hex:'#D4AF37'},
+    values: [1.0,1.1,1.2,1.3,1.5,1.6,1.8,2.0,2.2,2.4,2.7,3.0,3.3,3.6,3.9,4.3,4.7,5.1,5.6,6.2,6.8,7.5,8.2,9.1] },
+  E48: { digits: 3, tolerance: '1%', tolColor: {name:'Brown', hex:'#8B4513'},
+    values: [1.00,1.05,1.10,1.15,1.21,1.27,1.33,1.40,1.47,1.54,1.62,1.69,1.78,1.87,1.96,2.05,2.15,2.26,2.37,2.49,2.61,2.74,2.87,3.01,3.16,3.32,3.48,3.65,3.83,4.02,4.22,4.42,4.64,4.87,5.11,5.36,5.62,5.90,6.19,6.49,6.81,7.15,7.50,7.87,8.25,8.66,9.09,9.53] },
+  E96: { digits: 3, tolerance: '1%', tolColor: {name:'Brown', hex:'#8B4513'},
+    values: [1.00,1.02,1.05,1.07,1.10,1.13,1.15,1.18,1.21,1.24,1.27,1.30,1.33,1.37,1.40,1.43,1.47,1.50,1.54,1.58,1.62,1.65,1.69,1.74,1.78,1.82,1.87,1.91,1.96,2.00,2.05,2.10,2.15,2.21,2.26,2.32,2.37,2.43,2.49,2.55,2.61,2.67,2.74,2.80,2.87,2.94,3.01,3.09,3.16,3.24,3.32,3.40,3.48,3.57,3.65,3.74,3.83,3.92,4.02,4.12,4.22,4.32,4.42,4.53,4.64,4.75,4.87,4.99,5.11,5.23,5.36,5.49,5.62,5.76,5.90,6.04,6.19,6.34,6.49,6.65,6.81,6.98,7.15,7.32,7.50,7.68,7.87,8.06,8.25,8.45,8.66,8.87,9.09,9.31,9.53,9.76] }
+};
+
+const DIGIT_COLORS = {
+  0:{name:'Black', hex:'#1a1a1a', text:'#fff'},
+  1:{name:'Brown', hex:'#8B4513', text:'#fff'},
+  2:{name:'Red',   hex:'#E31E24', text:'#fff'},
+  3:{name:'Orange',hex:'#FF7F27', text:'#1a1a1a'},
+  4:{name:'Yellow',hex:'#FFDE17', text:'#1a1a1a'},
+  5:{name:'Green', hex:'#22B14C', text:'#fff'},
+  6:{name:'Blue',  hex:'#0072BC', text:'#fff'},
+  7:{name:'Violet',hex:'#92278F', text:'#fff'},
+  8:{name:'Grey',  hex:'#A0A0A0', text:'#1a1a1a'},
+  9:{name:'White', hex:'#FFFFFF', text:'#1a1a1a', border:true}
+};
+const MULT_SPECIAL = {
+  '-2':{name:'Silver', hex:'#C0C0C0'},
+  '-1':{name:'Gold',   hex:'#D4AF37'}
+};
+
+const DECADES = [
+  {label:'×1  (Ω, 1 – 9.9 Ω)',        exp:0},
+  {label:'×10  (Ω, 10 – 99 Ω)',       exp:1},
+  {label:'×100  (Ω, 100 – 990 Ω)',    exp:2},
+  {label:'×1k  (kΩ, 1k – 9.9k)',      exp:3},
+  {label:'×10k  (kΩ, 10k – 99k)',     exp:4},
+  {label:'×100k  (kΩ, 100k – 990k)',  exp:5},
+  {label:'×1M  (MΩ, 1M – 9.9M)',      exp:6}
+];
+
+let state = { series: 'E24', decade: 3 };
+
+/* ---------------- helpers ---------------- */
+function digitsOf(value, numDigits){
+  const n = Math.round(value * Math.pow(10, numDigits - 1));
+  const arr = [];
+  let rem = n;
+  for(let i = numDigits - 1; i >= 0; i--){
+    const p = Math.pow(10, i);
+    arr.push(Math.floor(rem / p));
+    rem = rem % p;
+  }
+  return arr;
+}
+
+function multiplierExp(decadeExp, numDigits){
+  return decadeExp - (numDigits - 1);
+}
+
+function multiplierColor(m){
+  if(m >= 0 && m <= 9) return DIGIT_COLORS[m];
+  return MULT_SPECIAL[String(m)] || {name:'?', hex:'#888'};
+}
+
+function formatOhms(value, decadeExp){
+  const raw = value * Math.pow(10, decadeExp);
+  if(raw >= 1e6) return (raw/1e6).toFixed(raw % 1e6 === 0 ? 0 : 2).replace(/\.00$/,'') + ' MΩ';
+  if(raw >= 1e3) return (raw/1e3).toFixed(raw % 1e3 === 0 ? 0 : 2).replace(/\.00$/,'') + ' kΩ';
+  return raw.toFixed(raw % 1 === 0 ? 0 : 1) + ' Ω';
+}
+
+/* ---------------- SVG resistor ---------------- */
+function resistorSVG(bandColors, digitsCount){
+  const W = 160, H = 70;
+  const bodyX = 22, bodyY = 18, bodyW = 116, bodyH = 34;
+  const totalBands = bandColors.length;
+  const bandW = 8;
+  const usableW = bodyW - 18;
+  const gap = (usableW - bandW * totalBands) / (totalBands - 1);
+  let bands = '';
+  bandColors.forEach((c, i) => {
+    const x = bodyX + 9 + i * (bandW + gap);
+    const stroke = c.hex.toUpperCase() === '#FFFFFF' ? 'stroke="#c9c9c9" stroke-width="1"' : '';
+    bands += `<rect x="${x.toFixed(1)}" y="${bodyY}" width="${bandW}" height="${bodyH}" fill="${c.hex}" ${stroke}/>`;
+  });
+  return `
+  <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    <line x1="0" y1="${bodyY+bodyH/2}" x2="${bodyX}" y2="${bodyY+bodyH/2}" stroke="var(--lead)" stroke-width="3"/>
+    <line x1="${bodyX+bodyW}" y1="${bodyY+bodyH/2}" x2="${W}" y2="${bodyY+bodyH/2}" stroke="var(--lead)" stroke-width="3"/>
+    <rect x="${bodyX}" y="${bodyY}" width="${bodyW}" height="${bodyH}" rx="10" fill="var(--resistor-body)" stroke="var(--resistor-body-dark)" stroke-width="1.5"/>
+    ${bands}
+  </svg>`;
+}
+
+/* ---------------- render ---------------- */
+function renderTabs(){
+  const tabs = document.getElementById('seriesTabs');
+  tabs.innerHTML = '';
+  Object.keys(SERIES).forEach(key => {
+    const s = SERIES[key];
+    const btn = document.createElement('div');
+    btn.className = 'series-tab' + (key === state.series ? ' active' : '');
+    btn.innerHTML = `${key}<span class="sub">${s.values.length} values</span>`;
+    btn.onclick = () => { state.series = key; renderAll(); };
+    tabs.appendChild(btn);
+  });
+}
+
+function renderDecadeSelect(){
+  const sel = document.getElementById('decadeSelect');
+  sel.innerHTML = '';
+  DECADES.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.exp;
+    opt.textContent = d.label;
+    if(d.exp === state.decade) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.onchange = () => { state.decade = parseInt(sel.value, 10); renderAll(); };
+}
+
+function renderGrid(){
+  const s = SERIES[state.series];
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  s.values.forEach(v => {
+    const digits = digitsOf(v, s.digits);
+    const m = multiplierExp(state.decade, s.digits);
+    const bandColors = digits.map(d => DIGIT_COLORS[d]);
+    bandColors.push(multiplierColor(m));
+    if(s.tolColor) bandColors.push(s.tolColor);
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    const label = formatOhms(v, state.decade);
+    card.innerHTML = `
+      ${resistorSVG(bandColors, s.digits)}
+      <div class="value">${label}</div>
+      <div class="tol">±${s.tolerance} tolerance</div>
+      <div class="copied-toast">Copied!</div>
+    `;
+    card.onclick = () => {
+      navigator.clipboard?.writeText(label.replace(' ', '')).catch(()=>{});
+      const toast = card.querySelector('.copied-toast');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 900);
+    };
+    grid.appendChild(card);
+  });
+
+  document.getElementById('summary').innerHTML =
+    `<b>${s.values.length}</b> values &middot; ${state.series} series &middot; ±${s.tolerance} &middot; range <b>${formatOhms(s.values[0], state.decade)}</b> – <b>${formatOhms(s.values[s.values.length-1], state.decade)}</b>`;
+}
+
+function renderLegend(){
+  const digitTable = document.getElementById('digitLegend');
+  digitTable.innerHTML = Object.keys(DIGIT_COLORS).map(k => {
+    const c = DIGIT_COLORS[k];
+    const border = c.border ? 'style="border:1px solid #999"' : '';
+    return `<tr><td><span class="swatch" ${border} style="background:${c.hex}"></span></td><td>${c.name}</td><td>= ${k}</td></tr>`;
+  }).join('');
+
+  const multRows = [];
+  ['-2','-1'].forEach(k => {
+    const c = MULT_SPECIAL[k];
+    multRows.push(`<tr><td><span class="swatch" style="background:${c.hex}"></span></td><td>${c.name}</td><td>×10<sup>${k}</sup></td></tr>`);
+  });
+  for(let i=0;i<=6;i++){
+    const c = DIGIT_COLORS[i];
+    multRows.push(`<tr><td><span class="swatch" style="background:${c.hex}"></span></td><td>${c.name}</td><td>×10<sup>${i}</sup></td></tr>`);
+  }
+  document.getElementById('multLegend').innerHTML = multRows.join('');
+
+  const tolRows = Object.keys(SERIES).map(k => {
+    const s = SERIES[k];
+    const sw = s.tolColor
+      ? `<span class="swatch" style="background:${s.tolColor.hex}"></span> ${s.tolColor.name}`
+      : `<span class="swatch" style="background:transparent;border-style:dashed"></span> none`;
+    return `<tr><td>${k}</td><td>${sw}</td><td>±${s.tolerance}</td></tr>`;
+  }).join('');
+  document.getElementById('tolLegend').innerHTML = tolRows;
+}
+
+function renderAll(){
+  renderTabs();
+  renderDecadeSelect();
+  renderGrid();
+}
+
+renderAll();
+renderLegend();
+
+/* ---------------- theme ---------------- */
+const themeBtn = document.getElementById('themeToggle');
+themeBtn.onclick = () => {
+  const cur = document.body.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.body.setAttribute('data-theme', next);
+  themeBtn.textContent = next === 'dark' ? '☀️ Light' : '🌙 Dark';
+};
+</script>
+</body>
+</html>
