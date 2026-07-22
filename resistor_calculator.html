@@ -1,36 +1,352 @@
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
-<head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<style>
-body {background:#f4f4f4 url(img/bg.gif) top center repeat-y; color:#404040; font:90% Verdana,Tahoma,Arial,sans-serif; margin:0 auto; padding:0;}
-#wrap {background:#fff; color:#404040; margin:0 auto; width:100%; max-width: 970px; padding:16px 0 0; }
-pre { font: 100% "courier new",courier,monospace; border: 1px solid #ccc; overflow: auto; width: 90%; padding: 1em; margin: 1em auto 2em auto; background: #f4f4f4; color: #880000; }
-code { font-size: 100%; }
-tt { font: 100% "courier new",courier,monospace; }
-</style>
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="Author" content="Duncan Johnson">
 <meta name="Description" content="Selecting resistor (parallel or series) to obtain a given value">
-<title>Resistor calculator</title>
+<title>Resistor Calculator</title>
 
+<style>
+  :root {
+    --paper: #f6f4ee;
+    --panel: #ffffff;
+    --panel-raised: #fbfaf6;
+    --border: #ddd7c6;
+    --border-strong: #cfc7ae;
+    --ink: #24312a;
+    --ink-dim: #6c7a70;
+    --trace-green: #2f7d4f;
+    --trace-green-bright: #1f6b41;
+    --copper: #a9652a;
+    --copper-bright: #c07a34;
+    --readout-bg: #eef4ec;
+    --readout-border: #c3d6c4;
+    --readout-text: #1d5c34;
+    --readout-glow: rgba(29, 92, 52, 0.12);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background:
+      radial-gradient(circle at 10% 6%, rgba(47,125,79,0.05), transparent 40%),
+      radial-gradient(circle at 90% 94%, rgba(169,101,42,0.05), transparent 45%),
+      var(--paper);
+    color: var(--ink);
+    font: 15px/1.6 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+    padding: 32px 16px 64px;
+    min-height: 100vh;
+  }
+
+  #wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin: 0 auto;
+    max-width: 760px;
+    padding: 0;
+    box-shadow: 0 18px 40px rgba(80,70,40,0.10), inset 0 1px 0 rgba(255,255,255,0.6);
+    overflow: hidden;
+  }
+
+  header {
+    padding: 30px 36px 22px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(47,125,79,0.05), transparent);
+    position: relative;
+  }
+
+  header::after {
+    content: "";
+    position: absolute;
+    left: 36px;
+    right: 36px;
+    bottom: -1px;
+    height: 1px;
+    background: linear-gradient(90deg, var(--copper), transparent 70%);
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font: 600 11px/1 "Consolas", "Courier New", monospace;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--trace-green-bright);
+    margin: 0 0 10px;
+  }
+
+  .eyebrow .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--trace-green-bright);
+    box-shadow: 0 0 6px rgba(47,125,79,0.5);
+  }
+
+  h1 {
+    font-size: 26px;
+    font-weight: 700;
+    margin: 0 0 8px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+
+  h1 .r-symbol {
+    color: var(--copper-bright);
+    font-family: "Consolas", "Courier New", monospace;
+  }
+
+  .subtitle {
+    margin: 0;
+    color: var(--ink-dim);
+    font-size: 13.5px;
+  }
+
+  .intro {
+    padding: 20px 36px 4px;
+    color: var(--ink-dim);
+    font-size: 13.5px;
+    line-height: 1.7;
+  }
+
+  .intro strong { color: var(--trace-green-bright); font-weight: 600; }
+
+  section.panel {
+    padding: 22px 36px 30px;
+  }
+
+  h2 {
+    font: 600 11px/1 "Consolas", "Courier New", monospace;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--copper-bright);
+    margin: 0 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  h2::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border-strong), transparent);
+  }
+
+  .field-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: flex-end;
+    margin-bottom: 18px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  label {
+    font-size: 12px;
+    color: var(--ink-dim);
+    letter-spacing: 0.02em;
+  }
+
+  select, input[type="text"] {
+    background: var(--panel-raised);
+    border: 1px solid var(--border-strong);
+    color: var(--ink);
+    font: 14px "Consolas", "Courier New", monospace;
+    padding: 10px 12px;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  select:focus, input[type="text"]:focus {
+    border-color: var(--trace-green-bright);
+    box-shadow: 0 0 0 3px rgba(47,125,79,0.15);
+  }
+
+  select { min-width: 240px; cursor: pointer; }
+  input[type="text"] { width: 160px; }
+
+  .ohm-suffix {
+    color: var(--ink-dim);
+    font: 14px "Consolas", "Courier New", monospace;
+    padding-bottom: 11px;
+  }
+
+  button {
+    appearance: none;
+    background: linear-gradient(180deg, var(--copper-bright), var(--copper));
+    color: #fff8ef;
+    border: none;
+    font: 700 13px/1 "Segoe UI", sans-serif;
+    letter-spacing: 0.03em;
+    padding: 12px 22px;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 3px 0 #7e4c1f, 0 6px 14px rgba(169,101,42,0.25);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+  }
+
+  button:hover { filter: brightness(1.06); }
+
+  button:active {
+    transform: translateY(3px);
+    box-shadow: 0 0 0 #7e4c1f, 0 3px 8px rgba(169,101,42,0.2);
+  }
+
+  .readout {
+    background: var(--readout-bg);
+    border: 1px solid var(--readout-border);
+    border-radius: 8px;
+    padding: 4px;
+    position: relative;
+  }
+
+  .readout::before {
+    content: "OUTPUT";
+    position: absolute;
+    top: -9px;
+    left: 14px;
+    background: var(--panel);
+    padding: 0 8px;
+    font: 600 10px/1 "Consolas", monospace;
+    letter-spacing: 0.14em;
+    color: var(--ink-dim);
+  }
+
+  textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--readout-text);
+    text-shadow: 0 0 1px var(--readout-glow);
+    font: 13.5px/1.7 "Consolas", "Courier New", monospace;
+    padding: 18px 16px;
+    resize: vertical;
+    outline: none;
+    white-space: pre;
+  }
+
+  .legend {
+    margin-top: 14px;
+    display: flex;
+    gap: 22px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+
+  .legend span strong {
+    color: var(--copper-bright);
+    font-family: "Consolas", monospace;
+  }
+
+  footer {
+    padding: 16px 36px 24px;
+    border-top: 1px solid var(--border);
+    font-size: 11.5px;
+    color: #93a096;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  @media (max-width: 520px) {
+    header, .intro, section.panel, footer { padding-left: 22px; padding-right: 22px; }
+    select, input[type="text"] { width: 100%; min-width: 0; }
+    .field-row { flex-direction: column; align-items: stretch; }
+  }
+</style>
 </head>
 <body>
+
 <noscript>
-<p><strong>WARNING:</strong> This page requires JavaScript, which seems not to be activated in the browser you are currently using. The form will not work without Javascript enabled.</p>
+  <p style="max-width:760px;margin:20px auto;padding:16px;background:#fbeceb;color:#8a2f27;border:1px solid #e6bdb8;border-radius:8px;">
+    <strong>JavaScript required:</strong> this page needs JavaScript enabled to calculate resistor combinations.
+  </p>
 </noscript>
 
-<script type="text/javascript">
-//<![CDATA[
+<div id="wrap">
 
+  <header>
+    <p class="eyebrow"><span class="dot"></span> E-series two-resistor solver</p>
+    <h1><span class="r-symbol">R</span> Resistor Calculator</h1>
+    <p class="subtitle">Series &amp; parallel combinations · by Duncan Johnson</p>
+  </header>
+
+  <div class="intro">
+    <p>Need a non-standard resistor value? Two standard resistors combined in <strong>series</strong> or <strong>parallel</strong> can often land closer to your target than any single off-the-shelf part. Series combinations are easy to work out by hand — parallel ones, less so. This tool searches the E6 (20%), E12 (10%), E24 (5%), E48 (2%) and E96 (1%) series and ranks every combination that beats the nearest single standard value.</p>
+  </div>
+
+  <section class="panel">
+    <h2>Input</h2>
+    <div class="field-row">
+      <div class="field">
+        <label for="rslist">Resistor series</label>
+        <select id="rslist" onchange="select_series();">
+          <option value="E6">E6 — 20% tolerance</option>
+          <option value="E12">E12 — 10% tolerance</option>
+          <option value="E24">E24 — 5% tolerance</option>
+          <option value="E48">E48 — 2% tolerance</option>
+          <option value="E96">E96 — 1% tolerance</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="rd">Desired resistance</label>
+        <input type="text" id="rd" size="10" maxlength="10" value="1234">
+      </div>
+      <div class="ohm-suffix">Ω</div>
+      <button type="button" onclick="CalcRes()">Calculate</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Calculated values</h2>
+    <div class="readout">
+      <textarea id="texta" rows="12" spellcheck="false"></textarea>
+    </div>
+    <div class="legend">
+      <span>Format: <strong>R1&nbsp;&nbsp;op&nbsp;&nbsp;R2&nbsp;&nbsp;=&nbsp;&nbsp;result&nbsp;&nbsp;(error %)</strong></span>
+      <span><strong>+</strong> series</span>
+      <span><strong>||</strong> parallel</span>
+      <span>Sorted by closeness to target</span>
+    </div>
+  </section>
+
+  <footer>
+    <span>Resistor Calculator</span>
+    <span>E6 / E12 / E24 / E48 / E96 preferred value series</span>
+  </footer>
+
+</div>
+
+<script>
+//<![CDATA[
 
    function select_series() { 
      var sel_val = document.getElementById('rslist').options[document.getElementById('rslist').selectedIndex].value;
      switch(sel_val) {
+       case "E6":
+         Rbase = new Array(1.0, 1.5, 2.2, 3.3, 4.7, 6.8);
+         break;
        case "E12":
          Rbase = new Array(1, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2);
          break;
        case "E24":
         Rbase = new Array(1, 1.1, 1.2, 1.3, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4, 2.7, 3.0, 3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1);
+        break;
+       case "E48":
+        Rbase = new Array(1.00, 1.05, 1.10, 1.15, 1.21, 1.27, 1.33, 1.40, 1.47, 1.54, 1.62, 1.69, 1.78, 1.87, 1.96, 2.05, 2.15, 2.26, 2.37, 2.49, 2.61, 2.74, 2.87, 3.01, 3.16, 3.32, 3.48, 3.65, 3.83, 4.02, 4.22, 4.42, 4.64, 4.87, 5.11, 5.36, 5.62, 5.90, 6.19, 6.49, 6.81, 7.15, 7.50, 7.87, 8.25, 8.66, 9.09, 9.53);
         break;
        case "E96":
         Rbase = new Array(1.00, 1.02, 1.05, 1.07, 1.10, 1.13, 1.15, 1.18, 1.21, 1.24, 1.27, 1.30, 1.33, 1.37, 1.40, 1.43, 1.47, 1.50, 1.54, 1.58, 1.62, 1.65, 1.69, 1.74, 1.78, 1.82, 1.87, 1.91, 1.96, 2.00, 2.05, 2.10, 2.15, 2.21, 2.26, 2.32, 2.37, 2.43, 2.49, 2.55, 2.61, 2.67, 2.74, 2.80, 2.87, 2.94, 3.01, 3.09, 3.16, 3.24, 3.32, 3.40, 3.48, 3.57, 3.65, 3.74, 3.83, 3.92, 4.02, 4.12, 4.22, 4.32, 4.42, 4.53, 4.64, 4.75, 4.87, 4.99, 5.11, 5.23, 5.36, 5.49, 5.62, 5.76, 5.90, 6.04, 6.19, 6.34, 6.49, 6.65, 6.81, 6.98, 7.15, 7.32, 7.50, 7.68, 7.87, 8.06, 8.25, 8.45, 8.66, 8.87, 9.09, 9.31, 9.53, 9.76);
@@ -199,46 +515,12 @@ tt { font: 100% "courier new",courier,monospace; }
           out_vrres + "\t(" + 
           (Math.round(out_tol[r1_idx] * 100000)) / 1000 + " %)\n"
       }
-    // put the focus on the input field
-    
     }
 
+   select_series();
+
 //]]>
 </script>
 
-<div id="wrap">
-
-<div>
-<h1>Resistor calculator (series and parallel)</h1>
-<p>If you need a non-standard resistor value you could probably realize a close match using two resistor. If you use two resistor in series it is quite easy to figure out which values give the best match; on the other hand, using a parallel connection it is not so easy (at least for me) to find a good combination. <br>
-This resistor calculation tool shows which combinations of two resistors (<strong>series</strong> or <strong>parallel</strong>) gives a match better than the closest standard value, for the E12 (10%), E24 (5%) and E96 (1%) series.</p>
-<br>
-
-<h2>INPUT DATA</h2>
-<pre>Resistor series to use for the calculations: <select id="rslist" onchange="select_series();">
-<option value="E12">E12 (10 %) series</option>
-<option value="E24">E24 (5 %) series</option>
-<option value="E96">E96 (1 %) series</option>
-</select>
-
-Desired Resistance, R : <input type="text" id="rd" size="10" maxlength="10" value="1234"> ohm
-
-<input type="button" value="Calculate" onclick="CalcRes()">
-</pre>
-
-<h2>CALCULATED VALUES</h2>
-<pre><textarea id="texta" rows="10" cols="70"></textarea>
-</pre>
-</form>
-
-<script type="text/javascript">
-//<![CDATA[
- select_series() 
-//]]>
-</script>
-
-</div>
-
-</div>
-
-</body></html>
+</body>
+</html>
