@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serial Terminal — Web Serial</title>
+<style>
+:root{
+  /* light theme — default */
+  --bg:#f3f5f1;
+  --bg-panel:#ffffff;
+  --bg-elevated:#eaeee6;
+  --bg-input:#ffffff;
+  --border:#d6ddd0;
+  --border-soft:#e4e9de;
+  --green:#1f7a4d;
+  --green-dim:#2f8f5e;
+  --green-glow:rgba(31,122,77,0.12);
+  --amber:#a86400;
+  --amber-dim:#c98a1c;
+  --red:#c93636;
+  --text:#1c2b22;
+  --text-dim:#5b6b60;
+  --text-faint:#94a397;
+  --on-accent:#ffffff;
+  --scanline:rgba(0,0,0,0);
+  --font: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Roboto Mono", "Liberation Mono", monospace;
+}
+html[data-theme="dark"]{
+  --bg:#07090a;
+  --bg-panel:#0d1210;
+  --bg-elevated:#131a17;
+  --bg-input:#0a0f0d;
+  --border:#1e2b25;
+  --border-soft:#152019;
+  --green:#4dffa0;
+  --green-dim:#2f7a56;
+  --green-glow:rgba(77,255,160,0.35);
+  --amber:#ffb300;
+  --amber-dim:#8a6100;
+  --red:#ff5f5f;
+  --text:#c9ecd7;
+  --text-dim:#5f8672;
+  --text-faint:#3c5648;
+  --on-accent:#04140a;
+  --scanline:rgba(0,0,0,0.06);
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font);
+  font-size:13px;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ---------- top bar ---------- */
+#topbar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 12px;
+  background:var(--bg-panel);
+  border-bottom:1px solid var(--border);
+  flex-wrap:wrap;
+}
+#topbar .brand{
+  font-weight:700;
+  letter-spacing:2px;
+  color:var(--green);
+  text-shadow:0 0 8px var(--green-glow);
+  margin-right:6px;
+  white-space:nowrap;
+}
+#topbar .byline{
+  color:var(--text-faint);
+  font-size:11px;
+  margin-right:8px;
+  white-space:nowrap;
+}
+#topbar select, #topbar button, #topbar input{
+  background:var(--bg-input);
+  border:1px solid var(--border);
+  color:var(--text);
+  font-family:var(--font);
+  font-size:12px;
+  padding:5px 8px;
+  border-radius:3px;
+}
+#topbar button{cursor:pointer;}
+#topbar button:hover{border-color:var(--green-dim);}
+#topbar button:active{transform:translateY(1px);}
+#topbar button.primary{background:var(--green-dim);border-color:var(--green);color:var(--on-accent);font-weight:600;}
+#topbar button.danger{background:#3a1414;border-color:var(--red);color:#ffdada;}
+#topbar select{min-width:60px;}
+.status-dot{width:9px;height:9px;border-radius:50%;background:var(--text-faint);flex-shrink:0;}
+.status-dot.connected{background:var(--green);box-shadow:0 0 6px var(--green);}
+.status-dot.error{background:var(--red);box-shadow:0 0 6px var(--red);}
+#statusText{color:var(--text-dim);white-space:nowrap;}
+.spacer{flex:1;}
+.metric{color:var(--text-dim);font-size:11px;white-space:nowrap;}
+.metric b{color:var(--text);font-weight:600;}
+
+/* ---------- unsupported banner ---------- */
+#unsupported{
+  margin:40px auto; max-width:560px; background:var(--bg-panel);
+  border:1px solid var(--red); border-radius:6px; padding:24px; text-align:left;
+}
+#unsupported h2{color:var(--red); margin-top:0;}
+#unsupported code{background:var(--bg-input); padding:2px 5px; border-radius:3px;}
+
+/* ---------- layout ---------- */
+#workspace{
+  flex:1;
+  display:flex;
+  min-height:0;
+}
+#termPane{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  border-right:1px solid var(--border);
+}
+#outputWrap{
+  flex:1;
+  position:relative;
+  min-height:0;
+  background:#050807;
+}
+#output{
+  position:absolute; inset:0;
+  overflow-y:auto;
+  padding:10px 12px;
+  line-height:1.45;
+  font-size:var(--term-size,13px);
+}
+#output::before{
+  content:"";
+  position:absolute; inset:0;
+  pointer-events:none;
+  background:repeating-linear-gradient(rgba(255,255,255,0) 0px, rgba(255,255,255,0) 2px, var(--scanline) 3px);
+  mix-blend-mode:overlay;
+}
+.line{white-space:pre-wrap;word-break:break-all;}
+.wrap-off .line{white-space:pre;}
+.ts{color:var(--text-faint);}
+.rx{color:var(--green);text-shadow:0 0 4px var(--green-glow);}
+.tx{color:var(--amber);}
+.tx::before{content:"» ";opacity:.7;}
+.sys{color:#6c8bd4;}
+.err{color:var(--red);}
+.ctrl{color:var(--text-dim); opacity:.85;}
+.hexrow{color:var(--green); text-shadow:0 0 4px var(--green-glow);}
+.hexrow .off{color:var(--text-dim); margin-right:10px;}
+.hexrow .ascii{color:#3fae7f; margin-left:10px;}
+.hexrow .byte{display:inline-block; width:1.7em;}
+.hexrow .byte.pad{opacity:0;}
+
+/* ---------- send bar ---------- */
+#sendbar{
+  display:flex; gap:6px; align-items:center;
+  padding:8px 10px;
+  border-top:1px solid var(--border);
+  background:var(--bg-panel);
+  flex-wrap:wrap;
+}
+#sendInput{
+  flex:1; min-width:180px;
+  background:var(--bg-input); border:1px solid var(--border); color:var(--text);
+  font-family:var(--font); font-size:13px; padding:8px 10px; border-radius:3px;
+}
+#sendInput:focus{outline:none; border-color:var(--green-dim);}
+#sendbar select, #sendbar button, #sendbar label{
+  background:var(--bg-input); border:1px solid var(--border); color:var(--text-dim);
+  font-family:var(--font); font-size:11px; padding:6px 8px; border-radius:3px; cursor:pointer;
+}
+#sendbar button.send{background:var(--green-dim); border-color:var(--green); color:var(--on-accent); font-weight:700;}
+#sendbar label{display:flex; align-items:center; gap:4px; cursor:pointer;}
+#sendbar input[type=checkbox]{accent-color:var(--green);}
+#sendbar input[type=number]{width:60px; background:var(--bg-input); border:1px solid var(--border); color:var(--text); font-family:var(--font); padding:6px; border-radius:3px;}
+
+/* ---------- macro row ---------- */
+#macrobar{
+  display:flex; gap:6px; padding:6px 10px 10px; flex-wrap:wrap;
+  border-top:1px solid var(--border-soft); background:var(--bg-panel);
+}
+.macro-btn{
+  background:var(--bg-elevated); border:1px solid var(--border); color:var(--text-dim);
+  font-family:var(--font); font-size:11px; padding:6px 9px; border-radius:3px; cursor:pointer;
+  position:relative; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.macro-btn:hover{border-color:var(--green-dim); color:var(--text);}
+.macro-btn.empty{opacity:.45; font-style:italic;}
+.macro-btn .edit-ico{margin-left:6px; opacity:.5;}
+
+/* ---------- settings sidebar ---------- */
+#settings{
+  width:300px; flex-shrink:0;
+  display:flex; flex-direction:column;
+  background:var(--bg-panel);
+}
+#tabs{display:flex; border-bottom:1px solid var(--border);}
+#tabs button{
+  flex:1; background:none; border:none; color:var(--text-dim);
+  font-family:var(--font); font-size:11px; padding:9px 4px; cursor:pointer;
+  border-bottom:2px solid transparent;
+}
+#tabs button:hover{color:var(--text);}
+#tabs button.active{color:var(--green); border-bottom-color:var(--green);}
+#tabpanels{flex:1; overflow-y:auto; padding:14px;}
+.panel{display:none; flex-direction:column; gap:12px;}
+.panel.active{display:flex;}
+.field{display:flex; flex-direction:column; gap:4px;}
+.field label{font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.5px;}
+.field select, .field input[type=text], .field input[type=number]{
+  background:var(--bg-input); border:1px solid var(--border); color:var(--text);
+  font-family:var(--font); font-size:12px; padding:7px 8px; border-radius:3px;
+}
+.row{display:flex; gap:8px;}
+.row > .field{flex:1;}
+.chk{display:flex; align-items:center; gap:7px; font-size:12px; color:var(--text); cursor:pointer;}
+.chk input{accent-color:var(--green);}
+hr.sep{border:none; border-top:1px solid var(--border-soft); margin:2px 0;}
+.section-title{font-size:11px; color:var(--green-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:-4px;}
+.btn{
+  background:var(--bg-elevated); border:1px solid var(--border); color:var(--text);
+  font-family:var(--font); font-size:12px; padding:8px 10px; border-radius:3px; cursor:pointer; text-align:center;
+}
+.btn:hover{border-color:var(--green-dim);}
+.btn.wide{width:100%;}
+.pin-row{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+.pin-label{font-size:12px;}
+.pin-led{width:10px;height:10px;border-radius:50%; background:var(--text-faint); display:inline-block; margin-right:6px;}
+.pin-led.on{background:var(--green); box-shadow:0 0 6px var(--green);}
+.toggle-pin{background:var(--bg-elevated); border:1px solid var(--border); color:var(--text-dim); font-family:var(--font); font-size:11px; padding:5px 10px; border-radius:3px; cursor:pointer;}
+.toggle-pin.on{background:var(--green-dim); border-color:var(--green); color:var(--on-accent); font-weight:700;}
+.counter-line{display:flex; justify-content:space-between; font-size:12px; color:var(--text-dim); padding:3px 0;}
+.counter-line b{color:var(--text); font-weight:600;}
+::-webkit-scrollbar{width:9px; height:9px;}
+::-webkit-scrollbar-track{background:var(--bg-panel);}
+::-webkit-scrollbar-thumb{background:var(--border); border-radius:5px;}
+::-webkit-scrollbar-thumb:hover{background:var(--green-dim);}
+small.hint{color:var(--text-faint); font-size:10.5px; line-height:1.4;}
+small.hint code{background:var(--bg-elevated); color:var(--text-dim); padding:1px 4px; border-radius:3px;}
+
+/* ---------- ascii table modal ---------- */
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(0,0,0,0.5);
+  display:flex; align-items:center; justify-content:center;
+  z-index:50; padding:20px;
+}
+.modal-backdrop[hidden]{display:none;}
+.modal{
+  background:var(--bg-panel); border:1px solid var(--border); border-radius:8px;
+  width:min(720px, 100%); max-height:85vh; display:flex; flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,0.35);
+}
+.modal-header{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px; border-bottom:1px solid var(--border);
+  font-weight:700; color:var(--green); letter-spacing:.5px; font-size:13px;
+}
+.modal-header button{
+  background:none; border:1px solid var(--border); color:var(--text-dim);
+  border-radius:4px; width:26px; height:26px; cursor:pointer; font-family:var(--font);
+}
+.modal-header button:hover{border-color:var(--red); color:var(--red);}
+.modal-body{overflow-y:auto; padding:14px 16px;}
+.modal-footer{padding:10px 16px; border-top:1px solid var(--border-soft);}
+.ascii-grid{
+  display:grid; grid-template-columns:repeat(16, minmax(0,1fr)); gap:4px;
+}
+.ascii-cell{
+  border:1px solid var(--border); border-radius:4px; padding:5px 2px;
+  text-align:center; cursor:pointer; background:var(--bg-elevated);
+}
+.ascii-cell:hover{border-color:var(--green); background:var(--green-glow);}
+.ascii-cell .glyph{font-size:13px; font-weight:700; color:var(--green); line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.ascii-cell .hexdec{font-size:9px; color:var(--text-faint); line-height:1.3;}
+@media (max-width: 760px){
+  .ascii-grid{grid-template-columns:repeat(8, minmax(0,1fr));}
+}
+
+@media (max-width: 760px){
+  #workspace{flex-direction:column;}
+  #settings{width:auto; border-top:1px solid var(--border);}
+}
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <span class="brand">◉ SERIAL TERM</span>
+  <span class="byline">by Duncan Johnson</span>
+  <span class="status-dot" id="statusDot"></span>
+  <span id="statusText">Disconnected</span>
+  <select id="portSelect" title="Choose an authorized port"></select>
+  <button id="addPortBtn" title="Grant access to a new serial or virtual COM port">+ Port…</button>
+  <select id="baudSelect" title="Baud rate">
+    <option>300</option><option>1200</option><option>2400</option><option>4800</option>
+    <option>9600</option><option>14400</option><option>19200</option><option>38400</option>
+    <option selected>115200</option><option>230400</option><option>460800</option><option>921600</option>
+  </select>
+  <input id="baudCustom" type="number" placeholder="custom baud" style="width:96px;" title="Custom baud rate (overrides dropdown if set)">
+  <button id="connectBtn" class="primary">Connect</button>
+  <span class="spacer"></span>
+  <span class="metric" id="uptimeMetric">up 00:00:00</span>
+  <span class="metric">RX <b id="rxCount">0</b> B</span>
+  <span class="metric">TX <b id="txCount">0</b> B</span>
+  <span class="metric"><b id="cpsCount">0</b> cps</span>
+  <button id="asciiTableBtn" title="Open the full ASCII / hex reference table">⌸ Table</button>
+  <button id="themeToggle" title="Switch between light and dark theme">☾ Dark</button>
+</header>
+
+<div id="unsupported" hidden>
+  <h2>Web Serial API not available</h2>
+  <p>This browser (or context) doesn't expose <code>navigator.serial</code>. Web Serial currently works in
+  Chrome, Edge, and other Chromium-based desktop browsers, over HTTPS or a local <code>file://</code> page —
+  it is not supported in Firefox or Safari.</p>
+  <p>Open this file in Chrome or Edge to connect to physical COM ports and any virtual COM port your OS
+  exposes (USB-serial adapters, Bluetooth SPP, or software loopback pairs such as com0com).</p>
+</div>
+
+<main id="workspace">
+  <section id="termPane">
+    <div id="outputWrap"><div id="output"></div></div>
+
+    <div id="sendbar">
+      <input id="sendInput" type="text" placeholder="Type to send… mix in raw bytes with <0D> or \x0D. ↑/↓ history, Enter to send." autocomplete="off">
+      <label class="chk"><input type="checkbox" id="hexSendChk"> Hex</label>
+      <select id="lineEndingSelect" title="Line ending appended to sent text">
+        <option value="">No line ending</option>
+        <option value="\r" selected>CR</option>
+        <option value="\n">LF</option>
+        <option value="\r\n">CR+LF</option>
+      </select>
+      <button id="sendBtn" class="send">Send</button>
+      <label class="chk"><input type="checkbox" id="repeatChk"> Repeat every</label>
+      <input type="number" id="repeatMs" value="1000" min="20" style="width:64px;"> ms
+    </div>
+
+    <div id="macrobar"></div>
+  </section>
+
+  <aside id="settings">
+    <div id="tabs">
+      <button class="tab-btn active" data-tab="display">Display</button>
+      <button class="tab-btn" data-tab="port">Port</button>
+      <button class="tab-btn" data-tab="send">Send</button>
+      <button class="tab-btn" data-tab="pins">Pins</button>
+      <button class="tab-btn" data-tab="capture">Capture</button>
+    </div>
+    <div id="tabpanels">
+
+      <div class="panel active" id="panel-display">
+        <div class="field">
+          <label>View mode</label>
+          <select id="viewMode">
+            <option value="ascii">ASCII</option>
+            <option value="mixed" selected>Mixed (ASCII + hex control bytes)</option>
+            <option value="hex">Hex dump</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Bytes / row (hex)</label>
+            <select id="bytesPerRow">
+              <option>8</option><option selected>16</option><option>32</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Font size</label>
+            <select id="fontSize">
+              <option>11</option><option selected>13</option><option>15</option><option>18</option>
+            </select>
+          </div>
+        </div>
+        <label class="chk"><input type="checkbox" id="tsChk"> Timestamp each line</label>
+        <label class="chk"><input type="checkbox" id="ctrlPicChk" checked> Show control-char glyphs (ASCII mode)</label>
+        <label class="chk"><input type="checkbox" id="ansiChk"> Interpret ANSI colour codes</label>
+        <label class="chk"><input type="checkbox" id="wrapChk" checked> Word wrap</label>
+        <label class="chk"><input type="checkbox" id="autoscrollChk" checked> Autoscroll</label>
+        <hr class="sep">
+        <button class="btn wide" id="clearBtn">Clear terminal</button>
+      </div>
+
+      <div class="panel" id="panel-port">
+        <div class="section-title">Line settings</div>
+        <div class="row">
+          <div class="field">
+            <label>Data bits</label>
+            <select id="dataBits"><option>7</option><option selected>8</option></select>
+          </div>
+          <div class="field">
+            <label>Parity</label>
+            <select id="parity"><option value="none" selected>None</option><option value="even">Even</option><option value="odd">Odd</option></select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Stop bits</label>
+            <select id="stopBits"><option selected>1</option><option>2</option></select>
+          </div>
+          <div class="field">
+            <label>Flow control</label>
+            <select id="flowControl"><option value="none" selected>None</option><option value="hardware">Hardware (RTS/CTS)</option></select>
+          </div>
+        </div>
+        <small class="hint">Settings apply on next Connect. The port picker (+ Port…) lists every serial device the OS exposes, including virtual COM ports created by USB‑serial bridges or loopback drivers.</small>
+        <hr class="sep">
+        <div class="section-title">Local echo</div>
+        <label class="chk"><input type="checkbox" id="echoChk" checked> Echo sent data in terminal</label>
+      </div>
+
+      <div class="panel" id="panel-send">
+        <div class="section-title">Mixed send syntax</div>
+        <small class="hint">The send box is plain text by default. Embed raw bytes anywhere with <code>&lt;0D&gt;</code> or <code>\x0D</code> — e.g. <code>AT+CMD&lt;0D&gt;&lt;0A&gt;</code> sends the text "AT+CMD" followed by a raw CR and LF byte. Tick <b>Hex</b> next to Send to treat the whole box as hex bytes instead.</small>
+        <hr class="sep">
+        <div class="section-title">Send a file</div>
+        <input type="file" id="fileInput">
+        <div class="counter-line"><span id="fileSendStatus">No file sent yet</span></div>
+        <hr class="sep">
+        <div class="section-title">Macro buttons</div>
+        <small class="hint">Click a macro to send it instantly. Click the ✎ to edit its label / payload.</small>
+        <button class="btn wide" id="saveMacrosBtn">Save macros to XML…</button>
+        <button class="btn wide" id="loadMacrosBtn">Load macros from XML…</button>
+        <input type="file" id="loadMacrosInput" accept=".xml,text/xml" style="display:none;">
+        <button class="btn wide" id="clearMacrosBtn">Reset all macros</button>
+        <div class="counter-line"><span id="macroIoStatus"></span></div>
+      </div>
+
+      <div class="panel" id="panel-pins">
+        <div class="section-title">Output signals</div>
+        <div class="pin-row"><span class="pin-label">DTR (Data Terminal Ready)</span><button class="toggle-pin" id="dtrBtn">OFF</button></div>
+        <div class="pin-row"><span class="pin-label">RTS (Request To Send)</span><button class="toggle-pin" id="rtsBtn">OFF</button></div>
+        <div class="pin-row"><span class="pin-label">Break</span><button class="toggle-pin" id="breakBtn">Pulse</button></div>
+        <hr class="sep">
+        <div class="section-title">Input signals (live)</div>
+        <div class="pin-row"><span class="pin-label"><span class="pin-led" id="ctsLed"></span>CTS</span></div>
+        <div class="pin-row"><span class="pin-label"><span class="pin-led" id="dsrLed"></span>DSR</span></div>
+        <div class="pin-row"><span class="pin-label"><span class="pin-led" id="dcdLed"></span>DCD</span></div>
+        <div class="pin-row"><span class="pin-label"><span class="pin-led" id="riLed"></span>RI</span></div>
+        <small class="hint">Input signal support depends on the adapter/driver. Not all virtual COM ports report these.</small>
+      </div>
+
+      <div class="panel" id="panel-capture">
+        <div class="section-title">Session counters</div>
+        <div class="counter-line">Bytes received <b id="capRx">0</b></div>
+        <div class="counter-line">Bytes sent <b id="capTx">0</b></div>
+        <div class="counter-line">Chars / sec <b id="capCps">0</b></div>
+        <div class="counter-line">Connected time <b id="capUptime">00:00:00</b></div>
+        <button class="btn wide" id="resetCountersBtn">Reset counters</button>
+        <hr class="sep">
+        <div class="section-title">Export</div>
+        <button class="btn wide" id="saveTextBtn">Save log as text (.log)</button>
+        <button class="btn wide" id="saveBinBtn">Save raw received bytes (.bin)</button>
+      </div>
+
+    </div>
+  </aside>
+</main>
+
+<div id="asciiModal" class="modal-backdrop" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <span>ASCII / Hex Reference Table</span>
+      <button id="asciiModalClose" title="Close">✕</button>
+    </div>
+    <div class="modal-body" id="asciiTableBody"></div>
+    <div class="modal-footer">
+      <small class="hint" id="asciiDescLine">Hover a cell for its full name. Click a cell to insert its <code>&lt;XX&gt;</code> hex escape into the send box at the cursor.</small>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+if(!("serial" in navigator)){
+  document.getElementById("unsupported").hidden = false;
+  document.getElementById("workspace").style.display = "none";
+  return;
+}
+
+/* ---------------- state ---------------- */
+const S = {
+  port:null, reader:null, writer:null, keepReading:false,
+  connectedAt:null,
+  rxBytes:0, txBytes:0,
+  rxAllBytes:[],           // full raw log for binary export
+  cpsWindow:[],            // timestamps of received chars in last second
+  atLineStart:true,
+  forceNewLineOnNextRx:false,  // set true after a send, so the next RX starts on a fresh line
+  hexPending:[],           // bytes not yet flushed into a completed hex row
+  hexOffset:0,
+  hexRowEl:null,
+  history:[], histIdx:-1,
+  repeatTimer:null,
+  fileSending:false,
+  dtrOn:false, rtsOn:false,
+  ports:[],                // {port, label} authorized ports
+  macros: Array.from({length:12}, (_,i)=>({label:"M"+(i+1), value:"", hex:false})),
+};
+
+/* ---------------- dom refs ---------------- */
+const $ = id => document.getElementById(id);
+const output = $("output"), outputWrap = $("outputWrap");
+const statusDot = $("statusDot"), statusText = $("statusText");
+const portSelect = $("portSelect"), addPortBtn = $("addPortBtn");
+const baudSelect = $("baudSelect"), baudCustom = $("baudCustom");
+const connectBtn = $("connectBtn");
+const sendInput = $("sendInput"), sendBtn = $("sendBtn");
+const hexSendChk = $("hexSendChk"), lineEndingSelect = $("lineEndingSelect");
+const repeatChk = $("repeatChk"), repeatMs = $("repeatMs");
+const macrobar = $("macrobar");
+
+/* ---------------- tabs ---------------- */
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+    btn.classList.add("active");
+    $("panel-"+btn.dataset.tab).classList.add("active");
+  });
+});
+
+/* ---------------- helpers ---------------- */
+function nowStamp(){
+  const d = new Date();
+  const p = (n,l=2)=>String(n).padStart(l,"0");
+  return `[${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(d.getMilliseconds(),3)}] `;
+}
+function fmtElapsed(ms){
+  const s = Math.floor(ms/1000);
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  const p = n=>String(n).padStart(2,"0");
+  return `${p(h)}:${p(m)}:${p(sec)}`;
+}
+function isNearBottom(){
+  return output.scrollHeight - output.scrollTop - output.clientHeight < 40;
+}
+function scrollIfNeeded(){
+  if($("autoscrollChk").checked) output.scrollTop = output.scrollHeight;
+}
+function appendLine(cls, text){
+  const div = document.createElement("div");
+  div.className = "line " + cls;
+  div.textContent = text;
+  output.appendChild(div);
+  scrollIfNeeded();
+  return div;
+}
+function appendSystem(text){ appendLine("sys", (nowStampAlways()) + text); }
+function appendError(text){ appendLine("err", (nowStampAlways()) + "ERROR: " + text); }
+function nowStampAlways(){
+  const d = new Date();
+  const p = (n,l=2)=>String(n).padStart(l,"0");
+  return `[${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}] `;
+}
+
+const CTRL_PICTURES = {}; // 0..31 -> unicode control picture, 127 -> DEL glyph
+for(let i=0;i<32;i++) CTRL_PICTURES[i] = String.fromCodePoint(0x2400+i);
+CTRL_PICTURES[127] = String.fromCodePoint(0x2421);
+
+/* ---------------- rendering: ASCII / Mixed ---------------- */
+let asciiLineBuf = document.createElement("div");
+asciiLineBuf.className = "line rx";
+function ensureAsciiLine(){
+  if(!asciiLineBuf.isConnected){
+    output.appendChild(asciiLineBuf);
+  }
+  if($("tsChk").checked && asciiLineBuf.dataset.stamped !== "1"){
+    asciiLineBuf.textContent = nowStamp();
+    asciiLineBuf.dataset.stamped = "1";
+  }
+}
+function pushAsciiChar(code, ch){
+  ensureAsciiLine();
+  const showCtrl = $("ctrlPicChk").checked;
+  const mode = $("viewMode").value;
+  if(code === 10){ // LF -> break line
+    asciiLineBuf.appendChild(document.createTextNode(showCtrl && mode==="mixed" ? "" : ""));
+    asciiLineBuf = document.createElement("div");
+    asciiLineBuf.className = "line rx";
+    output.appendChild(asciiLineBuf);
+    scrollIfNeeded();
+    return;
+  }
+  if(mode === "mixed" && (code < 32 || code === 127) && code !== 13){
+    const span = document.createElement("span");
+    span.className = "ctrl";
+    span.textContent = "["+code.toString(16).padStart(2,"0").toUpperCase()+"]";
+    asciiLineBuf.appendChild(span);
+    return;
+  }
+  if(code === 13){
+    if(mode === "mixed"){
+      const span = document.createElement("span");
+      span.className = "ctrl"; span.textContent="";
+      asciiLineBuf.appendChild(span);
+    }
+    return; // swallow CR visually, LF creates the newline
+  }
+  if(code < 32 || code === 127){
+    const span = document.createElement("span");
+    span.className = "ctrl";
+    span.textContent = showCtrl ? CTRL_PICTURES[code] : "";
+    asciiLineBuf.appendChild(span);
+    return;
+  }
+  asciiLineBuf.appendChild(document.createTextNode(ch));
+}
+
+/* very small ANSI SGR handler for common colour codes (mixed/ascii, decorative only) */
+const ANSI_FG = {30:"#3c3c3c",31:"#ff5f5f",32:"#4dffa0",33:"#ffb300",34:"#6c8bd4",35:"#d17bff",36:"#4de0ff",37:"#c9ecd7",90:"#5f8672",91:"#ff8f8f",92:"#8effc4",93:"#ffd27a",94:"#9cb4ff",95:"#e6b3ff",96:"#9ff2ff",97:"#ffffff"};
+let ansiSpanOpen = null;
+function ansiApply(codes){
+  if(!$("ansiChk").checked) return;
+  ensureAsciiLine();
+  for(const c of codes){
+    if(c === 0){ ansiSpanOpen = null; continue; }
+    if(ANSI_FG[c]) ansiSpanOpen = ANSI_FG[c];
+  }
+}
+
+/* ---------------- rendering: Hex dump ---------------- */
+function newHexRow(){
+  const row = document.createElement("div");
+  row.className = "line hexrow";
+  const off = document.createElement("span");
+  off.className = "off";
+  off.textContent = S.hexOffset.toString(16).padStart(8,"0").toUpperCase();
+  row.appendChild(off);
+  if($("tsChk").checked){
+    const t = document.createElement("span");
+    t.className="ts"; t.textContent = nowStamp();
+    row.insertBefore(t, off);
+  }
+  const bytesHolder = document.createElement("span");
+  bytesHolder.className = "bytes";
+  row.appendChild(bytesHolder);
+  const ascii = document.createElement("span");
+  ascii.className = "ascii";
+  row.appendChild(ascii);
+  output.appendChild(row);
+  scrollIfNeeded();
+  return {row, bytesHolder, ascii};
+}
+let hexRowRefs = null;
+function pushHexByte(b){
+  const bpr = parseInt($("bytesPerRow").value,10);
+  if(!hexRowRefs) hexRowRefs = newHexRow();
+  const bspan = document.createElement("span");
+  bspan.className = "byte";
+  bspan.textContent = b.toString(16).padStart(2,"0").toUpperCase();
+  hexRowRefs.bytesHolder.appendChild(bspan);
+  hexRowRefs.bytesHolder.appendChild(document.createTextNode(" "));
+  hexRowRefs.ascii.textContent += (b>=32 && b<127) ? String.fromCharCode(b) : ".";
+  S.hexPending.push(b);
+  if(S.hexPending.length >= bpr){
+    S.hexOffset += bpr;
+    S.hexPending = [];
+    hexRowRefs = null;
+  }
+}
+
+/* ---------------- byte intake ---------------- */
+const decoder = new TextDecoder("utf-8", {fatal:false});
+function handleReceivedBytes(bytes){
+  if(bytes.length === 0) return;
+  S.rxBytes += bytes.length;
+  for(let i=0;i<bytes.length;i++) S.rxAllBytes.push(bytes[i]);
+  const t = performance.now();
+  for(let i=0;i<bytes.length;i++) S.cpsWindow.push(t);
+
+  const mode = $("viewMode").value;
+
+  if(S.forceNewLineOnNextRx){
+    S.forceNewLineOnNextRx = false;
+    if(mode === "hex"){
+      if(hexRowRefs && S.hexPending.length){
+        S.hexOffset += S.hexPending.length;
+        S.hexPending = [];
+        hexRowRefs = null;
+      }
+    } else {
+      asciiLineBuf = document.createElement("div");
+      asciiLineBuf.className = "line rx";
+    }
+  }
+
+  if(mode === "hex"){
+    for(const b of bytes) pushHexByte(b);
+  } else {
+    // decode incrementally byte-by-byte for accurate control-char handling
+    for(const b of bytes){
+      let ch = "";
+      if(b < 0x80) ch = String.fromCharCode(b);
+      else ch = decoder.decode(new Uint8Array([b]), {stream:true}) || "";
+      pushAsciiChar(b, ch);
+    }
+  }
+  updateCounters();
+}
+
+/* ---------------- port list ---------------- */
+async function refreshPortList(){
+  const authorized = await navigator.serial.getPorts();
+  S.ports = authorized.map((p,idx)=>{
+    const info = (p.getInfo && p.getInfo()) || {};
+    let label = "Port " + (idx+1);
+    if(info.usbVendorId){
+      label += ` (VID:${info.usbVendorId.toString(16).padStart(4,"0")} PID:${(info.usbProductId||0).toString(16).padStart(4,"0")})`;
+    } else {
+      label += " (system/virtual)";
+    }
+    return {port:p, label};
+  });
+  portSelect.innerHTML = "";
+  if(S.ports.length === 0){
+    const opt = document.createElement("option");
+    opt.textContent = "No authorized ports — click + Port…";
+    opt.disabled = true;
+    portSelect.appendChild(opt);
+  }
+  S.ports.forEach((p,i)=>{
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = p.label;
+    portSelect.appendChild(opt);
+  });
+}
+addPortBtn.addEventListener("click", async ()=>{
+  try{
+    const p = await navigator.serial.requestPort();
+    await refreshPortList();
+    // select the newly granted port
+    const idx = S.ports.findIndex(x=>x.port===p);
+    if(idx>=0) portSelect.value = idx;
+    appendSystem("New port authorized.");
+  } catch(e){
+    if(e.name !== "NotFoundError") appendError(e.message);
+  }
+});
+navigator.serial.addEventListener("connect", ()=>refreshPortList());
+navigator.serial.addEventListener("disconnect", ()=>{
+  refreshPortList();
+  if(S.port && S.keepReading){
+    appendSystem("Device disconnected.");
+    doDisconnect(true);
+  }
+});
+
+/* ---------------- connect / disconnect ---------------- */
+connectBtn.addEventListener("click", ()=>{
+  if(S.port) doDisconnect(false); else doConnect();
+});
+async function doConnect(){
+  if(S.ports.length === 0){
+    appendError("No authorized port selected. Click '+ Port…' first.");
+    return;
+  }
+  const chosen = S.ports[parseInt(portSelect.value,10)];
+  if(!chosen){ appendError("Select a port."); return; }
+  const baud = baudCustom.value ? parseInt(baudCustom.value,10) : parseInt(baudSelect.value,10);
+  const opts = {
+    baudRate: baud,
+    dataBits: parseInt($("dataBits").value,10),
+    parity: $("parity").value,
+    stopBits: parseInt($("stopBits").value,10),
+    flowControl: $("flowControl").value,
+  };
+  try{
+    S.port = chosen.port;
+    await S.port.open(opts);
+    S.writer = S.port.writable.getWriter();
+    S.keepReading = true;
+    S.connectedAt = Date.now();
+    S.hexPending = []; S.hexOffset = 0; hexRowRefs = null;
+    setConnectedUI(true);
+    appendSystem(`Connected @ ${baud} baud, ${opts.dataBits}${opts.parity[0].toUpperCase()}${opts.stopBits}, flow=${opts.flowControl}.`);
+    readLoop();
+    pollSignals();
+  } catch(e){
+    appendError("Could not open port: " + e.message);
+    S.port = null;
+    setConnectedUI(false);
+  }
+}
+async function readLoop(){
+  while(S.port && S.port.readable && S.keepReading){
+    S.reader = S.port.readable.getReader();
+    try{
+      while(true){
+        const {value, done} = await S.reader.read();
+        if(done) break;
+        if(value && value.length) handleReceivedBytes(value);
+      }
+    } catch(e){
+      if(S.keepReading) appendError("Read error: " + e.message);
+    } finally{
+      try{ S.reader.releaseLock(); }catch(_){}
+    }
+  }
+}
+async function doDisconnect(silent){
+  S.keepReading = false;
+  clearInterval(S.signalTimer);
+  try{ if(S.reader){ await S.reader.cancel(); } }catch(_){}
+  try{ if(S.writer){ S.writer.releaseLock(); } }catch(_){}
+  try{ if(S.port){ await S.port.close(); } }catch(_){}
+  S.port = null; S.writer = null; S.reader = null;
+  setConnectedUI(false);
+  hexRowRefs = null;
+  if(!silent) appendSystem("Disconnected.");
+}
+function setConnectedUI(connected){
+  statusDot.className = "status-dot" + (connected ? " connected" : "");
+  statusText.textContent = connected ? "Connected" : "Disconnected";
+  connectBtn.textContent = connected ? "Disconnect" : "Connect";
+  connectBtn.className = connected ? "danger" : "primary";
+  [portSelect, addPortBtn, baudSelect, baudCustom, $("dataBits"), $("parity"), $("stopBits"), $("flowControl")]
+    .forEach(el=> el.disabled = connected);
+}
+
+/* ---------------- writing ---------------- */
+const encoder = new TextEncoder();
+async function writeBytes(bytes){
+  if(!S.writer){ appendError("Not connected."); return; }
+  try{
+    await S.writer.write(bytes);
+    S.txBytes += bytes.length;
+    updateCounters();
+  } catch(e){
+    appendError("Write error: " + e.message);
+  }
+}
+function parseHexInput(str){
+  const clean = str.replace(/0x/gi,"").replace(/[^0-9a-fA-F]/g,"");
+  const bytes = [];
+  for(let i=0;i<clean.length-1;i+=2) bytes.push(parseInt(clean.substr(i,2),16));
+  if(clean.length % 2 === 1) appendSystem("Hex input had an odd number of digits — trailing nibble ignored.");
+  return new Uint8Array(bytes);
+}
+/* Mixed encode: plain text with inline raw-byte escapes, e.g. AT+CMD<0D><0A> or AT+CMD\x0D\x0A */
+function encodeMixedText(str){
+  const re = /<([0-9A-Fa-f]{1,2})>|\\x([0-9A-Fa-f]{2})/g;
+  const parts = [];
+  let lastIndex = 0, m;
+  while((m = re.exec(str)) !== null){
+    if(m.index > lastIndex) parts.push(encoder.encode(str.slice(lastIndex, m.index)));
+    parts.push(new Uint8Array([parseInt(m[1] || m[2], 16)]));
+    lastIndex = re.lastIndex;
+  }
+  if(lastIndex < str.length) parts.push(encoder.encode(str.slice(lastIndex)));
+  const total = parts.reduce((n,p)=>n+p.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  for(const p of parts){ out.set(p, off); off += p.length; }
+  return out;
+}
+function currentLineEnding(){
+  const v = lineEndingSelect.value;
+  return v === "" ? "" : v.replace("\\r","\r").replace("\\n","\n");
+}
+function sendText(text, isHex){
+  let bytes;
+  if(isHex){
+    bytes = parseHexInput(text);
+  } else {
+    bytes = encodeMixedText(text + currentLineEnding());
+  }
+  if(bytes.length === 0) return;
+  writeBytes(bytes);
+  S.forceNewLineOnNextRx = true;
+  if($("echoChk").checked){
+    appendLine("tx", isHex ? Array.from(bytes).map(b=>b.toString(16).padStart(2,"0").toUpperCase()).join(" ") : text);
+  }
+}
+function doSend(){
+  const text = sendInput.value;
+  if(text === "") return;
+  sendText(text, hexSendChk.checked);
+  if(S.history[S.history.length-1] !== text) S.history.push(text);
+  S.histIdx = S.history.length;
+  sendInput.value = "";
+}
+sendBtn.addEventListener("click", doSend);
+sendInput.addEventListener("keydown", e=>{
+  if(e.key === "Enter"){ doSend(); }
+  else if(e.key === "ArrowUp"){
+    if(S.histIdx > 0){ S.histIdx--; sendInput.value = S.history[S.histIdx] || ""; }
+    e.preventDefault();
+  } else if(e.key === "ArrowDown"){
+    if(S.histIdx < S.history.length-1){ S.histIdx++; sendInput.value = S.history[S.histIdx] || ""; }
+    else { S.histIdx = S.history.length; sendInput.value = ""; }
+    e.preventDefault();
+  }
+});
+repeatChk.addEventListener("change", ()=>{
+  if(repeatChk.checked){
+    const ms = Math.max(20, parseInt(repeatMs.value,10)||1000);
+    S.repeatTimer = setInterval(()=>{
+      if(sendInput.value !== "") sendText(sendInput.value, hexSendChk.checked);
+    }, ms);
+  } else {
+    clearInterval(S.repeatTimer);
+  }
+});
+
+/* ---------------- file send ---------------- */
+$("fileInput").addEventListener("change", async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  if(!S.port){ appendError("Connect before sending a file."); return; }
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const chunkSize = 256;
+  $("fileSendStatus").textContent = `Sending ${file.name} (${buf.length} bytes)…`;
+  for(let i=0;i<buf.length;i+=chunkSize){
+    await writeBytes(buf.slice(i, i+chunkSize));
+    await new Promise(r=>setTimeout(r, 5));
+  }
+  $("fileSendStatus").textContent = `Sent ${file.name} — ${buf.length} bytes.`;
+  S.forceNewLineOnNextRx = true;
+  appendSystem(`File sent: ${file.name} (${buf.length} bytes).`);
+});
+
+/* ---------------- macros ---------------- */
+function renderMacros(){
+  macrobar.innerHTML = "";
+  S.macros.forEach((m,i)=>{
+    const btn = document.createElement("button");
+    btn.className = "macro-btn" + (m.value ? "" : " empty");
+    btn.title = m.value ? (m.hex ? "[hex] "+m.value : m.value) : "Click to configure";
+    btn.innerHTML = escapeHtml(m.label) + '<span class="edit-ico">✎</span>';
+    btn.addEventListener("click", (ev)=>{
+      const rect = btn.getBoundingClientRect();
+      const clickedEdit = ev.offsetX > rect.width - 18;
+      if(clickedEdit || !m.value){
+        editMacro(i);
+      } else {
+        sendText(m.value, m.hex);
+      }
+    });
+    macrobar.appendChild(btn);
+  });
+}
+function escapeHtml(s){ const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+function editMacro(i){
+  const m = S.macros[i];
+  const label = prompt("Macro label:", m.label);
+  if(label === null) return;
+  const value = prompt("Macro payload (text, or hex bytes if 'hex' below):", m.value);
+  if(value === null) return;
+  const hex = confirm("Send as HEX bytes? OK = hex, Cancel = plain text.");
+  S.macros[i] = {label: label || m.label, value, hex};
+  renderMacros();
+}
+$("clearMacrosBtn").addEventListener("click", ()=>{
+  if(!confirm("Reset all macro buttons?")) return;
+  S.macros = Array.from({length:12}, (_,i)=>({label:"M"+(i+1), value:"", hex:false}));
+  renderMacros();
+});
+
+function macrosToXml(){
+  const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<macros>\n';
+  S.macros.forEach(m=>{
+    xml += `  <macro label="${esc(m.label)}" hex="${m.hex ? "true" : "false"}">${esc(m.value)}</macro>\n`;
+  });
+  xml += '</macros>\n';
+  return xml;
+}
+function macrosFromXml(xmlText){
+  const doc = new DOMParser().parseFromString(xmlText, "text/xml");
+  if(doc.querySelector("parsererror")) throw new Error("Malformed XML.");
+  const nodes = Array.from(doc.querySelectorAll("macros > macro"));
+  if(nodes.length === 0) throw new Error("No <macro> entries found under <macros>.");
+  const loaded = nodes.slice(0,12).map((el,i)=>({
+    label: el.getAttribute("label") || ("M"+(i+1)),
+    value: el.textContent || "",
+    hex: el.getAttribute("hex") === "true",
+  }));
+  while(loaded.length < 12) loaded.push({label:"M"+(loaded.length+1), value:"", hex:false});
+  return loaded;
+}
+$("saveMacrosBtn").addEventListener("click", ()=>{
+  download("macros_"+Date.now()+".xml", [macrosToXml()], "application/xml");
+  $("macroIoStatus").textContent = "Macros saved to XML.";
+});
+$("loadMacrosBtn").addEventListener("click", ()=> $("loadMacrosInput").click());
+$("loadMacrosInput").addEventListener("change", async (e)=>{
+  const file = e.target.files[0];
+  e.target.value = ""; // allow re-selecting the same file later
+  if(!file) return;
+  try{
+    const text = await file.text();
+    S.macros = macrosFromXml(text);
+    renderMacros();
+    $("macroIoStatus").textContent = `Loaded macros from ${file.name}.`;
+    appendSystem(`Macros loaded from ${file.name}.`);
+  } catch(err){
+    $("macroIoStatus").textContent = "Load failed: " + err.message;
+    appendError("Macro XML load failed: " + err.message);
+  }
+});
+
+renderMacros();
+
+/* ---------------- pins ---------------- */
+$("dtrBtn").addEventListener("click", async ()=>{
+  S.dtrOn = !S.dtrOn;
+  await setSignalsSafe({dataTerminalReady:S.dtrOn});
+  $("dtrBtn").classList.toggle("on", S.dtrOn);
+  $("dtrBtn").textContent = S.dtrOn ? "ON" : "OFF";
+});
+$("rtsBtn").addEventListener("click", async ()=>{
+  S.rtsOn = !S.rtsOn;
+  await setSignalsSafe({requestToSend:S.rtsOn});
+  $("rtsBtn").classList.toggle("on", S.rtsOn);
+  $("rtsBtn").textContent = S.rtsOn ? "ON" : "OFF";
+});
+$("breakBtn").addEventListener("click", async ()=>{
+  await setSignalsSafe({break:true});
+  await new Promise(r=>setTimeout(r,250));
+  await setSignalsSafe({break:false});
+  appendSystem("Break signal pulsed.");
+});
+async function setSignalsSafe(sig){
+  if(!S.port){ appendError("Connect before toggling pins."); return; }
+  try{ await S.port.setSignals(sig); } catch(e){ appendError("setSignals: " + e.message); }
+}
+async function pollSignals(){
+  clearInterval(S.signalTimer);
+  S.signalTimer = setInterval(async ()=>{
+    if(!S.port) return;
+    try{
+      const sig = await S.port.getSignals();
+      $("ctsLed").classList.toggle("on", !!sig.clearToSend);
+      $("dsrLed").classList.toggle("on", !!sig.dataSetReady);
+      $("dcdLed").classList.toggle("on", !!sig.dataCarrierDetect);
+      $("riLed").classList.toggle("on", !!sig.ringIndicator);
+    } catch(_){ /* not supported by this port */ }
+  }, 300);
+}
+
+/* ---------------- counters / uptime ---------------- */
+function updateCounters(){
+  $("rxCount").textContent = S.rxBytes;
+  $("txCount").textContent = S.txBytes;
+  $("capRx").textContent = S.rxBytes;
+  $("capTx").textContent = S.txBytes;
+}
+setInterval(()=>{
+  const t = performance.now();
+  S.cpsWindow = S.cpsWindow.filter(ts => t - ts <= 1000);
+  $("cpsCount").textContent = S.cpsWindow.length;
+  $("capCps").textContent = S.cpsWindow.length;
+  if(S.connectedAt){
+    const el = fmtElapsed(Date.now() - S.connectedAt);
+    $("uptimeMetric").textContent = "up " + el;
+    $("capUptime").textContent = el;
+  } else {
+    $("uptimeMetric").textContent = "up 00:00:00";
+    $("capUptime").textContent = "00:00:00";
+  }
+}, 500);
+$("resetCountersBtn").addEventListener("click", ()=>{
+  S.rxBytes = 0; S.txBytes = 0; S.rxAllBytes = []; S.cpsWindow = [];
+  updateCounters();
+  appendSystem("Counters reset.");
+});
+
+/* ---------------- display option handlers ---------------- */
+$("clearBtn").addEventListener("click", ()=>{
+  output.innerHTML = "";
+  asciiLineBuf = document.createElement("div");
+  asciiLineBuf.className = "line rx";
+  hexRowRefs = null; S.hexPending = []; S.hexOffset = 0;
+});
+$("fontSize").addEventListener("change", e=>{
+  output.style.setProperty("--term-size", e.target.value+"px");
+  output.style.fontSize = e.target.value+"px";
+});
+$("wrapChk").addEventListener("change", e=>{
+  outputWrap.classList.toggle("wrap-off", !e.target.checked);
+});
+$("viewMode").addEventListener("change", ()=>{
+  hexRowRefs = null; S.hexPending = [];
+  asciiLineBuf = document.createElement("div");
+  asciiLineBuf.className = "line rx";
+});
+
+/* ---------------- export ---------------- */
+function download(filename, blobParts, type){
+  const blob = new Blob(blobParts, {type});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
+$("saveTextBtn").addEventListener("click", ()=>{
+  const text = output.innerText;
+  download("serial_log_"+Date.now()+".log", [text], "text/plain");
+});
+$("saveBinBtn").addEventListener("click", ()=>{
+  download("serial_capture_"+Date.now()+".bin", [new Uint8Array(S.rxAllBytes)], "application/octet-stream");
+});
+
+/* ---------------- ascii/hex reference table ---------------- */
+const CTRL_NAMES = ["NUL","SOH","STX","ETX","EOT","ENQ","ACK","BEL","BS","TAB","LF","VT","FF","CR","SO","SI",
+                     "DLE","DC1","DC2","DC3","DC4","NAK","SYN","ETB","CAN","EM","SUB","ESC","FS","GS","RS","US"];
+const CTRL_DESC = [
+  "Null","Start of Heading","Start of Text","End of Text","End of Transmission","Enquiry",
+  "Acknowledge","Bell","Backspace","Horizontal Tab","Line Feed","Vertical Tab","Form Feed",
+  "Carriage Return","Shift Out","Shift In","Data Link Escape","Device Control 1 (XON)",
+  "Device Control 2","Device Control 3 (XOFF)","Device Control 4","Negative Acknowledge",
+  "Synchronous Idle","End of Transmission Block","Cancel","End of Medium","Substitute",
+  "Escape","File Separator","Group Separator","Record Separator","Unit Separator"
+];
+const PRINTABLE_DESC = {32:"Space"};
+function descriptionFor(c, glyph){
+  if(c < 32) return `${CTRL_NAMES[c]} — ${CTRL_DESC[c]}`;
+  if(c === 127) return "DEL — Delete";
+  if(PRINTABLE_DESC[c]) return PRINTABLE_DESC[c];
+  if(c < 127) return `'${glyph}'`;
+  return `'${glyph}' (extended, encoding-dependent)`;
+}
+const asciiModal = $("asciiModal");
+const asciiDescLine = $("asciiDescLine");
+const ASCII_DESC_DEFAULT = asciiDescLine.innerHTML;
+function buildAsciiTable(){
+  const grid = document.createElement("div");
+  grid.className = "ascii-grid";
+  for(let c=0;c<256;c++){
+    const hex = c.toString(16).padStart(2,"0").toUpperCase();
+    let glyph;
+    if(c < 32) glyph = CTRL_NAMES[c];
+    else if(c === 127) glyph = "DEL";
+    else glyph = String.fromCharCode(c);
+    const desc = descriptionFor(c, glyph);
+    const cell = document.createElement("div");
+    cell.className = "ascii-cell";
+    cell.tabIndex = 0;
+    cell.title = `${desc} — insert <${hex}>`;
+    const g = document.createElement("div"); g.className = "glyph"; g.textContent = glyph;
+    const hd = document.createElement("div"); hd.className = "hexdec"; hd.textContent = `${hex} / ${c}`;
+    cell.appendChild(g); cell.appendChild(hd);
+    cell.addEventListener("click", ()=> insertHexToken(hex));
+    cell.addEventListener("mouseenter", ()=>{
+      asciiDescLine.textContent = `0x${hex} · Dec ${c} · ${desc}`;
+    });
+    cell.addEventListener("mouseleave", ()=>{ asciiDescLine.innerHTML = ASCII_DESC_DEFAULT; });
+    cell.addEventListener("focus", ()=>{
+      asciiDescLine.textContent = `0x${hex} · Dec ${c} · ${desc}`;
+    });
+    cell.addEventListener("blur", ()=>{ asciiDescLine.innerHTML = ASCII_DESC_DEFAULT; });
+    grid.appendChild(cell);
+  }
+  $("asciiTableBody").appendChild(grid);
+}
+function insertHexToken(hex){
+  const token = `<${hex}>`;
+  const start = sendInput.selectionStart ?? sendInput.value.length;
+  const end = sendInput.selectionEnd ?? sendInput.value.length;
+  sendInput.value = sendInput.value.slice(0,start) + token + sendInput.value.slice(end);
+  const pos = start + token.length;
+  sendInput.focus();
+  sendInput.setSelectionRange(pos,pos);
+}
+$("asciiTableBtn").addEventListener("click", ()=>{
+  if(!asciiModal.dataset.built){
+    buildAsciiTable();
+    asciiModal.dataset.built = "1";
+  }
+  asciiModal.hidden = false;
+});
+$("asciiModalClose").addEventListener("click", ()=>{ asciiModal.hidden = true; });
+asciiModal.addEventListener("click", e=>{ if(e.target === asciiModal) asciiModal.hidden = true; });
+document.addEventListener("keydown", e=>{ if(e.key === "Escape" && !asciiModal.hidden) asciiModal.hidden = true; });
+
+/* ---------------- theme ---------------- */
+const themeToggle = $("themeToggle");
+themeToggle.addEventListener("click", ()=>{
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  if(isDark){
+    document.documentElement.removeAttribute("data-theme");
+    themeToggle.textContent = "☾ Dark";
+  } else {
+    document.documentElement.setAttribute("data-theme", "dark");
+    themeToggle.textContent = "☀ Light";
+  }
+});
+
+/* ---------------- init ---------------- */
+refreshPortList();
+appendSystem("Ready. Click '+ Port…' to authorize a physical or virtual COM port, choose baud/framing, then Connect.");
+
+})();
+</script>
+</body>
+</html>
