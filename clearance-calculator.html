@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPC-2221 Clearance &amp; Creepage Calculator</title>
+<style>
+  :root{
+    --bg: #0b1620;
+    --panel: #101f2c;
+    --panel-2: #0d1a25;
+    --grid: rgba(120,180,210,0.08);
+    --ink: #dce8ee;
+    --ink-dim: #8ba4b2;
+    --accent: #ff9b3d;
+    --accent-dim: #b9701f;
+    --good: #6fd68a;
+    --good-bg: rgba(111,214,138,0.14);
+    --line: #223644;
+    --warn-bg: rgba(255,155,61,0.06);
+    --warn-ink: #ffcf8f;
+    --mono: "IBM Plex Mono", "SFMono-Regular", Consolas, Menlo, monospace;
+    --sans: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+  }
+  body[data-theme="light"]{
+    --bg: #f3efe6;
+    --panel: #ffffff;
+    --panel-2: #faf7f0;
+    --grid: rgba(90,70,40,0.06);
+    --ink: #2a231c;
+    --ink-dim: #766b5c;
+    --accent: #b9601f;
+    --accent-dim: #e0a266;
+    --good: #217a44;
+    --good-bg: rgba(33,122,68,0.10);
+    --line: #ddd3c0;
+    --warn-bg: rgba(185,96,31,0.08);
+    --warn-ink: #8a4813;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0/32px 32px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/32px 32px,
+      var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    line-height:1.5;
+    padding:32px 20px 80px;
+    transition:background-color .2s, color .2s;
+  }
+  @font-face{ /* graceful fallback only, no external fetch needed */ }
+  .wrap{max-width:1400px;margin:0 auto;}
+
+  header{
+    border:1px solid var(--line);
+    background:linear-gradient(180deg, var(--panel), var(--panel-2));
+    padding:28px 28px 22px;
+    position:relative;
+    overflow:hidden;
+  }
+  header::before{
+    content:"";
+    position:absolute; inset:0;
+    background:
+      repeating-linear-gradient(90deg, transparent 0 39px, rgba(255,155,61,0.05) 39px 40px);
+    pointer-events:none;
+  }
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 10px;
+  }
+  h1{
+    margin:0 0 6px;
+    font-size:clamp(24px,4vw,34px);
+    font-weight:700;
+    letter-spacing:-0.01em;
+  }
+  .sub{
+    color:var(--ink-dim);
+    font-size:14px;
+    max-width:640px;
+  }
+  .byline{
+    margin-top:18px;
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--ink-dim);
+    display:flex;
+    gap:18px;
+    flex-wrap:wrap;
+  }
+  .byline b{color:var(--ink);font-weight:600;}
+
+  .theme-toggle{
+    position:absolute;
+    top:24px;
+    right:24px;
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink);
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:2px;
+    padding:8px 12px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:7px;
+    transition:border-color .15s, background-color .2s;
+  }
+  .theme-toggle:hover{border-color:var(--accent);}
+  .theme-toggle .dot{
+    width:8px; height:8px; border-radius:50%;
+    background:var(--accent);
+  }
+  @media(max-width:640px){
+    .theme-toggle{position:static; margin-top:14px;}
+  }
+
+  section{
+    border:1px solid var(--line);
+    border-top:none;
+    background:var(--panel-2);
+    padding:26px 28px;
+  }
+  section h2{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.14em;
+    color:var(--accent);
+    margin:0 0 18px;
+    font-family:var(--mono);
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  section h2::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:var(--line);
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px 24px;
+  }
+  @media(max-width:640px){.grid{grid-template-columns:1fr;}}
+
+  label{
+    display:block;
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    margin-bottom:8px;
+  }
+  input[type=number], select{
+    width:100%;
+    background:var(--bg);
+    border:1px solid var(--line);
+    color:var(--ink);
+    font-family:var(--mono);
+    font-size:16px;
+    padding:11px 12px;
+    border-radius:2px;
+    outline:none;
+    transition:border-color .15s;
+  }
+  input[type=number]:focus, select:focus{
+    border-color:var(--accent);
+  }
+  select{appearance:none; cursor:pointer;
+    background-image:linear-gradient(45deg, transparent 50%, var(--ink-dim) 50%), linear-gradient(135deg, var(--ink-dim) 50%, transparent 50%);
+    background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+    background-size:5px 5px, 5px 5px;
+    background-repeat:no-repeat;
+  }
+  .hint{font-size:12px;color:var(--ink-dim);margin-top:6px;}
+
+  .result{
+    margin-top:24px;
+    border:1px solid var(--accent-dim);
+    background:linear-gradient(180deg, var(--warn-bg), transparent 60%);
+    padding:20px 22px;
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:20px;
+  }
+  .result .stat .k{
+    font-family:var(--mono);
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.1em;
+    color:var(--ink-dim);
+    margin-bottom:6px;
+  }
+  .result .stat .v{
+    font-family:var(--mono);
+    font-size:26px;
+    font-weight:600;
+    color:var(--good);
+  }
+  .result .stat .v small{
+    font-size:13px;
+    color:var(--ink-dim);
+    font-weight:400;
+    margin-left:4px;
+  }
+  .result .stat.note .v{color:var(--ink); font-size:14px; font-weight:400;}
+
+  .warn{
+    margin-top:14px;
+    font-size:12.5px;
+    color:var(--warn-ink);
+    border-left:2px solid var(--accent);
+    padding:8px 12px;
+    background:var(--warn-bg);
+    display:none;
+  }
+  .warn.show{display:block;}
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-family:var(--mono);
+    font-size:12.5px;
+  }
+  caption{
+    text-align:left;
+    font-size:12px;
+    color:var(--ink-dim);
+    margin-bottom:10px;
+    font-family:var(--sans);
+  }
+  th, td{
+    border:1px solid var(--line);
+    padding:8px 9px;
+    text-align:center;
+    white-space:nowrap;
+  }
+  thead th{
+    background:var(--panel);
+    color:var(--accent);
+    font-weight:600;
+    position:sticky; top:0;
+  }
+  tbody th{
+    text-align:left;
+    color:var(--ink-dim);
+    font-weight:400;
+    background:var(--panel);
+  }
+  tbody tr:hover td, tbody tr:hover th{background:rgba(255,155,61,0.06);}
+  td.hl, th.hl{
+    background:var(--good-bg) !important;
+    color:var(--good);
+    font-weight:600;
+    box-shadow:inset 0 0 0 1px var(--good);
+  }
+  .tablewrap{overflow-x:auto; border:1px solid var(--line);}
+
+  .legend{
+    margin-top:14px;
+    font-size:12px;
+    color:var(--ink-dim);
+    display:grid;
+    grid-template-columns:1fr;
+    gap:4px;
+  }
+  .legend b{color:var(--ink);font-family:var(--mono);}
+
+  footer{
+    border:1px solid var(--line);
+    border-top:none;
+    padding:18px 28px;
+    font-size:11.5px;
+    color:var(--ink-dim);
+    background:var(--panel-2);
+  }
+  footer p{margin:0 0 8px;}
+  footer p:last-child{margin-bottom:0;}
+</style>
+</head>
+<body data-theme="light">
+<div class="wrap">
+
+  <header>
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="true">
+      <span class="dot"></span><span id="theme-toggle-label">Dark mode</span>
+    </button>
+    <p class="eyebrow">PCB Design Reference &middot; Electrical Spacing</p>
+    <h1>Creepage &amp; Clearance Calculator</h1>
+    <p class="sub">Minimum conductor spacing per IPC&#8209;2221C Table 6&#8209;1 and IPC&#8209;9592B, for use during PCB layout and design review.</p>
+    <div class="byline">
+      <span>Prepared by <b>Duncan Johnson</b></span>
+      <span>References&#8202;: IPC&#8209;2221C Table 6&#8209;1 &middot; IPC&#8209;9592B</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>IPC&#8209;2221C &mdash; Inputs</h2>
+    <div class="grid">
+      <div>
+        <label for="voltage">Voltage between conductors (DC or AC peak, V)</label>
+        <input type="number" id="voltage" value="48" min="0" step="1">
+        <p class="hint">Use the worst-case peak voltage that can appear between the two conductors, including transients you intend to design for.</p>
+      </div>
+      <div>
+        <label for="condition">Board / environment condition</label>
+        <select id="condition">
+          <option value="B1">B1 &mdash; Internal Conductors</option>
+          <option value="B2" selected>B2 &mdash; External Conductors, Uncoated, Sea Level to 3050 m</option>
+          <option value="B3">B3 &mdash; External Conductors, Uncoated, Over 3050 m or in a Vacuum</option>
+          <option value="B4">B4 &mdash; External Conductors Covered With Solder Mask (Any Elevation)</option>
+          <option value="B5">B5 &mdash; External Conductors, Coated (Any Elevation or in a Vacuum)</option>
+          <option value="A6">A6 &mdash; External Component Lead, Coated (Any Elevation or in a Vacuum)</option>
+          <option value="A7">A7 &mdash; External Component Lead, Uncoated, Sea Level to 3050 m</option>
+          <option value="A8">A8 &mdash; External Component Leads, without Conformal Coating, Over 3050 m or in a Vacuum</option>
+        </select>
+        <p class="hint">Columns per IPC&#8209;2221C Table 6&#8209;1: B1&ndash;B5 cover conductors, A6&ndash;A8 cover uncoated/coated component leads.</p>
+      </div>
+    </div>
+
+    <div class="result">
+      <div class="stat">
+        <div class="k">Minimum spacing</div>
+        <div class="v" id="out-mm">&mdash;<small>mm</small></div>
+      </div>
+      <div class="stat">
+        <div class="k">Equivalent</div>
+        <div class="v" id="out-mil">&mdash;<small>mil</small></div>
+      </div>
+      <div class="stat note">
+        <div class="k">Applies to</div>
+        <div class="v" id="out-note">Both clearance and creepage</div>
+      </div>
+    </div>
+    <div class="warn" id="warn-highvolt">
+      Voltage exceeds 500&nbsp;V &mdash; per IPC&#8209;2221C section 6.3, spacing is calculated as the 301&ndash;500&nbsp;V base value for this column plus (V &minus; 500)&nbsp;&times; the column's mm/V rate.
+    </div>
+  </section>
+
+  <section>
+    <h2>IPC&#8209;2221C Table 6&#8209;1 &mdash; Minimum Electrical Spacing</h2>
+    <div class="tablewrap">
+      <table id="spacing-table">
+        <caption>All values in millimeters. Highlighted cell shows the row/column selected above.</caption>
+        <thead>
+          <tr>
+            <th>Voltage (V, DC or AC peak)</th>
+            <th data-col="B1">B1</th>
+            <th data-col="B2">B2</th>
+            <th data-col="B3">B3</th>
+            <th data-col="B4">B4</th>
+            <th data-col="B5">B5</th>
+            <th data-col="A6">A6</th>
+            <th data-col="A7">A7</th>
+            <th data-col="A8">A8</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+    <div class="legend">
+      <div><b>B1</b> &mdash; Internal Conductors</div>
+      <div><b>B2</b> &mdash; External Conductors, Uncoated, Sea Level to 3050 m</div>
+      <div><b>B3</b> &mdash; External Conductors, Uncoated, Over 3050 m or in a Vacuum</div>
+      <div><b>B4</b> &mdash; External Conductors Covered With Solder Mask (Any Elevation)</div>
+      <div><b>B5</b> &mdash; External Conductors, Coated (Any Elevation or in a Vacuum)</div>
+      <div><b>A6</b> &mdash; External Component Lead, Coated (Any Elevation or in a Vacuum)</div>
+      <div><b>A7</b> &mdash; External Component Lead, Uncoated, Sea Level to 3050 m</div>
+      <div><b>A8</b> &mdash; External Component Leads, without Conformal Coating, Over 3050 m or in a Vacuum</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>IPC&#8209;9592B &mdash; Power Conversion Device Spacing</h2>
+    <div class="grid">
+      <div>
+        <label for="voltage-9592">Voltage between conductors (V peak)</label>
+        <input type="number" id="voltage-9592" value="48" min="0" step="1">
+      </div>
+      <div>
+        <div class="result" style="margin-top:0;">
+          <div class="stat">
+            <div class="k">Minimum spacing</div>
+            <div class="v" id="out-9592-mm">&mdash;<small>mm</small></div>
+          </div>
+          <div class="stat">
+            <div class="k">Equivalent</div>
+            <div class="v" id="out-9592-mil">&mdash;<small>mil</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tablewrap" style="margin-top:22px;">
+      <table id="table-9592">
+        <caption>Minimum spacing formula by voltage band. Highlighted row shows the band selected above.</caption>
+        <thead>
+          <tr>
+            <th>Minimum Spacing (mm)</th>
+            <th>Voltage Range (V)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-band="0"><td>0.13</td><td>V<sub>peak</sub> &lt; 15</td></tr>
+          <tr data-band="1"><td>0.25</td><td>15 &le; V<sub>peak</sub> &lt; 30</td></tr>
+          <tr data-band="2"><td>0.1 + (0.01 &times; V<sub>peak</sub>)</td><td>30 &le; V<sub>peak</sub> &lt; 100</td></tr>
+          <tr data-band="3"><td>0.6 + (0.005 &times; V<sub>peak</sub>)</td><td>100 &le; V<sub>peak</sub></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p><strong>On creepage vs. clearance:</strong> IPC&#8209;2221 does not split its conductor-spacing table into separate "clearance" (through-air) and "creepage" (over-surface) values the way IEC 60950&#8209;1/62368&#8209;1 does by pollution degree and material CTI. Its Table&nbsp;6&#8209;1 spacing is used as the minimum for <em>both</em> quantities on a PCB. If your design is being certified to a safety standard (e.g. IEC&nbsp;62368&#8209;1, UL&nbsp;60950/62368), use that standard's creepage/clearance tables directly &mdash; they are not the same numbers as IPC&#8209;2221 and are often larger for mains-connected or hazardous-voltage circuits.</p>
+    <p><strong>IPC&#8209;9592B &mdash; recommended voltage-spacing between uninsulated conductors (external PWB layers) in a power assembly:</strong> All uninsulated PC board conductors, component leads, heatsinks and other conductive features shall meet the voltage-spacing requirements for ac circuits, switching circuits, or any dc potential above 100V. It is recommended that these voltage-spacing guidelines be followed for dc circuits under 100V as well. Features with spacings not meeting the above voltage-spacing requirements must be insulated; for example by RTV, conformal coating, sleeving or a combination of these methods.</p>
+    <p><em>NOTE: Engineering exceptions may be taken to the above criteria based on a risk/cost analysis. Careful review of that decision is recommended.</em></p>
+    <p>Board-to-metal chassis spacings shall meet the criteria. For these situations, a guard band to the criteria is recommended. The guard band shall account for reasonable device lead length variability.</p>
+    <p><em>NOTE: Insulation is highly recommended between the underside of PC mother boards and chassis sheet metal, even if the above voltage-spacing requirement criterion is met.</em></p>
+    <p>Whenever the creepage or clearance requirements of IEC 60950 are greater than the requirements defined, the IEC 60950 requirements shall take precedence over this document.</p>
+  </footer>
+
+</div>
+
+<script>
+// IPC-2221C Table 6-1 — minimum electrical spacing, in mm.
+// Rows keyed by upper bound of the voltage range (V, DC or AC peak).
+const TABLE = [
+  { max: 15,  B1:0.05, B2:0.10, B3:0.10,  B4:0.075, B5:0.075, A6:0.13, A7:0.13, A8:0.13 },
+  { max: 30,  B1:0.05, B2:0.10, B3:0.10,  B4:0.075, B5:0.075, A6:0.13, A7:0.25, A8:0.25 },
+  { max: 50,  B1:0.10, B2:0.64, B3:0.64,  B4:0.30,  B5:0.13,  A6:0.13, A7:0.40, A8:0.80 },
+  { max: 100, B1:0.10, B2:0.64, B3:1.50,  B4:0.30,  B5:0.13,  A6:0.13, A7:0.50, A8:1.00 },
+  { max: 150, B1:0.20, B2:0.64, B3:3.20,  B4:0.80,  B5:0.40,  A6:0.40, A7:0.80, A8:1.60 },
+  { max: 170, B1:0.20, B2:1.25, B3:3.20,  B4:0.80,  B5:0.40,  A6:0.40, A7:0.80, A8:1.60 },
+  { max: 250, B1:0.20, B2:1.25, B3:6.40,  B4:0.80,  B5:0.40,  A6:0.40, A7:0.80, A8:1.60 },
+  { max: 300, B1:0.20, B2:1.25, B3:12.50, B4:0.80,  B5:0.40,  A6:0.40, A7:0.80, A8:1.60 },
+  { max: 500, B1:0.25, B2:2.50, B3:12.50, B4:1.60,  B5:0.80,  A6:0.80, A7:1.50, A8:3.00 },
+];
+// Per-volt rate applied to voltage ABOVE 500 V (mm per volt over 500 V), per column.
+// Per section 6.3: spacing = 301-500V base value + (V - 500) * rate.
+const ABOVE_500_RATE = { B1:0.0025, B2:0.005, B3:0.025, B4:0.00305, B5:0.00305, A6:0.00305, A7:0.00305, A8:0.0061 };
+const COLS = ["B1","B2","B3","B4","B5","A6","A7","A8"];
+
+function rowLabel(row, idx, arr){
+  const prevMax = idx === 0 ? 0 : arr[idx-1].max;
+  return `${prevMax}\u2013${row.max}`;
+}
+
+function buildTable(){
+  const tbody = document.getElementById("table-body");
+  tbody.innerHTML = "";
+  TABLE.forEach((row, idx) => {
+    const tr = document.createElement("tr");
+    tr.dataset.rowIndex = idx;
+    const th = document.createElement("th");
+    th.textContent = rowLabel(row, idx, TABLE);
+    tr.appendChild(th);
+    COLS.forEach(col => {
+      const td = document.createElement("td");
+      td.dataset.col = col;
+      td.textContent = row[col].toFixed(2);
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  // >500V row
+  const tr = document.createElement("tr");
+  tr.dataset.rowIndex = "above500";
+  const th = document.createElement("th");
+  th.textContent = "> 500 (see \u00a76.3)";
+  tr.appendChild(th);
+  COLS.forEach(col => {
+    const td = document.createElement("td");
+    td.dataset.col = col;
+    td.textContent = ABOVE_500_RATE[col] + " mm/V";
+    tr.appendChild(td);
+  });
+  tbody.appendChild(tr);
+}
+
+function lookup(voltage, col){
+  for (let i = 0; i < TABLE.length; i++){
+    if (voltage <= TABLE[i].max){
+      return { value: TABLE[i][col], rowIndex: i, extrapolated: false };
+    }
+  }
+  // Above 500V, per section 6.3: base (301-500V) value + (V - 500) * rate
+  const rate = ABOVE_500_RATE[col];
+  const base = TABLE[TABLE.length - 1][col];
+  const value = base + (voltage - 500) * rate;
+  return { value, rowIndex: "above500", extrapolated: true };
+}
+
+function clearHighlights(){
+  document.querySelectorAll("#spacing-table td, #spacing-table th").forEach(el => el.classList.remove("hl"));
+}
+
+function update(){
+  const voltageInput = document.getElementById("voltage");
+  const col = document.getElementById("condition").value;
+  let voltage = parseFloat(voltageInput.value);
+  if (isNaN(voltage) || voltage < 0) voltage = 0;
+
+  const { value, rowIndex, extrapolated } = lookup(voltage, col);
+  const mm = value;
+  const mil = value / 0.0254;
+
+  document.getElementById("out-mm").innerHTML = mm.toFixed(3) + "<small>mm</small>";
+  document.getElementById("out-mil").innerHTML = mil.toFixed(1) + "<small>mil</small>";
+  document.getElementById("warn-highvolt").classList.toggle("show", extrapolated);
+
+  clearHighlights();
+  const headerCell = document.querySelector(`thead th[data-col="${col}"]`);
+  if (headerCell) headerCell.classList.add("hl");
+  const row = document.querySelector(`tbody tr[data-row-index="${rowIndex}"]`);
+  if (row){
+    const rowHeader = row.querySelector("th");
+    if (rowHeader) rowHeader.classList.add("hl");
+    const cell = row.querySelector(`td[data-col="${col}"]`);
+    if (cell) cell.classList.add("hl");
+  }
+}
+
+buildTable();
+document.getElementById("voltage").addEventListener("input", update);
+document.getElementById("condition").addEventListener("change", update);
+update();
+
+function lookup9592(voltage){
+  if (voltage < 15)  return { value: 0.13, band: 0 };
+  if (voltage < 30)  return { value: 0.25, band: 1 };
+  if (voltage < 100) return { value: 0.1 + (0.01 * voltage), band: 2 };
+  return { value: 0.6 + (0.005 * voltage), band: 3 };
+}
+
+function update9592(){
+  const input = document.getElementById("voltage-9592");
+  let voltage = parseFloat(input.value);
+  if (isNaN(voltage) || voltage < 0) voltage = 0;
+
+  const { value, band } = lookup9592(voltage);
+  document.getElementById("out-9592-mm").innerHTML = value.toFixed(3) + "<small>mm</small>";
+  document.getElementById("out-9592-mil").innerHTML = (value / 0.0254).toFixed(1) + "<small>mil</small>";
+
+  document.querySelectorAll("#table-9592 tbody tr").forEach(tr => {
+    tr.classList.remove("hl-row");
+    tr.querySelectorAll("td").forEach(td => td.classList.remove("hl"));
+  });
+  const row = document.querySelector(`#table-9592 tbody tr[data-band="${band}"]`);
+  if (row){
+    row.querySelectorAll("td").forEach(td => td.classList.add("hl"));
+    row.classList.add("hl-row");
+  }
+}
+
+document.getElementById("voltage-9592").addEventListener("input", update9592);
+update9592();
+
+const toggleBtn = document.getElementById("theme-toggle");
+const toggleLabel = document.getElementById("theme-toggle-label");
+toggleBtn.addEventListener("click", () => {
+  const isLight = document.body.getAttribute("data-theme") === "light";
+  document.body.setAttribute("data-theme", isLight ? "dark" : "light");
+  toggleLabel.textContent = isLight ? "Light mode" : "Dark mode";
+  toggleBtn.setAttribute("aria-pressed", String(isLight));
+});
+</script>
+
+</body>
+</html>
