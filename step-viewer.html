@@ -232,10 +232,10 @@
   /* ── Properties panel ── */
   #props-panel {
     position: absolute;
-    top: 208px;
+    top: 70px;
     right: 12px;
     width: 280px;
-    max-height: calc(100% - 228px);
+    max-height: calc(100% - 90px);
     background: var(--panel-rgba-strong);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -297,6 +297,52 @@
   .props-row .k { color: var(--muted); flex-shrink: 0; }
   .props-row .v { color: var(--text); text-align: right; word-break: break-word; font-family: var(--font-mono); font-size: 11px; }
   #props-empty { color: var(--muted); padding: 6px 0; }
+
+  /* colour picker row */
+  .props-color-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .props-color-row .k { color: var(--muted); font-size: 12px; flex-shrink: 0; }
+  .color-swatch-btn {
+    width: 22px; height: 22px;
+    border-radius: 4px;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    transition: border-color .15s;
+  }
+  .color-swatch-btn:hover { border-color: var(--accent); }
+  .color-picker-input {
+    width: 0; height: 0; opacity: 0; position: absolute; pointer-events: none;
+  }
+  .color-hex-input {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 2px 6px;
+    min-width: 0;
+  }
+  .color-hex-input:focus { outline: none; border-color: var(--accent); }
+  .color-reset-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    font-size: 10px;
+    padding: 2px 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .color-reset-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   #empty-state {
     flex: 1;
@@ -484,7 +530,7 @@
   /* corner info */
   #corner-info {
     position: absolute;
-    top: 140px;
+    top: 12px;
     right: 12px;
     display: flex;
     flex-direction: column;
@@ -546,54 +592,11 @@
     background: transparent;
   }
 
-  /* ── Exploded view slider ── */
-  #explode-panel {
-    position: absolute;
-    bottom: 12px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 280px;
-    background: var(--panel-rgba-strong);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    backdrop-filter: blur(6px);
-    padding: 8px 14px 10px;
-    z-index: 15;
-    box-shadow: 0 8px 24px rgba(0,0,0,.35);
-    display: none;
-  }
-  #explode-panel.open { display: block; }
-  #explode-panel-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: var(--muted);
-    margin-bottom: 6px;
-  }
-  #explode-value {
-    font-family: var(--font-mono);
-    color: var(--accent);
-    font-weight: 700;
-    text-transform: none;
-    letter-spacing: 0;
-  }
-  #explode-slider {
-    width: 100%;
-    cursor: pointer;
-    accent-color: var(--accent);
-    background: transparent;
-  }
-  #explode-toggle-btn.active { border-color: var(--accent); color: var(--accent); }
-
   /* ── View cube ── */
   #view-cube-wrap {
     position: absolute;
-    top: 12px;
-    right: 12px;
+    bottom: 52px;
+    left: 14px;
     width: 100px;
     height: 100px;
     z-index: 12;
@@ -676,7 +679,8 @@
     <button class="btn" id="reset-btn"     title="Reset view">↺ Reset</button>
     <button class="btn" id="props-toggle-btn" title="Toggle properties panel">▤ Properties</button>
     <button class="btn" id="measure-toggle-btn" title="Smart measurement tool (snaps to vertex / edge / center)">📏 Measure</button>
-    <button class="btn" id="explode-toggle-btn" title="Exploded view">💥 Explode</button>
+    <div class="sep"></div>
+    <button class="btn" id="export-btn" title="Export model with current colours">⬇ Export</button>
     <div class="sep"></div>
     <button class="btn" id="theme-toggle-btn" title="Toggle light/dark mode">☀ Light</button>
   </div>
@@ -760,18 +764,9 @@
       <label>ZOOM</label>
     </div>
 
-    <!-- Exploded view slider -->
-    <div id="explode-panel">
-      <div id="explode-panel-header">
-        <span>Exploded View</span>
-        <span id="explode-value">0%</span>
-      </div>
-      <input type="range" id="explode-slider" min="0" max="100" step="1" value="0" title="Drag to separate components">
-    </div>
-
     <!-- View cube -->
     <div id="view-cube-wrap">
-      <canvas id="view-cube-canvas" width="100" height="100" title="Click a face, edge or corner to set view"></canvas>
+      <canvas id="view-cube-canvas" width="100" height="100" title="Click a face or corner to set view"></canvas>
       <div id="view-cube-hint">click to set view</div>
     </div>
 
@@ -811,8 +806,6 @@ let occt = null;
 let scene, camera, renderer, controls;
 let modelGroup = null;
 const parts = [];   // { name, mesh, color, visible }
-let explodeScale = 1;
-let explodeFactor = 0; // 0..1
 let treeRoot = null; // hierarchical tree built from STEP assembly structure
 let selectedNode = null;
 let nodeUid = 0;
@@ -886,7 +879,7 @@ function initThree() {
   const canvas = document.getElementById('canvas');
   const viewport = document.getElementById('viewport');
 
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, logarithmicDepthBuffer: true });
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setClearColor(0x0f1117, 1);
   renderer.shadowMap.enabled = true;
@@ -907,11 +900,7 @@ function initThree() {
   const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
   dirLight.position.set(100, 150, 80);
   dirLight.castShadow = true;
-  dirLight.shadow.mapSize.set(2048, 2048);
-  dirLight.shadow.bias = -0.0004;
-  dirLight.shadow.normalBias = 0.02;
   scene.add(dirLight);
-  window._dirLight = dirLight; // referenced by fitToModel to resize the shadow frustum
 
   const fillLight = new THREE.DirectionalLight(0x8ab4ff, 0.3);
   fillLight.position.set(-80, 40, -60);
@@ -952,51 +941,9 @@ function initThree() {
 }
 
 // ── Minimal OrbitControls (no external dependency) ──────────
-// Camera orientation is driven by a pair of co-rotated vectors —
-// `offset` (camera position relative to target) and `up` — rather than
-// recomputing from spherical angles + a fixed world-up every frame.
-// Because `up` is rotated together with `offset` on every drag step,
-// the two stay mutually perpendicular no matter how the camera is
-// oriented, so the camera can spin freely past the poles (looking
-// straight down, flipping upside-down, etc.) with no hard limit and
-// no gimbal-lock flip. `spherical` is still kept in sync afterwards
-// purely so the view cube, view presets and zoom UI have a simple
-// (theta, phi, radius) snapshot to read.
 let orbitState = { rotating: false, panning: false, lastX: 0, lastY: 0,
                    spherical: { theta: 0.6, phi: 1.1, radius: 12 },
-                   offset: new THREE.Vector3(),
-                   up: new THREE.Vector3(0, 1, 0),
                    target: new THREE.Vector3() };
-
-// Jump the camera to a specific (theta, phi[, radius]) — used for view
-// presets, the view cube, and its click-to-animate transitions. Always
-// rebuilds a clean, canonical "up" vector so repeated jumps never drift.
-function setOrbitAngles(theta, phi, radius) {
-  const r = (radius !== undefined && radius !== null) ? radius : orbitState.spherical.radius;
-  orbitState.offset.set(
-    r * Math.sin(phi) * Math.sin(theta),
-    r * Math.cos(phi),
-    r * Math.sin(phi) * Math.cos(theta)
-  );
-  const z = orbitState.offset.clone().normalize();
-  // reference axis for building "up" — swap to world-Z right at the poles
-  // (top/bottom views) where world-Y would be parallel to the view direction
-  const ref = Math.abs(z.y) > 0.999 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0);
-  const right = new THREE.Vector3().crossVectors(ref, z).normalize();
-  orbitState.up.crossVectors(z, right).normalize();
-  orbitState.spherical.theta = theta;
-  orbitState.spherical.phi = phi;
-  orbitState.spherical.radius = r;
-}
-
-// Change distance from target without touching the current viewing angle.
-function setOrbitRadius(radius) {
-  const r = Math.max(1e-4, radius);
-  if (orbitState.offset.lengthSq() < 1e-12) orbitState.offset.set(0, 0, r);
-  else orbitState.offset.setLength(r);
-  orbitState.spherical.radius = r;
-}
-setOrbitAngles(orbitState.spherical.theta, orbitState.spherical.phi, orbitState.spherical.radius);
 
 function setupOrbitControls(canvas) {
   canvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -1004,7 +951,7 @@ function setupOrbitControls(canvas) {
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
     const factor = e.deltaY > 0 ? 1.12 : 0.89;
-    setOrbitRadius(Math.max(0.5, Math.min(5000, orbitState.spherical.radius * factor)));
+    orbitState.spherical.radius = Math.max(0.5, Math.min(5000, orbitState.spherical.radius * factor));
   }, { passive: false });
 
   canvas.addEventListener('pointerdown', e => {
@@ -1027,20 +974,8 @@ function setupOrbitControls(canvas) {
     orbitState.lastY = e.clientY;
 
     if (orbitState.rotating) {
-      // Rotate the camera's offset & up together (rigidly) so they stay
-      // perpendicular — this is what allows continuous, unlimited
-      // rotation on both axes with no pole-flip artifact and no hard stop.
-      const yaw = -dx * 0.007;
-      const pitch = -dy * 0.007;
-      const worldY = new THREE.Vector3(0, 1, 0);
-      orbitState.offset.applyAxisAngle(worldY, yaw);
-      orbitState.up.applyAxisAngle(worldY, yaw);
-      const right = new THREE.Vector3().crossVectors(orbitState.up, orbitState.offset);
-      if (right.lengthSq() > 1e-10) {
-        right.normalize();
-        orbitState.offset.applyAxisAngle(right, pitch);
-        orbitState.up.applyAxisAngle(right, pitch);
-      }
+      orbitState.spherical.theta -= dx * 0.007;
+      orbitState.spherical.phi = Math.max(0.05, Math.min(Math.PI - 0.05, orbitState.spherical.phi - dy * 0.007));
     }
     if (orbitState.panning) {
       const panSpeed = orbitState.spherical.radius * 0.0015;
@@ -1061,26 +996,11 @@ function setupOrbitControls(canvas) {
 
 function orbitTick() {
   if (!camera) return;
-  camera.position.copy(orbitState.target).add(orbitState.offset);
-
-  const len = orbitState.offset.length();
-  if (len < 1e-6) return;
-  const z = orbitState.offset.clone().divideScalar(len); // camera "backward" axis
-  let right = new THREE.Vector3().crossVectors(orbitState.up, z);
-  if (right.lengthSq() < 1e-10) {
-    // extremely unlikely (up and view direction momentarily coincide) —
-    // resync from the last-known angles rather than render a degenerate frame
-    setOrbitAngles(orbitState.spherical.theta, orbitState.spherical.phi, orbitState.spherical.radius);
-    right = new THREE.Vector3().crossVectors(orbitState.up, z);
-  }
-  right.normalize();
-  const up = new THREE.Vector3().crossVectors(z, right);
-  camera.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, up, z));
-
-  // keep the spherical snapshot in sync for the view cube / presets / zoom UI
-  orbitState.spherical.radius = len;
-  orbitState.spherical.theta = Math.atan2(orbitState.offset.x, orbitState.offset.z);
-  orbitState.spherical.phi = Math.acos(Math.max(-1, Math.min(1, orbitState.offset.y / len)));
+  const s = orbitState.spherical;
+  camera.position.x = orbitState.target.x + s.radius * Math.sin(s.phi) * Math.sin(s.theta);
+  camera.position.y = orbitState.target.y + s.radius * Math.cos(s.phi);
+  camera.position.z = orbitState.target.z + s.radius * Math.sin(s.phi) * Math.cos(s.theta);
+  camera.lookAt(orbitState.target);
 }
 
 function resizeRenderer() {
@@ -1105,7 +1025,7 @@ function fitToModel() {
   box.getSize(size);
   const maxDim = Math.max(size.x, size.y, size.z);
   orbitState.target.copy(center);
-  setOrbitRadius(maxDim * 1.8);
+  orbitState.spherical.radius = maxDim * 1.8;
 
   // move grid to model base
   const grid = scene.getObjectByName('__grid');
@@ -1113,28 +1033,6 @@ function fitToModel() {
     grid.position.y = box.min.y;
     const scale = maxDim / 20;
     grid.scale.set(scale, scale, scale);
-  }
-
-  // Resize the shadow camera frustum to fit the model — a mismatched
-  // frustum (default is only a few units across) causes blocky/jagged
-  // or entirely missing shadows once a model is bigger or smaller than
-  // the default assumption.
-  const dirLight = window._dirLight;
-  if (dirLight) {
-    const radius = Math.max(maxDim * 0.75, 0.05);
-    dirLight.target.position.copy(center);
-    if (!dirLight.target.parent) scene.add(dirLight.target); // ensure target is in the scene graph
-    dirLight.target.updateMatrixWorld();
-    const dist = radius * 3;
-    dirLight.position.copy(center).add(new THREE.Vector3(dist, dist * 1.5, dist * 0.8));
-    const cam = dirLight.shadow.camera;
-    cam.left = -radius;
-    cam.right = radius;
-    cam.top = radius;
-    cam.bottom = -radius;
-    cam.near = dist * 0.1;
-    cam.far = dist * 4;
-    cam.updateProjectionMatrix();
   }
 }
 
@@ -1151,7 +1049,8 @@ function setViewPreset(preset) {
     iso:    { theta: PI/4,    phi: PI/3     },
   };
   if (presets[preset]) {
-    setOrbitAngles(presets[preset].theta, presets[preset].phi);
+    orbitState.spherical.theta = presets[preset].theta;
+    orbitState.spherical.phi   = presets[preset].phi;
   }
 }
 
@@ -1538,56 +1437,6 @@ document.getElementById('measure-clear-btn').addEventListener('click', () => {
   renderMeasureList();
 });
 
-// ── Exploded view ──────────────────────────────────────────────
-// Moves every part outward along the line from the overall assembly
-// centre through that part's own centre, scaled by the slider —
-// the same "distance from centre" explode used in Autodesk Viewer.
-const EXPLODE_MAX_FRACTION = 0.9; // at slider=100%, offset ≈ 0.9x the model's bounding diagonal
-
-function computeExplodeData() {
-  if (!modelGroup || parts.length === 0) { explodeScale = 1; return; }
-  const overallBox = new THREE.Box3().setFromObject(modelGroup);
-  const overallCenter = overallBox.getCenter(new THREE.Vector3());
-  explodeScale = overallBox.getSize(new THREE.Vector3()).length() || 1;
-  parts.forEach(p => {
-    const box = new THREE.Box3().setFromObject(p.mesh);
-    const center = box.getCenter(new THREE.Vector3());
-    const dir = center.clone().sub(overallCenter);
-    if (dir.lengthSq() < 1e-8) dir.set(0, 1, 0); // part sits at the assembly centre
-    dir.normalize();
-    p.explodeDir = dir;
-    p.basePosition = p.mesh.position.clone();
-  });
-}
-
-function applyExplode(factor) {
-  explodeFactor = factor;
-  parts.forEach(p => {
-    if (!p.explodeDir) return;
-    p.mesh.position.copy(p.basePosition).addScaledVector(p.explodeDir, factor * explodeScale * EXPLODE_MAX_FRACTION);
-  });
-  document.getElementById('explode-value').textContent = `${Math.round(factor * 100)}%`;
-}
-
-function resetExplode() {
-  const slider = document.getElementById('explode-slider');
-  slider.value = 0;
-  applyExplode(0);
-}
-
-function setExplodeMode(on) {
-  document.getElementById('explode-toggle-btn').classList.toggle('active', on);
-  document.getElementById('explode-panel').classList.toggle('open', on);
-}
-
-document.getElementById('explode-toggle-btn').addEventListener('click', () => {
-  const isOpen = document.getElementById('explode-panel').classList.contains('open');
-  setExplodeMode(!isOpen);
-});
-document.getElementById('explode-slider').addEventListener('input', e => {
-  applyExplode(parseFloat(e.target.value) / 100);
-});
-
 window.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (measurePoints.length) { measurePoints = []; }
@@ -1638,11 +1487,11 @@ window.addEventListener('keydown', e => {
 
   slider.addEventListener('input', () => {
     if (!orbitState || syncing) return;
-    setOrbitRadius(sliderToRadius(parseFloat(slider.value)));
+    orbitState.spherical.radius = sliderToRadius(parseFloat(slider.value));
   });
 
   function zoomStep(factor) {
-    setOrbitRadius(Math.max(0.5, Math.min(5000, orbitState.spherical.radius * factor)));
+    orbitState.spherical.radius = Math.max(0.5, Math.min(5000, orbitState.spherical.radius * factor));
     syncSliderFromOrbit();
   }
   inBtn.addEventListener('click',  () => zoomStep(0.8));
@@ -1656,295 +1505,544 @@ window.addEventListener('keydown', e => {
 // ── View cube ─────────────────────────────────────────────────
 // A miniature 3D cube that mirrors the model's current orientation
 // and lets you click any face, edge or corner to jump to that standard
-// view — matching the SolidWorks / Autodesk Fusion style. Each face is
-// a single clean square; clicking near a corner or edge of that square
-// selects the corresponding cube corner/edge view (no floating markers).
+// view — matching the SolidWorks / Autodesk Fusion style.
 (function setupViewCube() {
   const vc = document.getElementById('view-cube-canvas');
   if (!vc) return;
   const ctx = vc.getContext('2d');
-  const S = 100; // canvas size
+  const S = 100, PI = Math.PI;
 
-  // Cube face definitions: name, outward normal in model space,
-  // target spherical {theta, phi} for that canonical view.
-  // theta/phi follow the same convention as the real camera:
-  //   camera.x = r*sin(phi)*sin(theta), camera.z = r*sin(phi)*cos(theta)
-  const PI = Math.PI;
+  // ── Helpers ───────────────────────────────────────────────
+  function cross3(a,b){ return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+  function scale3(a,s){ return [a[0]*s, a[1]*s, a[2]*s]; }
+  function add3(a,b)  { return [a[0]+b[0], a[1]+b[1], a[2]+b[2]]; }
+  function norm3(a)   { const l=Math.hypot(a[0],a[1],a[2])||1; a[0]/=l; a[1]/=l; a[2]/=l; }
+  function dot3(a,b)  { return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]; }
+
+  // ── Faces ─────────────────────────────────────────────────
   const FACES = [
-    { name: 'FRONT',  n: [ 0,  0,  1], theta: 0,        phi: PI/2     },
-    { name: 'BACK',   n: [ 0,  0, -1], theta: PI,        phi: PI/2     },
-    { name: 'RIGHT',  n: [ 1,  0,  0], theta:  PI/2,     phi: PI/2     },
-    { name: 'LEFT',   n: [-1,  0,  0], theta: -PI/2,     phi: PI/2     },
-    { name: 'TOP',    n: [ 0,  1,  0], theta: 0,         phi: 0.01     },
-    { name: 'BOTTOM', n: [ 0, -1,  0], theta: 0,         phi: PI-0.01  },
+    { name:'FRONT',  n:[ 0, 0, 1], theta:0,        phi:PI/2     },
+    { name:'BACK',   n:[ 0, 0,-1], theta:PI,        phi:PI/2     },
+    { name:'RIGHT',  n:[ 1, 0, 0], theta: PI/2,     phi:PI/2     },
+    { name:'LEFT',   n:[-1, 0, 0], theta:-PI/2,     phi:PI/2     },
+    { name:'TOP',    n:[ 0, 1, 0], theta:0,         phi:0.01     },
+    { name:'BOTTOM', n:[ 0,-1, 0], theta:0,         phi:PI-0.01  },
   ];
 
-  // Given any direction vector, derive the matching spherical target —
-  // used for the on-the-fly corner/edge regions of each face.
-  function dirToTarget(n) {
-    const len = Math.hypot(n[0], n[1], n[2]) || 1;
-    const theta = Math.atan2(n[0], n[2]);
-    const phi   = Math.acos(Math.max(-1, Math.min(1, n[1] / len)));
-    return { theta, phi };
+  // ── Edges: all 12 cube edges (adjacent face pairs) ────────
+  const EDGES = [];
+  for (let i=0; i<FACES.length; i++) {
+    for (let j=i+1; j<FACES.length; j++) {
+      const a=FACES[i].n, b=FACES[j].n;
+      const sum=[a[0]+b[0], a[1]+b[1], a[2]+b[2]];
+      if (sum[0]===0 && sum[1]===0 && sum[2]===0) continue; // opposite faces
+      const len=Math.hypot(sum[0],sum[1],sum[2]);
+      const nn=[sum[0]/len, sum[1]/len, sum[2]/len];
+      // Camera target: look from this diagonal direction
+      const theta=Math.atan2(nn[0], nn[2]);
+      const phi  =Math.acos(Math.max(-1,Math.min(1, nn[1])));
+      EDGES.push({ n:nn, theta, phi, fa:FACES[i], fb:FACES[j] });
+    }
   }
 
-  // Project a 3D point through the cube's view rotation to 2D canvas coords.
-  // We read theta/phi from orbitState to mirror the camera orientation.
-  // This rotation must be the inverse of the real camera's azimuth/elevation
-  // (the camera orbits the model, so the model — and this mini cube —
-  // appears to rotate the opposite way around a fixed viewer).
-  function project(x, y, z) {
-    if (!orbitState) return { x: S/2, y: S/2, vis: true };
-    const th = orbitState.spherical.theta;
-    const ph = orbitState.spherical.phi;
-    // rotate around Y by -theta (inverse of camera azimuth)
-    const x1 =  x * Math.cos(th) - z * Math.sin(th);
-    const y1 =  y;
-    const z1 =  x * Math.sin(th) + z * Math.cos(th);
-    // rotate around X by -(phi − π/2) (inverse of camera elevation)
-    const angle = ph - PI / 2;
-    const x2 =  x1;
-    const y2 =  y1 * Math.cos(angle) + z1 * Math.sin(angle);
-    const z2 = -y1 * Math.sin(angle) + z1 * Math.cos(angle);
-    // simple orthographic into canvas space
-    const scale = S * 0.28;
-    return { x: S/2 + x2 * scale, y: S/2 - y2 * scale, z: z2, vis: z2 > -1.5 };
+  // ── Corners ───────────────────────────────────────────────
+  const CORNERS = [];
+  for (let xi=-1; xi<=1; xi+=2)
+    for (let yi=-1; yi<=1; yi+=2)
+      for (let zi=-1; zi<=1; zi+=2) {
+        CORNERS.push({ n:[xi,yi,zi],
+          theta: Math.atan2(xi, zi),
+          phi:   Math.acos(Math.max(-1,Math.min(1, yi/Math.sqrt(3)))) });
+      }
+
+  // ── Projection (mirrors current camera theta/phi) ─────────
+  function project(x,y,z) {
+    if (!orbitState) return { x:S/2, y:S/2, z:0 };
+    const th=orbitState.spherical.theta, ph=orbitState.spherical.phi;
+    // Negate theta so the cube mirrors the camera (not the inverse)
+    const x1= x*Math.cos(th)-z*Math.sin(th), y1=y,
+          z1= x*Math.sin(th)+z*Math.cos(th);
+    // Negate phi offset so TOP/BOTTOM faces appear correctly
+    const a=PI/2-ph;
+    const x2=x1, y2=y1*Math.cos(a)-z1*Math.sin(a), z2=y1*Math.sin(a)+z1*Math.cos(a);
+    return { x: S/2 + x2*S*0.28, y: S/2 - y2*S*0.28, z: z2 };
   }
 
-  function faceCenter(face) {
-    const [nx, ny, nz] = face.n;
-    return project(nx * 0.98, ny * 0.98, nz * 0.98);
-  }
+  function faceDepth(f)   { return project(f.n[0],f.n[1],f.n[2]).z; }
+  function faceVisible(f) { return faceDepth(f) > -0.1; }
 
-  // Returns true if the face's outward normal is pointing somewhat toward us
-  function faceVisible(face) {
-    const [nx, ny, nz] = face.n;
-    const c = project(nx, ny, nz);
-    return c.z > -0.1;
-  }
-
-  function cross3(a, b)      { return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
-  function scale3(a, s)      { return [a[0]*s, a[1]*s, a[2]*s]; }
-  function add3(a, b)        { return [a[0]+b[0], a[1]+b[1], a[2]+b[2]]; }
-  function normalise3(a)     { const l = Math.hypot(...a)||1; a[0]/=l; a[1]/=l; a[2]/=l; }
-
-  const FACE_R = 0.95;
-
-  // Two perpendicular in-plane axes for a face (always ± a standard basis
-  // vector for axis-aligned cube faces, which keeps corner/edge math exact).
-  function faceBasis(face) {
-    const [, ny] = face.n;
-    const up0 = (Math.abs(ny) < 0.9) ? [0,1,0] : [1,0,0];
-    const ax = cross3(face.n, up0); normalise3(ax);
-    const ay = cross3(face.n, ax);  normalise3(ay);
-    return { ax, ay };
-  }
-
-  function facePoint3D(face, basis, u, v) {
-    return add3(scale3(face.n, FACE_R), add3(scale3(basis.ax, FACE_R * u), scale3(basis.ay, FACE_R * v)));
-  }
-
-  // Build a face polygon (4 verts) for a cube face
   function facePoly(face) {
-    const basis = faceBasis(face);
-    const verts = [
-      facePoint3D(face, basis,  1,  1),
-      facePoint3D(face, basis, -1,  1),
-      facePoint3D(face, basis, -1, -1),
-      facePoint3D(face, basis,  1, -1),
-    ];
-    return verts.map(v => project(v[0], v[1], v[2]));
-  }
-
-  // Invert the (affine) face→screen mapping to recover local (u,v) in
-  // [-1,1] for a given screen point, so we can tell whether the cursor
-  // is over the face's center, an edge strip, or a corner square.
-  function faceLocalUV(face, basis, mx, my) {
-    const P00 = project(...facePoint3D(face, basis, 0, 0));
-    const Pu  = project(...facePoint3D(face, basis, 1, 0));
-    const Pv  = project(...facePoint3D(face, basis, 0, 1));
-    const Ax = Pu.x - P00.x, Ay = Pu.y - P00.y;
-    const Bx = Pv.x - P00.x, By = Pv.y - P00.y;
-    const det = Ax * By - Bx * Ay;
-    if (Math.abs(det) < 1e-6) return null;
-    const dx = mx - P00.x, dy = my - P00.y;
-    const u = (dx * By - Bx * dy) / det;
-    const v = (Ax * dy - dx * Ay) / det;
-    return { u, v };
-  }
-
-  // Threshold (in local [-1,1] units) beyond which we're in the
-  // edge/corner band rather than the flat face center.
-  const REGION_T = 0.55;
-
-  // Classify a local (u,v) into a face/edge/corner hit, returning the
-  // navigation target and the small region polygon (for hover highlight).
-  function classifyRegion(face, basis, u, v) {
-    if (u < -1 || u > 1 || v < -1 || v > 1) return null;
-    const farU = Math.abs(u) > REGION_T;
-    const farV = Math.abs(v) > REGION_T;
-    if (!farU && !farV) {
-      return { type: 'face', target: face, poly: [[-REGION_T,-REGION_T],[REGION_T,-REGION_T],[REGION_T,REGION_T],[-REGION_T,REGION_T]] };
-    }
-    const su = Math.sign(u) || 1, sv = Math.sign(v) || 1;
-    if (farU && farV) {
-      const n = add3(face.n, add3(scale3(basis.ax, su), scale3(basis.ay, sv)));
-      const poly = [[su*REGION_T,sv*REGION_T],[su,sv*REGION_T],[su,sv],[su*REGION_T,sv]];
-      return { type: 'corner', target: dirToTarget(n), poly };
-    }
-    if (farU) {
-      const n = add3(face.n, scale3(basis.ax, su));
-      const poly = [[su*REGION_T,-REGION_T],[su,-REGION_T],[su,REGION_T],[su*REGION_T,REGION_T]];
-      return { type: 'edge', target: dirToTarget(n), poly };
-    }
-    const n = add3(face.n, scale3(basis.ay, sv));
-    const poly = [[-REGION_T,sv*REGION_T],[REGION_T,sv*REGION_T],[REGION_T,sv],[-REGION_T,sv]];
-    return { type: 'edge', target: dirToTarget(n), poly };
-  }
-
-  function regionScreenPoly(face, basis, poly) {
-    return poly.map(([u, v]) => project(...facePoint3D(face, basis, u, v)));
-  }
-
-  let hover = null; // { face, type, target, poly }
-
-  function visibleFacesSorted() {
-    return FACES.filter(faceVisible).sort((a, b) => {
-      const [ax,ay,az]=a.n, [bx,by,bz]=b.n;
-      return project(bx,by,bz).z - project(ax,ay,az).z;
+    const up0 = Math.abs(face.n[1])<0.9 ? [0,1,0] : [1,0,0];
+    const ax=cross3(face.n, up0); norm3(ax);
+    const ay=cross3(face.n, ax);  norm3(ay);
+    const r=0.95;
+    return [[ r, r],[ -r, r],[ -r,-r],[ r,-r]].map(([u,v])=>{
+      const pt=add3(scale3(face.n,r), add3(scale3(ax,u), scale3(ay,v)));
+      return project(pt[0],pt[1],pt[2]);
     });
   }
 
+  // The two cube-corner endpoints of a given edge (world space → screen)
+  function edgeEndpoints(edge) {
+    const pts = CORNERS.filter(c =>
+      dot3(c.n, edge.fa.n)>0.5 && dot3(c.n, edge.fb.n)>0.5);
+    if (pts.length!==2) return null;
+    return [
+      project(pts[0].n[0]*0.95, pts[0].n[1]*0.95, pts[0].n[2]*0.95),
+      project(pts[1].n[0]*0.95, pts[1].n[1]*0.95, pts[1].n[2]*0.95),
+    ];
+  }
+
+  // Screen-space distance from point (px,py) to segment (ax,ay)→(bx,by)
+  function ptSegDist(px,py, ax,ay, bx,by) {
+    const dx=bx-ax, dy=by-ay;
+    const t = (dx||dy) ? Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy))) : 0;
+    return Math.hypot(px-ax-dx*t, py-ay-dy*t);
+  }
+
+  // ── Hover state ───────────────────────────────────────────
+  let hoverFace=null, hoverEdge=null, hoverCorner=null;
+
+  // ── Draw ──────────────────────────────────────────────────
   function draw() {
     const isLight = document.body.classList.contains('light');
-    const bg       = isLight ? 'rgba(240,242,248,.92)' : 'rgba(20,24,36,.92)';
-    const faceHov  = isLight ? 'rgba(180,205,255,.95)' : 'rgba(60,100,200,.55)';
-    const faceFront= isLight ? 'rgba(220,230,250,.95)' : 'rgba(35,45,65,.9)';
-    const edgeCol  = isLight ? '#9aa8c0'               : '#3a4160';
-    const textCol  = isLight ? '#2a3a5c'               : '#c8d0e8';
-    const accentC  = '#4f8ef7';
+    const bg       = isLight ? 'rgba(240,242,248,.93)' : 'rgba(18,22,34,.93)';
+    const faceBg   = isLight ? 'rgba(215,223,240,.90)' : 'rgba(32,42,64,.90)';
+    const faceHov  = isLight ? 'rgba(175,205,255,.97)' : 'rgba(55,95,200,.55)';
+    const edgeBase = isLight ? '#8898bb'               : '#2e3c60';
+    const edgeHov  = 'rgba(79,142,247,.40)';
+    const cornerN  = isLight ? '#7080a8'               : '#4458a0';
+    const textCol  = isLight ? '#1e2e50'               : '#c0ccec';
+    const accent   = '#4f8ef7';
 
-    ctx.clearRect(0, 0, S, S);
-
-    // Outer rounded background
-    ctx.save();
-    ctx.globalAlpha = 0.92;
-    ctx.fillStyle = bg;
+    ctx.clearRect(0,0,S,S);
+    ctx.fillStyle=bg;
     ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(0, 0, S, S, 12);
-    else ctx.rect(0, 0, S, S);
+    if (ctx.roundRect) ctx.roundRect(0,0,S,S,12); else ctx.rect(0,0,S,S);
     ctx.fill();
-    ctx.restore();
 
-    const visibleFaces = visibleFacesSorted();
-
-    for (const face of visibleFaces) {
-      const poly = facePoly(face);
+    // ── 1. Faces (back→front) ─────────────────────────────
+    const sortedFaces=[...FACES].filter(faceVisible).sort((a,b)=>faceDepth(a)-faceDepth(b));
+    for (const face of sortedFaces) {
+      const poly=facePoly(face);
       ctx.beginPath();
-      poly.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+      poly.forEach((p,i)=> i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
       ctx.closePath();
-      const isFaceHov = hover && hover.face === face && hover.type === 'face';
-      ctx.fillStyle = isFaceHov ? faceHov : faceFront;
+      ctx.fillStyle = hoverFace===face ? faceHov : faceBg;
       ctx.fill();
-      ctx.strokeStyle = edgeCol;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      // face label
-      const fc = faceCenter(face);
-      ctx.fillStyle = isFaceHov ? accentC : textCol;
-      ctx.font = `${isFaceHov ? 700 : 600} 9px Inter, system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.strokeStyle=edgeBase; ctx.lineWidth=1.2; ctx.stroke();
+      // label
+      const fc=project(face.n[0]*.96,face.n[1]*.96,face.n[2]*.96);
+      ctx.fillStyle = hoverFace===face ? accent : textCol;
+      ctx.font=`${hoverFace===face?700:600} 9px Inter,system-ui,sans-serif`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(face.name, fc.x, fc.y);
     }
 
-    // Highlight the hovered edge/corner region (only one at a time)
-    if (hover && hover.type !== 'face') {
-      const screenPoly = regionScreenPoly(hover.face, hover.basis, hover.poly);
-      ctx.beginPath();
-      screenPoly.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
-      ctx.closePath();
-      ctx.fillStyle = faceHov;
-      ctx.fill();
-      ctx.strokeStyle = accentC;
-      ctx.lineWidth = 1;
-      ctx.stroke();
+    // ── 2. Edges ──────────────────────────────────────────
+    for (const edge of EDGES) {
+      // Only draw edges that lie on the visible silhouette
+      if (faceDepth(edge.fa)<-0.15 && faceDepth(edge.fb)<-0.15) continue;
+      const pts=edgeEndpoints(edge);
+      if (!pts) continue;
+      const [p1,p2]=pts;
+      const isHov=hoverEdge===edge;
+
+      if (isHov) {
+        // Filled highlight strip
+        const dx=p2.x-p1.x, dy=p2.y-p1.y, len=Math.hypot(dx,dy)||1;
+        const nx=-dy/len, ny=dx/len, hw=5;
+        ctx.beginPath();
+        ctx.moveTo(p1.x+nx*hw, p1.y+ny*hw); ctx.lineTo(p2.x+nx*hw, p2.y+ny*hw);
+        ctx.lineTo(p2.x-nx*hw, p2.y-ny*hw); ctx.lineTo(p1.x-nx*hw, p1.y-ny*hw);
+        ctx.closePath();
+        ctx.fillStyle=edgeHov; ctx.fill();
+        ctx.strokeStyle=accent; ctx.lineWidth=2; ctx.stroke();
+      } else {
+        ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y);
+        ctx.strokeStyle=edgeBase; ctx.lineWidth=2.5; ctx.stroke();
+      }
     }
 
-    // thin compass ring at the bottom edge
-    ctx.beginPath();
-    ctx.arc(S/2, S - 10, 6, 0, PI*2);
-    ctx.strokeStyle = edgeCol;
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-    ctx.fillStyle = textCol;
-    ctx.font = '7px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('N', S/2, S - 10);
+    // ── 3. Corners ────────────────────────────────────────
+    for (const c of CORNERS) {
+      const cp=project(c.n[0]*.95, c.n[1]*.95, c.n[2]*.95);
+      if (cp.z<0) continue;
+      const isHov=hoverCorner===c;
+      ctx.beginPath(); ctx.arc(cp.x,cp.y, isHov?5.5:3.5, 0, PI*2);
+      ctx.fillStyle=isHov?accent:cornerN; ctx.fill();
+      if (isHov){ ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.lineWidth=1; ctx.stroke(); }
+    }
+
+    // ── Compass N ─────────────────────────────────────────
+    ctx.beginPath(); ctx.arc(S/2,S-10,6,0,PI*2);
+    ctx.strokeStyle=edgeBase; ctx.lineWidth=0.8; ctx.stroke();
+    ctx.fillStyle=textCol; ctx.font='7px sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('N',S/2,S-10);
   }
 
-  // Animate the cube every frame in sync with the main renderer
   window._viewCubeDraw = draw;
 
-  // Hit-testing: find which face/edge/corner region the cursor is over
+  // ── Hit-test: corner → edge → face ────────────────────────
   function hitTest(ex, ey) {
-    const rect = vc.getBoundingClientRect();
-    const mx = (ex - rect.left) * (S / rect.width);
-    const my = (ey - rect.top)  * (S / rect.height);
+    const rect=vc.getBoundingClientRect();
+    const mx=(ex-rect.left)*(S/rect.width), my=(ey-rect.top)*(S/rect.height);
 
-    // front-to-back so the nearest face under the cursor wins
-    for (const face of [...visibleFacesSorted()].reverse()) {
-      const poly = facePoly(face);
-      // point-in-polygon
-      let inside = false;
-      for (let i=0, j=poly.length-1; i<poly.length; j=i++) {
+    // 1. Corners (highest priority — small circles)
+    for (const c of CORNERS) {
+      const cp=project(c.n[0]*.95, c.n[1]*.95, c.n[2]*.95);
+      if (cp.z<0) continue;
+      if (Math.hypot(cp.x-mx, cp.y-my)<8) return { type:'corner', item:c };
+    }
+
+    // 2. Edges — distance to the line segment in screen space
+    let bestD=8, bestEdge=null;
+    for (const edge of EDGES) {
+      if (faceDepth(edge.fa)<-0.15 && faceDepth(edge.fb)<-0.15) continue;
+      const pts=edgeEndpoints(edge);
+      if (!pts) continue;
+      const d=ptSegDist(mx,my, pts[0].x,pts[0].y, pts[1].x,pts[1].y);
+      if (d<bestD) { bestD=d; bestEdge=edge; }
+    }
+    if (bestEdge) return { type:'edge', item:bestEdge };
+
+    // 3. Faces — point-in-polygon (front-most first)
+    const sortedFaces=[...FACES].filter(faceVisible).sort((a,b)=>faceDepth(b)-faceDepth(a));
+    for (const face of sortedFaces) {
+      const poly=facePoly(face);
+      let inside=false;
+      for (let i=0,j=poly.length-1; i<poly.length; j=i++) {
         const xi=poly[i].x,yi=poly[i].y,xj=poly[j].x,yj=poly[j].y;
         if (((yi>my)!==(yj>my)) && (mx<(xj-xi)*(my-yi)/(yj-yi)+xi)) inside=!inside;
       }
-      if (!inside) continue;
-      const basis = faceBasis(face);
-      const uv = faceLocalUV(face, basis, mx, my);
-      if (!uv) continue;
-      const region = classifyRegion(face, basis, uv.u, uv.v);
-      if (!region) continue;
-      return { face, basis, type: region.type, target: region.target, poly: region.poly };
+      if (inside) return { type:'face', item:face };
     }
     return null;
   }
 
+  // ── Mouse events ──────────────────────────────────────────
   vc.addEventListener('mousemove', e => {
-    hover = hitTest(e.clientX, e.clientY);
-    vc.style.cursor = hover ? 'pointer' : 'default';
+    const hit=hitTest(e.clientX, e.clientY);
+    hoverFace  =hit?.type==='face'   ? hit.item : null;
+    hoverEdge  =hit?.type==='edge'   ? hit.item : null;
+    hoverCorner=hit?.type==='corner' ? hit.item : null;
+    vc.style.cursor=hit?'pointer':'default';
   });
-  vc.addEventListener('mouseleave', () => { hover = null; });
+  vc.addEventListener('mouseleave', ()=>{ hoverFace=null; hoverEdge=null; hoverCorner=null; });
 
+  // ── Click → smooth animated orbit ────────────────────────
   vc.addEventListener('click', e => {
-    const hit = hitTest(e.clientX, e.clientY);
+    const hit=hitTest(e.clientX, e.clientY);
     if (!hit || !orbitState) return;
-    const target = hit.target;
-    // Animate smoothly to target spherical coords
-    const fromTh = orbitState.spherical.theta;
-    const fromPh = orbitState.spherical.phi;
-    let toTh = target.theta, toPh = target.phi;
-    // Always rotate the short way around
-    while (toTh - fromTh >  PI) toTh -= PI*2;
-    while (toTh - fromTh < -PI) toTh += PI*2;
-    const dur = 350, start = performance.now();
-    function ease(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
-    function step(now) {
-      const t = Math.min(1, (now - start) / dur);
-      const et = ease(t);
-      setOrbitAngles(fromTh + (toTh - fromTh) * et, fromPh + (toPh - fromPh) * et);
-      if (t < 1) requestAnimationFrame(step);
-    }
+    const target=hit.item;
+    const fromTh=orbitState.spherical.theta, fromPh=orbitState.spherical.phi;
+    let toTh=target.theta, toPh=target.phi;
+    while (toTh-fromTh >  PI) toTh-=PI*2;
+    while (toTh-fromTh < -PI) toTh+=PI*2;
+    const dur=350, t0=performance.now();
+    const ease=t=> t<0.5?2*t*t:-1+(4-2*t)*t;
+    const step=now=>{
+      const t=Math.min(1,(now-t0)/dur), et=ease(t);
+      orbitState.spherical.theta=fromTh+(toTh-fromTh)*et;
+      orbitState.spherical.phi  =fromPh+(toPh-fromPh)*et;
+      if (t<1) requestAnimationFrame(step);
+    };
     requestAnimationFrame(step);
   });
 
-  // Hook into the main animate loop
   window._viewCubeActive = true;
 })();
+
+
+// ── Export (STEP AP214 with colour) ─────────────────────────
+// Parses the original STEP file, strips all existing colour
+// entities, then injects COLOUR_RGB → STYLED_ITEM chains for
+// every part's current colour and writes a valid AP214 STEP file.
+
+// ── STEP entity parser ─────────────────────────────────────
+function parseStepEntities(text) {
+  const entities = new Map();  // id → {id, type, raw}
+  const dataStart = text.indexOf('DATA;');
+  const dataEnd   = text.indexOf('ENDSEC;', dataStart);
+  if (dataStart < 0 || dataEnd < 0) return entities;
+  const data = text.substring(dataStart + 5, dataEnd);
+
+  let i = 0, n = data.length;
+  while (i < n) {
+    // find '#'
+    while (i < n && data[i] !== '#') i++;
+    if (i >= n) break;
+    i++;
+    // parse digits
+    let id = 0, hasDigit = false;
+    while (i < n && data[i] >= '0' && data[i] <= '9') { id = id*10+(data.charCodeAt(i)-48); i++; hasDigit=true; }
+    if (!hasDigit) continue;
+    // skip ws then '='
+    while (i < n && ' \t\r\n'.includes(data[i])) i++;
+    if (i >= n || data[i] !== '=') continue;
+    i++;
+    while (i < n && ' \t\r\n'.includes(data[i])) i++;
+    // read until ';' at depth 0 outside strings
+    const start = i;
+    let depth = 0, inStr = false;
+    while (i < n) {
+      const c = data[i];
+      if (inStr) {
+        if (c === "'") { if (i+1<n && data[i+1]==="'") { i+=2; continue; } inStr=false; }
+      } else if (c === "'") { inStr=true; }
+        else if (c === '(') depth++;
+        else if (c === ')') depth--;
+        else if (c === ';' && depth===0) break;
+      i++;
+    }
+    const raw = data.substring(start, i).trim();
+    i++; // skip ';'
+    // extract type
+    let j=0;
+    while (j<raw.length && raw[j]!=='(' && raw[j]!==' ' && raw[j]!=='\r' && raw[j]!=='\n') j++;
+    const type = raw.substring(0,j).trim().toUpperCase();
+    entities.set(id, { id, type, raw });
+  }
+  return entities;
+}
+
+function extractRefs(raw) {
+  const refs = [], re = /#(\d+)/g; let m;
+  while ((m=re.exec(raw))!==null) refs.push(parseInt(m[1]));
+  return refs;
+}
+
+function buildRefsTo(entities) {
+  const rt = new Map();
+  for (const [id, ent] of entities) {
+    for (const ref of extractRefs(ent.raw)) {
+      if (!rt.has(ref)) rt.set(ref, []);
+      rt.get(ref).push(id);
+    }
+  }
+  return rt;
+}
+
+// ── Main STEP colour injector ──────────────────────────────
+function injectStepColors(stepText) {
+  const entities = parseStepEntities(stepText);
+
+  // max entity ID
+  let maxId = 0;
+  for (const [id] of entities) if (id > maxId) maxId = id;
+  let nextId = maxId + 1;
+
+  // Representation context — needed for MECHANICAL_DESIGN_GEOMETRIC_PRESENTATION_REPRESENTATION
+  // Best source: the context ref (last #ref) of any SHAPE_REPRESENTATION
+  let repCtxId = null;
+  for (const [id, ent] of entities) {
+    if (ent.type === 'SHAPE_REPRESENTATION' || ent.type === 'ADVANCED_BREP_SHAPE_REPRESENTATION') {
+      const refs = extractRefs(ent.raw);
+      if (refs.length) { repCtxId = refs[refs.length-1]; break; }
+    }
+  }
+
+  // Entity types that carry colour information — strip all of them
+  const COLOUR_TYPES = new Set([
+    'COLOUR_RGB','DRAUGHTING_PRE_DEFINED_COLOUR',
+    'FILL_AREA_STYLE_COLOUR','FILL_AREA_STYLE',
+    'SURFACE_STYLE_FILL_AREA','SURFACE_SIDE_STYLE',
+    'SURFACE_STYLE_USAGE','PRESENTATION_STYLE_ASSIGNMENT',
+    'STYLED_ITEM','MECHANICAL_DESIGN_GEOMETRIC_PRESENTATION_REPRESENTATION',
+    'DRAUGHTING_MODEL','CAMERA_MODEL_D3_MULTI_CLIPPING',
+  ]);
+  const stripIds = new Set();
+  for (const [id, ent] of entities) {
+    if (COLOUR_TYPES.has(ent.type)) stripIds.add(id);
+  }
+
+  // Geometry entity types that STYLED_ITEM can target
+  const GEOM_TYPES = new Set([
+    'MANIFOLD_SOLID_BREP','SHELL_BASED_SURFACE_MODEL','GEOMETRIC_SET',
+    'FACETED_BREP','BREP_WITH_VOIDS','EDGE_BASED_WIREFRAME_MODEL',
+    'GEOMETRIC_CURVE_SET','ADVANCED_BREP_SHAPE_REPRESENTATION',
+    'SURFACE_MODEL','SOLID_MODEL',
+  ]);
+
+  // Build reverse-reference map for hierarchy traversal
+  const refsTo = buildRefsTo(entities);
+
+  // Helper: given a PRODUCT entity id, walk the chain to get SHAPE_REPRESENTATION id(s)
+  function productToSR(productId) {
+    const srIds = new Set();
+    const pdfIds = (refsTo.get(productId)||[]).filter(id=>entities.get(id)?.type.startsWith('PRODUCT_DEFINITION_FORMATION'));
+    const pdIds  = pdfIds.flatMap(id=>(refsTo.get(id)||[]).filter(id2=>entities.get(id2)?.type==='PRODUCT_DEFINITION'));
+    const pdsIds = pdIds.flatMap(id=>(refsTo.get(id)||[]).filter(id2=>entities.get(id2)?.type==='PRODUCT_DEFINITION_SHAPE'));
+    const sdrIds = pdsIds.flatMap(id=>(refsTo.get(id)||[]).filter(id2=>entities.get(id2)?.type==='SHAPE_DEFINITION_REPRESENTATION'));
+    for (const sdrId of sdrIds) {
+      for (const ref of extractRefs(entities.get(sdrId)?.raw||'')) {
+        const e = entities.get(ref);
+        if (e && (e.type==='SHAPE_REPRESENTATION'||e.type==='ADVANCED_BREP_SHAPE_REPRESENTATION')) srIds.add(ref);
+      }
+    }
+    return [...srIds];
+  }
+
+  // Helper: get geometry items from a SHAPE_REPRESENTATION
+  function srGeomItems(srId) {
+    const sr = entities.get(srId);
+    if (!sr) return [];
+    // Items are in the list inside the first parens: SR('name', (items...), ctx)
+    // Extract refs only from within the first parenthesised list
+    const m = sr.raw.match(/\(\s*((?:#\d+\s*,?\s*)+)\s*\)/);
+    const listRefs = m ? extractRefs(m[1]) : extractRefs(sr.raw).slice(0,-1);
+    return listRefs.filter(id=>entities.get(id) && GEOM_TYPES.has(entities.get(id).type));
+  }
+
+  // Build: product name → geometry entity IDs
+  const nameToGeom = new Map();
+  for (const [id, ent] of entities) {
+    if (ent.type !== 'PRODUCT') continue;
+    const nm = ent.raw.match(/PRODUCT\('([^']*)'/)?.[1] || '';
+    if (!nm) continue;
+    const srIds = productToSR(id);
+    const geoms = srIds.flatMap(srGeomItems);
+    if (geoms.length) nameToGeom.set(nm, geoms);
+  }
+
+  // Also map directly from SHAPE_REPRESENTATION names
+  const srNameToGeom = new Map();
+  for (const [id, ent] of entities) {
+    if (ent.type !== 'SHAPE_REPRESENTATION') continue;
+    const nm = ent.raw.match(/SHAPE_REPRESENTATION\('([^']*)'/)?.[1] || '';
+    if (!nm) continue;
+    const geoms = srGeomItems(id);
+    if (geoms.length) srNameToGeom.set(nm, geoms);
+  }
+
+  // All geometry entities in document order (fallback for index matching)
+  const allGeomIds = [...entities.entries()]
+    .filter(([,e])=>GEOM_TYPES.has(e.type))
+    .map(([id])=>id);
+
+  // Match each part to geometry entity IDs
+  const usedGeomIds = new Set();
+  const partTargets = new Map(); // part index → [geom entity id, ...]
+
+  for (let i=0; i<parts.length; i++) {
+    const name = parts[i].name;
+    let targets = nameToGeom.get(name) || srNameToGeom.get(name) || [];
+    // Fallback: pick from allGeomIds in order, skipping already-assigned ones
+    if (!targets.length) {
+      const remaining = allGeomIds.filter(id=>!usedGeomIds.has(id));
+      if (remaining.length) targets = [remaining[0]];
+    }
+    if (targets.length) {
+      targets.forEach(id=>usedGeomIds.add(id));
+      partTargets.set(i, targets);
+    }
+  }
+
+  // ── Build new colour entities ────────────────────────────
+  const newEntityLines = [];
+  const styledItemIds  = [];
+
+  for (let i=0; i<parts.length; i++) {
+    const p = parts[i];
+    const targets = partTargets.get(i) || [];
+    if (!targets.length) continue;
+
+    const r = (( p.color>>16)&255)/255;
+    const g = (( p.color>> 8)&255)/255;
+    const b = (  p.color      &255)/255;
+    const f = v=>v.toFixed(6);
+
+    for (const tgtId of targets) {
+      const n = nextId;
+      newEntityLines.push(`#${n}=COLOUR_RGB('',${f(r)},${f(g)},${f(b)});`);
+      newEntityLines.push(`#${n+1}=FILL_AREA_STYLE_COLOUR('',#${n});`);
+      newEntityLines.push(`#${n+2}=FILL_AREA_STYLE('',(#${n+1}));`);
+      newEntityLines.push(`#${n+3}=SURFACE_STYLE_FILL_AREA(#${n+2});`);
+      newEntityLines.push(`#${n+4}=SURFACE_SIDE_STYLE('',(#${n+3}));`);
+      newEntityLines.push(`#${n+5}=SURFACE_STYLE_USAGE(.BOTH.,#${n+4});`);
+      newEntityLines.push(`#${n+6}=PRESENTATION_STYLE_ASSIGNMENT((#${n+5}));`);
+      newEntityLines.push(`#${n+7}=STYLED_ITEM('colour',(#${n+6}),#${tgtId});`);
+      styledItemIds.push(n+7);
+      nextId += 8;
+    }
+  }
+
+  // MECHANICAL_DESIGN_GEOMETRIC_PRESENTATION_REPRESENTATION groups all STYLED_ITEMs
+  if (styledItemIds.length && repCtxId) {
+    const refs = styledItemIds.map(id=>`#${id}`).join(',');
+    newEntityLines.push(`#${nextId}=MECHANICAL_DESIGN_GEOMETRIC_PRESENTATION_REPRESENTATION('',(${refs}),#${repCtxId});`);
+    nextId++;
+  }
+
+  // ── Rebuild STEP text stripping old colour entities ──────
+  // Process line-by-line, buffering potentially multi-line entities
+  const lines    = stepText.split('\n');
+  const outLines = [];
+  let inData = false, buf = '', bufId = -1;
+
+  const flushBuf = () => {
+    if (buf && bufId >= 0 && !stripIds.has(bufId)) outLines.push(buf.trimEnd());
+    buf = ''; bufId = -1;
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed === 'DATA;')    { inData=true;  outLines.push(line); continue; }
+    if (trimmed === 'ENDSEC;' && inData) {
+      flushBuf();
+      for (const nl of newEntityLines) outLines.push(nl);
+      outLines.push(line);
+      inData = false;
+      continue;
+    }
+    if (!inData) { outLines.push(line); continue; }
+
+    const em = line.match(/^(#(\d+)\s*=)/);
+    if (em) {
+      flushBuf();
+      buf   = line;
+      bufId = parseInt(em[2]);
+    } else if (bufId >= 0) {
+      buf += '\n' + line;
+      // entity complete when trimmed buf ends with ';' at depth 0
+      const t = buf.trimEnd();
+      if (t.endsWith(';')) flushBuf();
+    } else {
+      outLines.push(line);
+    }
+  }
+  flushBuf();
+
+  return outLines.join('\n');
+}
+
+function downloadText(text, filename) {
+  const blob = new Blob([text], { type: 'application/step' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function exportSTEP() {
+  if (!window._rawStepBytes) { showError('Load a STEP file first.'); return; }
+  if (!parts.length)          { showError('No model loaded.'); return; }
+  try {
+    const stepText = new TextDecoder('utf-8').decode(window._rawStepBytes);
+    const modified = injectStepColors(stepText);
+    const fname    = (window._rawStepFilename || 'model.stp').replace(/\.(stp|step)$/i,'_colored.stp');
+    downloadText(modified, fname);
+  } catch(e) {
+    console.error(e);
+    showError('Export failed: ' + e.message);
+  }
+}
+
+document.getElementById('export-btn').addEventListener('click', () => {
+  if (!parts.length) { showError('Load a STEP file first.'); return; }
+  exportSTEP();
+});
 
 // ── Load occt-import-js ──────────────────────────────────────
 function loadOcctScript() {
@@ -2107,17 +2205,12 @@ async function loadStepFile(file) {
     // 2. read file bytes
     const buffer = await file.arrayBuffer();
     const uint8 = new Uint8Array(buffer);
+    // Store for STEP export with colour overrides
+    window._rawStepBytes    = uint8;
+    window._rawStepFilename = file.name;
 
-    // 3. call occt — explicit (finer than default-auto) tessellation so
-    // curved surfaces (fillets, cylinders, bores) render smoothly instead
-    // of visibly faceted.
-    const tessellationParams = {
-      linearUnit: 'millimeter',
-      linearDeflectionType: 'bounding_box_ratio',
-      linearDeflection: 0.0012,
-      angularDeflection: 0.15,
-    };
-    const result = occt.ReadStepFile(uint8, tessellationParams);
+    // 3. call occt
+    const result = occt.ReadStepFile(uint8, null);
 
     if (!result || !result.success) {
       throw new Error('STEP parsing failed — file may be corrupt or unsupported');
@@ -2185,7 +2278,7 @@ async function loadStepFile(file) {
       modelGroup.add(mesh);
 
       const name = meshData.name || `Part ${mi + 1}`;
-      parts.push({ name, mesh, color, visible: true, index: mi });
+      parts.push({ name, mesh, color, originalColor: color, visible: true, index: mi });
     }
 
     // 5. build assembly tree from STEP hierarchy
@@ -2200,8 +2293,6 @@ async function loadStepFile(file) {
     document.getElementById('part-count').textContent = `${parts.length}`;
     renderTree();
     updateCornerInfo();
-    computeExplodeData();
-    resetExplode();
 
     // 7. fit view
     fitToModel();
@@ -2407,6 +2498,19 @@ function addPropsSection(body, title, rows) {
   }
 }
 
+function hexFromInt(c) { return '#' + (c & 0xffffff).toString(16).padStart(6, '0'); }
+function intFromHex(h) { return parseInt(h.replace('#', ''), 16); }
+
+function applyPartColor(partIdx, hexColor) {
+  const p = parts[partIdx];
+  if (!p) return;
+  const c = intFromHex(hexColor);
+  p.color = c;
+  p.mesh.material.color.setHex(c);
+  // Update the tree dot if visible
+  renderTree();
+}
+
 function showNodeProperties(node) {
   document.getElementById('props-title').textContent = node.name;
   const body = document.getElementById('props-body');
@@ -2421,20 +2525,109 @@ function showNodeProperties(node) {
   ]);
 
   if (isLeaf && parts[meshIdxs[0]]) {
-    const p = parts[meshIdxs[0]];
-    const r = (p.color >> 16) & 255, g = (p.color >> 8) & 255, b = p.color & 255;
+    const partIdx = meshIdxs[0];
+    const p = parts[partIdx];
     const geo = p.mesh.geometry;
     const triCount = geo.index ? geo.index.count / 3 : geo.attributes.position.count / 3;
 
-    addPropsSection(body, 'Appearance', [
-      ['Color (RGB)', `${r}, ${g}, ${b}`],
+    // ── Colour picker row ────────────────────────────────
+    const secTitle = document.createElement('div');
+    secTitle.className = 'props-section-title';
+    secTitle.textContent = 'Appearance';
+    body.appendChild(secTitle);
+
+    const colorRow = document.createElement('div');
+    colorRow.className = 'props-color-row';
+
+    const kEl = document.createElement('span');
+    kEl.className = 'k';
+    kEl.textContent = 'Colour';
+
+    // Hidden native colour picker
+    const nativePicker = document.createElement('input');
+    nativePicker.type = 'color';
+    nativePicker.className = 'color-picker-input';
+    nativePicker.value = hexFromInt(p.color);
+
+    // Swatch button that opens the picker
+    const swatch = document.createElement('button');
+    swatch.className = 'color-swatch-btn';
+    swatch.style.background = hexFromInt(p.color);
+    swatch.title = 'Pick colour';
+    swatch.addEventListener('click', () => nativePicker.click());
+
+    // Hex text input
+    const hexInput = document.createElement('input');
+    hexInput.type = 'text';
+    hexInput.className = 'color-hex-input';
+    hexInput.value = hexFromInt(p.color).toUpperCase();
+    hexInput.maxLength = 7;
+    hexInput.spellcheck = false;
+
+    // Reset button
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'color-reset-btn';
+    resetBtn.textContent = 'Reset';
+    resetBtn.title = 'Reset to original STEP colour';
+
+    function syncColor(hex) {
+      const clean = hex.startsWith('#') ? hex : '#' + hex;
+      if (!/^#[0-9a-fA-F]{6}$/.test(clean)) return;
+      swatch.style.background = clean;
+      hexInput.value = clean.toUpperCase();
+      nativePicker.value = clean;
+      applyPartColor(partIdx, clean);
+    }
+
+    nativePicker.addEventListener('input', e => syncColor(e.target.value));
+    nativePicker.addEventListener('change', e => syncColor(e.target.value));
+
+    hexInput.addEventListener('input', e => {
+      const v = e.target.value.trim();
+      const clean = v.startsWith('#') ? v : '#' + v;
+      if (/^#[0-9a-fA-F]{6}$/.test(clean)) syncColor(clean);
+    });
+    hexInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') hexInput.blur();
+    });
+
+    resetBtn.addEventListener('click', () => syncColor(hexFromInt(p.originalColor)));
+
+    colorRow.append(kEl, nativePicker, swatch, hexInput, resetBtn);
+    body.appendChild(colorRow);
+
+    // Compute world-space bounding box for accurate mm dimensions
+    const bbox = new THREE.Box3().setFromObject(p.mesh);
+    const size = new THREE.Vector3();
+    bbox.getSize(size);
+
+    addPropsSection(body, 'Size (mm)', [
+      ['X', size.x.toFixed(3)],
+      ['Y', size.y.toFixed(3)],
+      ['Z', size.z.toFixed(3)],
     ]);
+
     addPropsSection(body, 'Geometry', [
       ['Vertices', geo.attributes.position.count.toLocaleString()],
       ['Triangles', Math.round(triCount).toLocaleString()],
       ['Visibility', p.visible ? 'Shown' : 'Hidden'],
     ]);
+
   } else {
+    // Assembly node — show combined bounding box of all child meshes
+    const bbox = new THREE.Box3();
+    for (const idx of meshIdxs) {
+      if (parts[idx]) bbox.expandByObject(parts[idx].mesh);
+    }
+    const size = new THREE.Vector3();
+    if (!bbox.isEmpty()) bbox.getSize(size);
+
+    addPropsSection(body, 'Size (mm)', [
+      ['X', size.x.toFixed(3)],
+      ['Y', size.y.toFixed(3)],
+      ['Z', size.z.toFixed(3)],
+    ]);
+
     addPropsSection(body, 'Contents', [
       ['Child nodes', String(node.children.length)],
       ['Parts', String(meshIdxs.length)],
