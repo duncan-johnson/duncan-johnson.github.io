@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Series Resistor Divider Solver</title>
+<style>
+  :root {
+    --bg: #f3f4f6;
+    --panel: #ffffff;
+    --panel2: #f7f8fa;
+    --border: #dde1e6;
+    --text: #1b2126;
+    --text-dim: #667080;
+    --accent: #a9782b;
+    --accent-dim: #e4d3ae;
+    --good: #2f7d55;
+    --mid: #a9782b;
+    --bad: #b23b30;
+    --good-bg: rgba(47, 125, 85, 0.1);
+    --mid-bg: rgba(169, 120, 43, 0.12);
+    --bad-bg: rgba(178, 59, 48, 0.1);
+    --error-bg: rgba(178, 59, 48, 0.06);
+    --error-border: rgba(178, 59, 48, 0.3);
+    --error-text: #8f2e24;
+    --shadow: 0 1px 2px rgba(20, 23, 27, 0.04);
+  }
+  html[data-theme="dark"] {
+    --bg: #14171b;
+    --panel: #1b2025;
+    --panel2: #1f252b;
+    --border: #2a3138;
+    --text: #e7eaee;
+    --text-dim: #8b95a1;
+    --accent: #c99a44;
+    --accent-dim: #7a6538;
+    --good: #4c9c78;
+    --mid: #c9973f;
+    --bad: #c1554b;
+    --good-bg: rgba(76, 156, 120, 0.15);
+    --mid-bg: rgba(201, 151, 63, 0.15);
+    --bad-bg: rgba(193, 85, 75, 0.15);
+    --error-bg: rgba(193, 85, 75, 0.1);
+    --error-border: rgba(193, 85, 75, 0.35);
+    --error-text: #e2a39d;
+    --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap {
+    padding: 28px 24px 48px;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+  .header {
+    margin-bottom: 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    letter-spacing: 0.2px;
+  }
+  .header p { margin: 0; color: var(--text-dim); font-size: 13.5px; max-width: 640px; }
+  .theme-toggle {
+    flex-shrink: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 100px;
+    padding: 7px 14px 7px 12px;
+    font-size: 12.5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+    box-shadow: var(--shadow);
+  }
+  .theme-toggle:hover { color: var(--text); border-color: var(--accent-dim); }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    box-shadow: var(--shadow);
+  }
+  .panel + .panel { margin-top: 16px; }
+  .panel h2 {
+    font-size: 12.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    margin: 0 0 14px;
+    font-weight: 600;
+  }
+
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+  }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  input[type="number"], select {
+    width: 100%;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px 9px;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    font-family: inherit;
+  }
+  input[type="number"]:focus, select:focus {
+    outline: none;
+    border-color: var(--accent-dim);
+  }
+  .value-unit { display: grid; grid-template-columns: 1fr 78px; gap: 8px; }
+
+  .segmented {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .segmented button {
+    flex: 1;
+    background: var(--panel2);
+    border: none;
+    color: var(--text-dim);
+    padding: 8px 0;
+    font-size: 13.5px;
+    cursor: pointer;
+    border-right: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+    font-family: inherit;
+  }
+  .segmented button:last-child { border-right: none; }
+  .segmented button.active {
+    background: var(--accent-dim);
+    color: var(--text);
+  }
+
+  .panel-hint {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin: -6px 0 14px;
+    line-height: 1.5;
+  }
+
+  .node-field {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .node-field:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+  .node-field .node-name {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 600;
+    grid-column: 1 / -1;
+    margin-bottom: 2px;
+  }
+  .node-field label {
+    display: block;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  .schematic { display: block; margin: 0 auto; }
+  .wire { stroke: var(--text-dim); stroke-width: 1.5; }
+  .res-box { fill: var(--panel2); stroke: var(--accent); stroke-width: 1.5; }
+  .res-label { fill: var(--text); font-size: 12px; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+  .node-dot { fill: var(--accent); }
+  .node-label { fill: var(--text-dim); font-size: 10.5px; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+  .rail-label { fill: var(--text-dim); font-size: 11px; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+  .gnd { stroke: var(--text-dim); stroke-width: 1.5; }
+
+  .results-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+  }
+  .results-head h2 { margin: 0; }
+  .results-note { font-size: 12px; color: var(--text-dim); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td {
+    text-align: right;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace;
+    white-space: nowrap;
+  }
+  th:first-child, td:first-child { text-align: left; font-family: inherit; }
+  th {
+    color: var(--text-dim);
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 100px;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+  .acc-high { background: var(--good-bg); color: var(--good); }
+  .acc-mid { background: var(--mid-bg); color: var(--mid); }
+  .acc-low { background: var(--bad-bg); color: var(--bad); }
+
+  .error-box {
+    background: var(--error-bg);
+    border: 1px solid var(--error-border);
+    color: var(--error-text);
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 13.5px;
+  }
+  .empty-box {
+    color: var(--text-dim);
+    font-size: 13.5px;
+    padding: 20px 0;
+    text-align: center;
+  }
+  .scroll-x { overflow-x: auto; }
+  .footnote { margin-top: 14px; font-size: 11.5px; color: var(--text-dim); line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <h1>Series resistor divider solver</h1>
+      <p>Pick a resistor count and preferred-value series, set the total resistance window and target node voltages — the top 20 real-value combinations are ranked below by accuracy.</p>
+      <p style="margin-top: 6px; font-size: 12px; color: var(--text-dim);">by Duncan Johnson</p>
+    </div>
+    <button class="theme-toggle" id="themeToggle" type="button">
+      <span id="themeToggleIcon">🌙</span>
+      <span id="themeToggleLabel">Dark mode</span>
+    </button>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div class="panel">
+        <h2>Divider setup</h2>
+        <div class="field">
+          <label>Resistors in series</label>
+          <div class="segmented" id="resistorCountSeg"></div>
+        </div>
+        <div class="field">
+          <label>Preferred-value series</label>
+          <select id="seriesSelect"></select>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Min total resistance</label>
+            <div class="value-unit">
+              <input type="number" step="any" min="0" id="rMinMag" value="1" />
+              <select id="rMinUnit">
+                <option value="1">Ω</option>
+                <option value="1000" selected>kΩ</option>
+                <option value="1000000">MΩ</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Max total resistance</label>
+            <div class="value-unit">
+              <input type="number" step="any" min="0" id="rMaxMag" value="100" />
+              <select id="rMaxUnit">
+                <option value="1">Ω</option>
+                <option value="1000" selected>kΩ</option>
+                <option value="1000000">MΩ</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Node targets</h2>
+        <p class="panel-hint">
+          Node voltage is treated as fixed and exact — e.g. a chip's internal
+          reference (1.2 V, 0.8 V, etc.) that doesn't move regardless of
+          resistor tolerance. Desired Vin is what you'd like the top rail to
+          be; since real resistors only land near the ideal ratio, the actual
+          Vin needed to hold that node exactly at its fixed voltage will be
+          slightly off — the results table shows that actual required Vin for
+          each combination, ranked by how close it lands to your desired Vin.
+        </p>
+        <div id="nodeFields"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Stack</h2>
+        <div id="schematicHolder"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="results-head">
+        <h2>Top combinations</h2>
+        <span class="results-note" id="resultsNote"></span>
+      </div>
+      <div id="resultsHolder"></div>
+      <div class="footnote">
+        Node voltage is treated as fixed and exact (e.g. a reference pin). Vin1, Vin2, etc. are
+        the actual top-rail voltage this combination would need in order to hold each node
+        exactly at its fixed voltage — R1 is the resistor nearest the input, nodes are numbered
+        top to bottom. Accuracy = 100% minus the worst-case error across nodes, expressed as a
+        percentage of that node's desired Vin. E48/E96/E192 values are generated from the IEC 60063 geometric formula,
+        rounded to 3 significant figures. The solver samples the resistance window on a log scale
+        and evaluates nearby preferred-value candidates at each point rather than an exhaustive
+        search, so it may occasionally miss an equally good combination in an extremely narrow
+        window.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------------------------------------------------------
+   E-series generation
+--------------------------------------------------------------- */
+const E_HARDCODED = {
+  3: [1.0, 2.2, 4.7],
+  6: [1.0, 1.5, 2.2, 3.3, 4.7, 6.8],
+  12: [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2],
+  24: [1.0,1.1,1.2,1.3,1.5,1.6,1.8,2.0,2.2,2.4,2.7,3.0,3.3,3.6,3.9,4.3,4.7,5.1,5.6,6.2,6.8,7.5,8.2,9.1],
+};
+const SERIES_OPTIONS = [3, 6, 12, 24, 48, 96, 192];
+
+function generateMantissas(n) {
+  if (E_HARDCODED[n]) return E_HARDCODED[n];
+  const vals = [];
+  for (let i = 0; i < n; i++) {
+    const raw = Math.pow(10, i / n);
+    vals.push(Number(raw.toPrecision(3)));
+  }
+  return Array.from(new Set(vals)).sort((a, b) => a - b);
+}
+
+function buildCandidates(mantissas, decMin, decMax) {
+  const set = new Set();
+  for (let d = decMin; d <= decMax; d++) {
+    const mult = Math.pow(10, d);
+    for (const m of mantissas) set.add(Math.round(m * mult * 1e6) / 1e6);
+  }
+  return Array.from(set).sort((a, b) => a - b);
+}
+
+function nearestK(sorted, target, k) {
+  let lo = 0, hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sorted[mid] < target) lo = mid + 1;
+    else hi = mid;
+  }
+  const pool = [];
+  let i = lo - 1, j = lo;
+  const span = k * 3;
+  while (pool.length < span && (i >= 0 || j < sorted.length)) {
+    if (i >= 0) pool.push(sorted[i]);
+    if (j < sorted.length) pool.push(sorted[j]);
+    i--; j++;
+  }
+  pool.sort((a, b) => Math.abs(a - target) - Math.abs(b - target));
+  return Array.from(new Set(pool)).slice(0, k);
+}
+
+function cartesianEach(arrays, cb) {
+  const n = arrays.length;
+  const combo = new Array(n);
+  function rec(pos) {
+    if (pos === n) { cb(combo); return; }
+    for (const v of arrays[pos]) { combo[pos] = v; rec(pos + 1); }
+  }
+  rec(0);
+}
+
+/* ---------------------------------------------------------------
+   Formatting helpers
+--------------------------------------------------------------- */
+function trimNum(n) {
+  let s = n.toPrecision(4);
+  if (s.includes(".")) s = s.replace(/0+$/, "").replace(/\.$/, "");
+  return s;
+}
+function formatR(ohms) {
+  if (ohms >= 1e6) return trimNum(ohms / 1e6) + " MΩ";
+  if (ohms >= 1e3) return trimNum(ohms / 1e3) + " kΩ";
+  return trimNum(ohms) + " Ω";
+}
+function formatV(v) {
+  return (Math.round(v * 1000) / 1000).toFixed(3) + " V";
+}
+
+/* ---------------------------------------------------------------
+   Solver
+   nodeInputs: array of { vin, target } for each node, top to bottom.
+   `target` is the node's FIXED voltage (e.g. a chip's internal
+   reference) — it does not move with resistor tolerance. `vin` is
+   the desired top-rail voltage. Because real resistors only land
+   near the ideal ratio, the Vin actually required to hold the node
+   exactly at `target` will differ slightly from the desired `vin`;
+   the solver computes that actual required Vin for each candidate
+   and ranks by how close it lands to the desired one. Multiple
+   nodes let one physical divider be evaluated against several
+   independent supply scenarios at once (e.g. auto-ranging).
+--------------------------------------------------------------- */
+function solveDivider({ N, rMin, rMax, nodeInputs, mantissas }) {
+  if (nodeInputs.some((n) => !(n.vin > 0))) {
+    return { error: "Every node needs a desired Vin greater than 0 V." };
+  }
+
+  // cum[j] = fraction of total resistance below node j (node j down to GND).
+  // cum[0] = 1 (top of stack), cum[N] = 0 (GND).
+  const cumBoundary = [1, ...nodeInputs.map((n) => n.target / n.vin), 0];
+  const fractions = [];
+  for (let j = 0; j < N; j++) fractions.push(cumBoundary[j] - cumBoundary[j + 1]);
+
+  if (fractions.some((f) => f < -1e-9 || !isFinite(f))) {
+    return {
+      error:
+        "Each node's fraction of the stack (target ÷ its input voltage) must be smaller than the node above it, and above 0.",
+    };
+  }
+  if (!(rMin > 0) || !(rMax > rMin)) {
+    return { error: "Set a maximum total resistance greater than the minimum." };
+  }
+
+  const candidates = buildCandidates(mantissas, -1, 8);
+  const k = N <= 2 ? 6 : N === 3 ? 5 : N === 4 ? 4 : 3;
+  const totalSamples = Math.max(300, Math.min(4000, Math.floor(450000 / Math.pow(k, N))));
+
+  const logMin = Math.log(rMin);
+  const logMax = Math.log(rMax);
+  const results = new Map();
+
+  for (let s = 0; s < totalSamples; s++) {
+    const t = totalSamples === 1 ? 0 : s / (totalSamples - 1);
+    const total = Math.exp(logMin + t * (logMax - logMin));
+    const perPos = fractions.map((f) => nearestK(candidates, Math.max(f * total, candidates[0]), k));
+
+    cartesianEach(perPos, (combo) => {
+      const actualTotal = combo.reduce((a, b) => a + b, 0);
+      if (actualTotal < rMin || actualTotal > rMax) return;
+
+      const cum = new Array(N + 1).fill(0);
+      for (let i = N - 1; i >= 0; i--) cum[i] = cum[i + 1] + combo[i];
+
+      let worst = 0;
+      const nodeVs = [];
+      for (let j = 1; j < N; j++) {
+        const { vin, target } = nodeInputs[j - 1];
+        // Node voltage is fixed at `target`; solve for the Vin that
+        // actually holds it there with this combo's real ratio.
+        const vinAct = (target * actualTotal) / cum[j];
+        nodeVs.push(vinAct);
+        const errPct = (Math.abs(vinAct - vin) / vin) * 100;
+        if (errPct > worst) worst = errPct;
+      }
+      const accuracy = Math.max(0, 100 - worst);
+      const key = combo.join("|");
+      const existing = results.get(key);
+      if (!existing || accuracy > existing.accuracy) {
+        results.set(key, { resistors: combo.slice(), total: actualTotal, nodeVs, accuracy });
+      }
+    });
+  }
+
+  const arr = Array.from(results.values());
+  arr.sort((a, b) => b.accuracy - a.accuracy);
+  return { top: arr.slice(0, 20) };
+}
+
+
+/* ---------------------------------------------------------------
+   App state + rendering
+--------------------------------------------------------------- */
+const state = {
+  numResistors: 3,
+  seriesN: 96,
+  rMinMag: 1,
+  rMinUnit: 1000,
+  rMaxMag: 100,
+  rMaxUnit: 1000,
+  // one { vin, target } entry per node, top to bottom
+  nodes: [
+    { vin: 5, target: 3.33 },
+    { vin: 5, target: 1.67 },
+  ],
+};
+
+let debounceHandle = null;
+
+function el(tag, attrs, children) {
+  const e = document.createElement(tag);
+  if (attrs) {
+    for (const k in attrs) {
+      if (k === "class") e.className = attrs[k];
+      else if (k === "text") e.textContent = attrs[k];
+      else e.setAttribute(k, attrs[k]);
+    }
+  }
+  (children || []).forEach((c) => e.appendChild(c));
+  return e;
+}
+
+function renderResistorCountSeg() {
+  const holder = document.getElementById("resistorCountSeg");
+  holder.innerHTML = "";
+  [2, 3, 4, 5].forEach((n) => {
+    const btn = el("button", { text: String(n) });
+    if (state.numResistors === n) btn.classList.add("active");
+    btn.addEventListener("click", () => {
+      state.numResistors = n;
+      syncNodesLength();
+      renderResistorCountSeg();
+      renderNodeFields();
+      renderSchematic();
+      renderResultsTableHeader();
+      scheduleSolve();
+    });
+    holder.appendChild(btn);
+  });
+}
+
+function renderSeriesSelect() {
+  const sel = document.getElementById("seriesSelect");
+  sel.innerHTML = "";
+  SERIES_OPTIONS.forEach((n) => {
+    const opt = el("option", { value: String(n), text: "E" + n });
+    if (n === state.seriesN) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener("change", (e) => {
+    state.seriesN = Number(e.target.value);
+    scheduleSolve();
+  });
+}
+
+function syncNodesLength() {
+  const nodeCount = state.numResistors - 1;
+  const prev = state.nodes;
+  const next = [];
+  for (let i = 0; i < nodeCount; i++) {
+    if (prev[i] != null) {
+      next.push(prev[i]);
+    } else {
+      const fallbackVin = prev.length ? prev[prev.length - 1].vin : 5;
+      next.push({
+        vin: fallbackVin,
+        target: Number(((fallbackVin * (nodeCount - i)) / (nodeCount + 1)).toFixed(2)),
+      });
+    }
+  }
+  state.nodes = next;
+}
+
+function renderNodeFields() {
+  const holder = document.getElementById("nodeFields");
+  holder.innerHTML = "";
+  state.nodes.forEach((node, i) => {
+    const row = el("div", { class: "node-field" });
+    row.appendChild(el("div", { class: "node-name", text: "Node " + (i + 1) }));
+
+    const targetField = el("div", { class: "field" });
+    targetField.appendChild(el("label", { text: "Node voltage (fixed)" }));
+    const targetInput = el("input", { type: "number", step: "any" });
+    targetInput.value = node.target;
+    targetInput.addEventListener("input", (e) => {
+      state.nodes[i].target = e.target.value === "" ? 0 : Number(e.target.value);
+      renderSchematic();
+      scheduleSolve();
+    });
+    targetField.appendChild(targetInput);
+
+    const vinField = el("div", { class: "field" });
+    vinField.appendChild(el("label", { text: "Desired Vin" }));
+    const vinInput = el("input", { type: "number", step: "any" });
+    vinInput.value = node.vin;
+    vinInput.addEventListener("input", (e) => {
+      state.nodes[i].vin = e.target.value === "" ? 0 : Number(e.target.value);
+      renderSchematic();
+      scheduleSolve();
+    });
+    vinField.appendChild(vinInput);
+
+    row.appendChild(vinField);
+    row.appendChild(targetField);
+    holder.appendChild(row);
+  });
+}
+
+function buildSchematicSVG(N, nodes) {
+  const rowH = 54;
+  const topPad = 26;
+  const botPad = 34;
+  const height = topPad + botPad + N * rowH;
+  const cx = 70;
+
+  let rows = "";
+  for (let i = 0; i < N; i++) {
+    const yTop = topPad + i * rowH;
+    const yBot = yTop + rowH;
+    rows += `
+      <line x1="${cx}" y1="${yTop}" x2="${cx}" y2="${yTop + 8}" class="wire" />
+      <rect x="${cx - 14}" y="${yTop + 8}" width="28" height="${rowH - 16}" rx="4" class="res-box" />
+      <text x="${cx + 26}" y="${yTop + rowH / 2 + 4}" class="res-label">R${i + 1}</text>
+      <line x1="${cx}" y1="${yTop + rowH - 8}" x2="${cx}" y2="${yBot}" class="wire" />
+    `;
+  }
+
+  let nodeLabels = "";
+  for (let j = 1; j < N; j++) {
+    const y = topPad + j * rowH;
+    const node = nodes[j - 1] || {};
+    const vinTxt = node.vin != null ? node.vin : "–";
+    const targetTxt = node.target != null ? node.target : "–";
+    nodeLabels += `
+      <circle cx="${cx}" cy="${y}" r="4" class="node-dot" />
+      <text x="${cx - 20}" y="${y + 4}" text-anchor="end" class="node-label">V${j} fixed ${targetTxt}V · desired Vin ${vinTxt}V</text>
+    `;
+  }
+
+  const gndY = topPad + N * rowH;
+
+  return `
+    <svg viewBox="0 0 260 ${height}" class="schematic" width="100%">
+      <text x="${cx}" y="16" text-anchor="middle" class="rail-label">Vin</text>
+      <line x1="${cx}" y1="20" x2="${cx}" y2="${topPad}" class="wire" />
+      ${rows}
+      <line x1="${cx}" y1="${gndY}" x2="${cx}" y2="${gndY + 10}" class="wire" />
+      <line x1="${cx - 12}" y1="${gndY + 10}" x2="${cx + 12}" y2="${gndY + 10}" class="gnd" />
+      <line x1="${cx - 7}" y1="${gndY + 15}" x2="${cx + 7}" y2="${gndY + 15}" class="gnd" />
+      <line x1="${cx - 3}" y1="${gndY + 20}" x2="${cx + 3}" y2="${gndY + 20}" class="gnd" />
+      ${nodeLabels}
+    </svg>
+  `;
+}
+
+function renderSchematic() {
+  const holder = document.getElementById("schematicHolder");
+  holder.innerHTML = buildSchematicSVG(state.numResistors, state.nodes);
+}
+
+function renderResultsTableHeader() {
+  // header is rebuilt as part of renderResults each time, nothing to pre-render
+}
+
+function accuracyBadgeHTML(value) {
+  let cls = "acc-low";
+  if (value >= 99.5) cls = "acc-high";
+  else if (value >= 98) cls = "acc-mid";
+  return `<span class="badge ${cls}">${value.toFixed(2)}%</span>`;
+}
+
+function renderResults(result) {
+  const holder = document.getElementById("resultsHolder");
+  const note = document.getElementById("resultsNote");
+  holder.innerHTML = "";
+
+  if (result.error) {
+    note.textContent = "";
+    holder.appendChild(el("div", { class: "error-box", text: result.error }));
+    return;
+  }
+
+  if (!result.top || result.top.length === 0) {
+    note.textContent = "";
+    const rMin = state.rMinMag * state.rMinUnit;
+    const rMax = state.rMaxMag * state.rMaxUnit;
+    holder.appendChild(
+      el("div", {
+        class: "empty-box",
+        text: `No E${state.seriesN} combination of ${state.numResistors} resistors lands the total resistance inside ${formatR(rMin)}–${formatR(rMax)}. Widen the resistance window or try a denser series.`,
+      })
+    );
+    return;
+  }
+
+  note.textContent = `${result.top.length} of up to 20 shown`;
+
+  const N = state.numResistors;
+  let headCols = `<th>#</th>`;
+  for (let i = 0; i < N; i++) headCols += `<th>R${i + 1}</th>`;
+  headCols += `<th>Total</th>`;
+  for (let i = 0; i < N - 1; i++) headCols += `<th>Vin${i + 1}</th>`;
+  headCols += `<th>Accuracy</th>`;
+
+  let bodyRows = "";
+  result.top.forEach((row, idx) => {
+    let cols = `<td>${idx + 1}</td>`;
+    row.resistors.forEach((r) => (cols += `<td>${formatR(r)}</td>`));
+    cols += `<td>${formatR(row.total)}</td>`;
+    row.nodeVs.forEach((v) => (cols += `<td>${formatV(v)}</td>`));
+    cols += `<td>${accuracyBadgeHTML(row.accuracy)}</td>`;
+    bodyRows += `<tr>${cols}</tr>`;
+  });
+
+  const tableWrap = el("div", { class: "scroll-x" });
+  tableWrap.innerHTML = `
+    <table>
+      <thead><tr>${headCols}</tr></thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+  `;
+  holder.appendChild(tableWrap);
+}
+
+function scheduleSolve() {
+  const note = document.getElementById("resultsNote");
+  note.textContent = "solving…";
+  if (debounceHandle) clearTimeout(debounceHandle);
+  debounceHandle = setTimeout(runSolve, 200);
+}
+
+function runSolve() {
+  const mantissas = generateMantissas(state.seriesN);
+  const rMin = state.rMinMag * state.rMinUnit;
+  const rMax = state.rMaxMag * state.rMaxUnit;
+  const result = solveDivider({
+    N: state.numResistors,
+    rMin,
+    rMax,
+    nodeInputs: state.nodes,
+    mantissas,
+  });
+  renderResults(result);
+}
+
+/* ---------------------------------------------------------------
+   Wire up static inputs
+--------------------------------------------------------------- */
+function initStaticInputs() {
+  const rMinMag = document.getElementById("rMinMag");
+  rMinMag.value = state.rMinMag;
+  rMinMag.addEventListener("input", (e) => {
+    state.rMinMag = Number(e.target.value);
+    scheduleSolve();
+  });
+  const rMinUnit = document.getElementById("rMinUnit");
+  rMinUnit.value = String(state.rMinUnit);
+  rMinUnit.addEventListener("change", (e) => {
+    state.rMinUnit = Number(e.target.value);
+    scheduleSolve();
+  });
+
+  const rMaxMag = document.getElementById("rMaxMag");
+  rMaxMag.value = state.rMaxMag;
+  rMaxMag.addEventListener("input", (e) => {
+    state.rMaxMag = Number(e.target.value);
+    scheduleSolve();
+  });
+  const rMaxUnit = document.getElementById("rMaxUnit");
+  rMaxUnit.value = String(state.rMaxUnit);
+  rMaxUnit.addEventListener("change", (e) => {
+    state.rMaxUnit = Number(e.target.value);
+    scheduleSolve();
+  });
+}
+
+/* ---------------------------------------------------------------
+   Theme (light mode is the default)
+--------------------------------------------------------------- */
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  const icon = document.getElementById("themeToggleIcon");
+  const label = document.getElementById("themeToggleLabel");
+  if (theme === "dark") {
+    icon.textContent = "☀️";
+    label.textContent = "Light mode";
+  } else {
+    icon.textContent = "🌙";
+    label.textContent = "Dark mode";
+  }
+}
+
+function initTheme() {
+  let theme = "light";
+  try {
+    const saved = localStorage.getItem("resistor-divider-theme");
+    if (saved === "dark" || saved === "light") theme = saved;
+  } catch (e) {
+    /* localStorage unavailable — fall back to light default */
+  }
+  applyTheme(theme);
+
+  document.getElementById("themeToggle").addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme");
+    const next = current === "dark" ? "light" : "dark";
+    applyTheme(next);
+    try {
+      localStorage.setItem("resistor-divider-theme", next);
+    } catch (e) {
+      /* ignore persistence errors */
+    }
+  });
+}
+
+/* ---------------------------------------------------------------
+   Init
+--------------------------------------------------------------- */
+function init() {
+  initTheme();
+  renderResistorCountSeg();
+  renderSeriesSelect();
+  initStaticInputs();
+  renderNodeFields();
+  renderSchematic();
+  runSolve();
+}
+
+init();
+</script>
+</body>
+</html>
