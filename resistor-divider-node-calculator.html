@@ -198,8 +198,12 @@
   }
 
   .schematic { display: block; margin: 0 auto; }
+  th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+  th.sortable:hover { color: var(--accent); }
+  th.sortable .sort-arrow { font-size: 9px; margin-left: 3px; color: var(--accent); }
   .wire { stroke: var(--text-dim); stroke-width: 1.5; }
   .res-box { fill: var(--panel2); stroke: var(--accent); stroke-width: 1.5; }
+  .res-box-fixed { fill: var(--accent-dim); stroke: var(--accent); stroke-width: 2; }
   .res-label { fill: var(--text); font-size: 12px; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
   .node-dot { fill: var(--accent); }
   .node-label { fill: var(--text-dim); font-size: 10.5px; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
@@ -268,7 +272,7 @@
   <div class="header">
     <div>
       <h1>Series resistor divider solver</h1>
-      <p>Pick a resistor count and preferred-value series, set the total resistance window and target node voltages — the top 20 real-value combinations are ranked below by accuracy.</p>
+      <p>Pick a resistor count and preferred-value series, set the total resistance window and target node voltages — the top 50 real-value combinations are ranked below by accuracy.</p>
       <p style="margin-top: 6px; font-size: 12px; color: var(--text-dim);">by Duncan Johnson</p>
     </div>
     <button class="theme-toggle" id="themeToggle" type="button">
@@ -330,6 +334,16 @@
       </div>
 
       <div class="panel">
+        <h2>Resistor values</h2>
+        <p class="panel-hint">
+          Leave a resistor blank to have the solver pick the best preferred-value
+          match. Enter a value to lock that resistor exactly — useful when a
+          position is already fixed by a part you have on hand.
+        </p>
+        <div id="resistorValueFields"></div>
+      </div>
+
+      <div class="panel">
         <h2>Stack</h2>
         <div id="schematicHolder"></div>
       </div>
@@ -345,8 +359,11 @@
         Node voltage is treated as fixed and exact (e.g. a reference pin). Vin1, Vin2, etc. are
         the actual top-rail voltage this combination would need in order to hold each node
         exactly at its fixed voltage — R1 is the resistor nearest the input, nodes are numbered
-        top to bottom. Accuracy = 100% minus the worst-case error across nodes, expressed as a
-        percentage of that node's desired Vin. E48/E96/E192 values are generated from the IEC 60063 geometric formula,
+        top to bottom. Acc1, Acc2, etc. show that node's own accuracy (100% minus its error,
+        as a percentage of that node's desired Vin); Overall is 100% minus the worst error across
+        all nodes, which is how results are ranked by default. Click any Acc or Overall column
+        header to re-sort the table by that column; click again to flip the sort direction.
+        E48/E96/E192 values are generated from the IEC 60063 geometric formula,
         rounded to 3 significant figures. The solver samples the resistance window on a log scale
         and evaluates nearby preferred-value candidates at each point rather than an exhaustive
         search, so it may occasionally miss an equally good combination in an extremely narrow
@@ -446,7 +463,7 @@ function formatV(v) {
    nodes let one physical divider be evaluated against several
    independent supply scenarios at once (e.g. auto-ranging).
 --------------------------------------------------------------- */
-function solveDivider({ N, rMin, rMax, nodeInputs, mantissas }) {
+function solveDivider({ N, rMin, rMax, nodeInputs, mantissas, fixedValues }) {
   if (nodeInputs.some((n) => !(n.vin > 0))) {
     return { error: "Every node needs a desired Vin greater than 0 V." };
   }
@@ -467,6 +484,7 @@ function solveDivider({ N, rMin, rMax, nodeInputs, mantissas }) {
     return { error: "Set a maximum total resistance greater than the minimum." };
   }
 
+  const fixed = fixedValues || new Array(N).fill(null);
   const candidates = buildCandidates(mantissas, -1, 8);
   const k = N <= 2 ? 6 : N === 3 ? 5 : N === 4 ? 4 : 3;
   const totalSamples = Math.max(300, Math.min(4000, Math.floor(450000 / Math.pow(k, N))));
@@ -478,7 +496,9 @@ function solveDivider({ N, rMin, rMax, nodeInputs, mantissas }) {
   for (let s = 0; s < totalSamples; s++) {
     const t = totalSamples === 1 ? 0 : s / (totalSamples - 1);
     const total = Math.exp(logMin + t * (logMax - logMin));
-    const perPos = fractions.map((f) => nearestK(candidates, Math.max(f * total, candidates[0]), k));
+    const perPos = fractions.map((f, i) =>
+      fixed[i] != null ? [fixed[i]] : nearestK(candidates, Math.max(f * total, candidates[0]), k)
+    );
 
     cartesianEach(perPos, (combo) => {
       const actualTotal = combo.reduce((a, b) => a + b, 0);
@@ -489,6 +509,7 @@ function solveDivider({ N, rMin, rMax, nodeInputs, mantissas }) {
 
       let worst = 0;
       const nodeVs = [];
+      const nodeAccuracies = [];
       for (let j = 1; j < N; j++) {
         const { vin, target } = nodeInputs[j - 1];
         // Node voltage is fixed at `target`; solve for the Vin that
@@ -496,20 +517,21 @@ function solveDivider({ N, rMin, rMax, nodeInputs, mantissas }) {
         const vinAct = (target * actualTotal) / cum[j];
         nodeVs.push(vinAct);
         const errPct = (Math.abs(vinAct - vin) / vin) * 100;
+        nodeAccuracies.push(Math.max(0, 100 - errPct));
         if (errPct > worst) worst = errPct;
       }
       const accuracy = Math.max(0, 100 - worst);
       const key = combo.join("|");
       const existing = results.get(key);
       if (!existing || accuracy > existing.accuracy) {
-        results.set(key, { resistors: combo.slice(), total: actualTotal, nodeVs, accuracy });
+        results.set(key, { resistors: combo.slice(), total: actualTotal, nodeVs, nodeAccuracies, accuracy });
       }
     });
   }
 
   const arr = Array.from(results.values());
   arr.sort((a, b) => b.accuracy - a.accuracy);
-  return { top: arr.slice(0, 20) };
+  return { top: arr.slice(0, 50) };
 }
 
 
@@ -527,6 +549,12 @@ const state = {
   nodes: [
     { vin: 5, target: 3.33 },
     { vin: 5, target: 1.67 },
+  ],
+  // one { mag, unit } entry per resistor, top to bottom; mag === null means "auto"
+  resistorValues: [
+    { mag: null, unit: 1000 },
+    { mag: null, unit: 1000 },
+    { mag: null, unit: 1000 },
   ],
 };
 
@@ -554,8 +582,10 @@ function renderResistorCountSeg() {
     btn.addEventListener("click", () => {
       state.numResistors = n;
       syncNodesLength();
+      syncResistorValuesLength();
       renderResistorCountSeg();
       renderNodeFields();
+      renderResistorValueFields();
       renderSchematic();
       renderResultsTableHeader();
       scheduleSolve();
@@ -596,6 +626,15 @@ function syncNodesLength() {
   state.nodes = next;
 }
 
+function syncResistorValuesLength() {
+  const prev = state.resistorValues;
+  const next = [];
+  for (let i = 0; i < state.numResistors; i++) {
+    next.push(prev[i] != null ? prev[i] : { mag: null, unit: 1000 });
+  }
+  state.resistorValues = next;
+}
+
 function renderNodeFields() {
   const holder = document.getElementById("nodeFields");
   holder.innerHTML = "";
@@ -631,22 +670,84 @@ function renderNodeFields() {
   });
 }
 
-function buildSchematicSVG(N, nodes) {
-  const rowH = 54;
+function renderResistorValueFields() {
+  const holder = document.getElementById("resistorValueFields");
+  holder.innerHTML = "";
+  state.resistorValues.forEach((rv, i) => {
+    const row = el("div", { class: "node-field" });
+    row.appendChild(el("div", { class: "node-name", text: "R" + (i + 1) }));
+
+    const field = el("div", { class: "field", style: "grid-column: 1 / -1;" });
+    field.appendChild(el("label", { text: "Value (blank = find best)" }));
+    const valueUnit = el("div", { class: "value-unit" });
+
+    const magInput = el("input", { type: "number", step: "any", min: "0", placeholder: "auto" });
+    if (rv.mag != null) magInput.value = rv.mag;
+    magInput.addEventListener("input", (e) => {
+      const v = e.target.value;
+      state.resistorValues[i].mag = v === "" ? null : Number(v);
+      renderSchematic();
+      scheduleSolve();
+    });
+
+    const unitSelect = el("select");
+    [
+      ["1", "Ω"],
+      ["1000", "kΩ"],
+      ["1000000", "MΩ"],
+    ].forEach(([val, label]) => {
+      const opt = el("option", { value: val, text: label });
+      if (Number(val) === rv.unit) opt.selected = true;
+      unitSelect.appendChild(opt);
+    });
+    unitSelect.addEventListener("change", (e) => {
+      state.resistorValues[i].unit = Number(e.target.value);
+      renderSchematic();
+      scheduleSolve();
+    });
+
+    valueUnit.appendChild(magInput);
+    valueUnit.appendChild(unitSelect);
+    field.appendChild(valueUnit);
+    row.appendChild(field);
+    holder.appendChild(row);
+  });
+}
+
+function resolvedResistorValues() {
+  // Returns an array (length numResistors) of ohm values, or null for "auto", per position.
+  return state.resistorValues.map((rv) =>
+    rv.mag != null && isFinite(rv.mag) && rv.mag > 0 ? rv.mag * rv.unit : null
+  );
+}
+
+function formatVShort(v) {
+  if (v == null || !isFinite(v)) return "–";
+  const r = Math.round(v * 100) / 100;
+  let s = String(r);
+  if (s.includes(".")) s = s.replace(/0+$/, "").replace(/\.$/, "");
+  return s;
+}
+
+function buildSchematicSVG(N, nodes, resistorValues) {
+  const rowH = 58;
+  const gap = 10;
   const topPad = 26;
   const botPad = 34;
   const height = topPad + botPad + N * rowH;
-  const cx = 70;
+  const cx = 130;
+  const viewW = 300;
 
   let rows = "";
   for (let i = 0; i < N; i++) {
     const yTop = topPad + i * rowH;
     const yBot = yTop + rowH;
+    const isFixed = resistorValues && resistorValues[i] != null;
     rows += `
-      <line x1="${cx}" y1="${yTop}" x2="${cx}" y2="${yTop + 8}" class="wire" />
-      <rect x="${cx - 14}" y="${yTop + 8}" width="28" height="${rowH - 16}" rx="4" class="res-box" />
-      <text x="${cx + 26}" y="${yTop + rowH / 2 + 4}" class="res-label">R${i + 1}</text>
-      <line x1="${cx}" y1="${yTop + rowH - 8}" x2="${cx}" y2="${yBot}" class="wire" />
+      <line x1="${cx}" y1="${yTop}" x2="${cx}" y2="${yTop + gap}" class="wire" />
+      <rect x="${cx - 14}" y="${yTop + gap}" width="28" height="${rowH - gap * 2}" rx="4" class="${isFixed ? "res-box-fixed" : "res-box"}" />
+      <text x="${cx + 26}" y="${yTop + rowH / 2 + 4}" class="res-label">R${i + 1}${isFixed ? " (fixed)" : ""}</text>
+      <line x1="${cx}" y1="${yTop + rowH - gap}" x2="${cx}" y2="${yBot}" class="wire" />
     `;
   }
 
@@ -654,18 +755,19 @@ function buildSchematicSVG(N, nodes) {
   for (let j = 1; j < N; j++) {
     const y = topPad + j * rowH;
     const node = nodes[j - 1] || {};
-    const vinTxt = node.vin != null ? node.vin : "–";
-    const targetTxt = node.target != null ? node.target : "–";
+    const vinTxt = formatVShort(node.vin);
+    const targetTxt = formatVShort(node.target);
     nodeLabels += `
       <circle cx="${cx}" cy="${y}" r="4" class="node-dot" />
-      <text x="${cx - 20}" y="${y + 4}" text-anchor="end" class="node-label">V${j} fixed ${targetTxt}V · desired Vin ${vinTxt}V</text>
+      <text x="${cx - 20}" y="${y - 5}" text-anchor="end" class="node-label">V${j} fixed ${targetTxt}V</text>
+      <text x="${cx - 20}" y="${y + 9}" text-anchor="end" class="node-label">desired Vin ${vinTxt}V</text>
     `;
   }
 
   const gndY = topPad + N * rowH;
 
   return `
-    <svg viewBox="0 0 260 ${height}" class="schematic" width="100%">
+    <svg viewBox="0 0 ${viewW} ${height}" class="schematic" width="100%">
       <text x="${cx}" y="16" text-anchor="middle" class="rail-label">Vin</text>
       <line x1="${cx}" y1="20" x2="${cx}" y2="${topPad}" class="wire" />
       ${rows}
@@ -680,7 +782,7 @@ function buildSchematicSVG(N, nodes) {
 
 function renderSchematic() {
   const holder = document.getElementById("schematicHolder");
-  holder.innerHTML = buildSchematicSVG(state.numResistors, state.nodes);
+  holder.innerHTML = buildSchematicSVG(state.numResistors, state.nodes, resolvedResistorValues());
 }
 
 function renderResultsTableHeader() {
@@ -694,49 +796,93 @@ function accuracyBadgeHTML(value) {
   return `<span class="badge ${cls}">${value.toFixed(2)}%</span>`;
 }
 
+let lastResultTop = null;
+let sortState = { key: "overall", dir: "desc" };
+
+function sortValue(row, key) {
+  if (key === "overall") return row.accuracy;
+  if (key.startsWith("node")) return row.nodeAccuracies[Number(key.slice(4))];
+  return 0;
+}
+
+function sortArrowHTML(key) {
+  if (sortState.key !== key) return "";
+  return `<span class="sort-arrow">${sortState.dir === "desc" ? "▼" : "▲"}</span>`;
+}
+
 function renderResults(result) {
   const holder = document.getElementById("resultsHolder");
   const note = document.getElementById("resultsNote");
   holder.innerHTML = "";
 
   if (result.error) {
+    lastResultTop = null;
     note.textContent = "";
     holder.appendChild(el("div", { class: "error-box", text: result.error }));
     return;
   }
 
   if (!result.top || result.top.length === 0) {
+    lastResultTop = null;
     note.textContent = "";
     const rMin = state.rMinMag * state.rMinUnit;
     const rMax = state.rMaxMag * state.rMaxUnit;
     holder.appendChild(
       el("div", {
         class: "empty-box",
-        text: `No E${state.seriesN} combination of ${state.numResistors} resistors lands the total resistance inside ${formatR(rMin)}–${formatR(rMax)}. Widen the resistance window or try a denser series.`,
+        text: `No combination of ${state.numResistors} resistors lands the total resistance inside ${formatR(rMin)}–${formatR(rMax)}. Widen the resistance window, try a denser series, or check any fixed resistor values you've entered.`,
       })
     );
     return;
   }
 
-  note.textContent = `${result.top.length} of up to 20 shown`;
+  lastResultTop = result.top;
+
+  // If the resistor/node count changed since the last sort, fall back to overall.
+  const nodeCount = state.numResistors - 1;
+  if (sortState.key.startsWith("node") && Number(sortState.key.slice(4)) >= nodeCount) {
+    sortState = { key: "overall", dir: "desc" };
+  }
+
+  renderResultsTable();
+}
+
+function renderResultsTable() {
+  const holder = document.getElementById("resultsHolder");
+  const note = document.getElementById("resultsNote");
+  if (!lastResultTop) return;
+
+  note.textContent = `${lastResultTop.length} of up to 50 shown`;
 
   const N = state.numResistors;
+  const rows = lastResultTop.slice().sort((a, b) => {
+    const dirMul = sortState.dir === "desc" ? -1 : 1;
+    return (sortValue(a, sortState.key) - sortValue(b, sortState.key)) * dirMul;
+  });
+
   let headCols = `<th>#</th>`;
   for (let i = 0; i < N; i++) headCols += `<th>R${i + 1}</th>`;
   headCols += `<th>Total</th>`;
-  for (let i = 0; i < N - 1; i++) headCols += `<th>Vin${i + 1}</th>`;
-  headCols += `<th>Accuracy</th>`;
+  for (let i = 0; i < N - 1; i++) {
+    headCols += `<th>Vin${i + 1}</th>`;
+    headCols += `<th class="sortable" data-sort-key="node${i}">Acc${i + 1}${sortArrowHTML("node" + i)}</th>`;
+  }
+  headCols += `<th class="sortable" data-sort-key="overall">Overall${sortArrowHTML("overall")}</th>`;
 
   let bodyRows = "";
-  result.top.forEach((row, idx) => {
+  rows.forEach((row, idx) => {
     let cols = `<td>${idx + 1}</td>`;
     row.resistors.forEach((r) => (cols += `<td>${formatR(r)}</td>`));
     cols += `<td>${formatR(row.total)}</td>`;
-    row.nodeVs.forEach((v) => (cols += `<td>${formatV(v)}</td>`));
+    row.nodeVs.forEach((v, i) => {
+      cols += `<td>${formatV(v)}</td>`;
+      cols += `<td>${accuracyBadgeHTML(row.nodeAccuracies[i])}</td>`;
+    });
     cols += `<td>${accuracyBadgeHTML(row.accuracy)}</td>`;
     bodyRows += `<tr>${cols}</tr>`;
   });
 
+  holder.innerHTML = "";
   const tableWrap = el("div", { class: "scroll-x" });
   tableWrap.innerHTML = `
     <table>
@@ -744,6 +890,17 @@ function renderResults(result) {
       <tbody>${bodyRows}</tbody>
     </table>
   `;
+  tableWrap.querySelectorAll("th.sortable").forEach((th) => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.sortKey;
+      if (sortState.key === key) {
+        sortState = { key, dir: sortState.dir === "desc" ? "asc" : "desc" };
+      } else {
+        sortState = { key, dir: "desc" };
+      }
+      renderResultsTable();
+    });
+  });
   holder.appendChild(tableWrap);
 }
 
@@ -764,6 +921,7 @@ function runSolve() {
     rMax,
     nodeInputs: state.nodes,
     mantissas,
+    fixedValues: resolvedResistorValues(),
   });
   renderResults(result);
 }
@@ -846,6 +1004,7 @@ function init() {
   renderSeriesSelect();
   initStaticInputs();
   renderNodeFields();
+  renderResistorValueFields();
   renderSchematic();
   runSolve();
 }
