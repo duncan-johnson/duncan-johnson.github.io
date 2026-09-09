@@ -241,6 +241,7 @@ body.light .info-row{border-bottom:1px solid rgba(0,0,0,.07)}
             <tr>
               <th>Tool</th>
               <th>Ø (mm)</th>
+              <th>Shape</th>
               <th>Type</th>
               <th>Count</th>
             </tr>
@@ -345,6 +346,41 @@ function getLayerMeta(ext) {
   }
 
   return { label: ext.toUpperCase(), color:'#888888', order: 1900 };
+}
+
+// ── Colour disambiguation ─────────────────────────────────────────────────────
+// getLayerMeta() picks a colour purely from the file extension, so a batch of
+// files that all share the same (or an unrecognised) extension — e.g. several
+// generic .gbr/.ger/.txt exports, or many .gmN mechanical layers cycling
+// through the same short palette — would otherwise all render in the same
+// colour. Drill layers are deliberately exempt: sharing one colour across
+// drill files is expected and should NOT be disambiguated.
+const DISTINCT_COLOR_POOL = [
+  '#c87941','#0080ff','#9933ee','#44cc88','#ff5566','#00d4aa','#ffaa00',
+  '#7722cc','#33bbff','#ee6699','#88cc33','#ff8800','#4466ff','#cc44aa',
+  '#22ccaa','#ffcc44','#aa66ff','#66ddcc','#ff6644','#3399cc','#cc9933',
+  '#66aa22','#ff44aa','#4488cc','#aacc22','#cc6644','#8844cc','#22aacc',
+];
+
+function assignLayerColor(meta, isDrill, existingLayers) {
+  if (isDrill) return meta.color; // shared colour across drill files is intentional
+
+  const used = new Set(
+    existingLayers.filter(l => !l._isDrillLayer).map(l => l.meta.color.toLowerCase())
+  );
+  if (!used.has(meta.color.toLowerCase())) return meta.color;
+
+  for (const c of DISTINCT_COLOR_POOL) {
+    if (!used.has(c.toLowerCase())) return c;
+  }
+
+  // Pool exhausted (dozens of same-extension layers) — deterministic hue
+  // derived from the label/name so repeated loads stay stable, at least
+  // guaranteeing something other than an exact duplicate colour.
+  let hash = 0;
+  const seed = meta.label || '';
+  for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  return `hsl(${hash % 360},70%,55%)`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -693,8 +729,14 @@ function parseExcellon(src) {
   let header  = true;
   let curX = 0, curY = 0;  // current position — updated per axis independently
   let curPlated = true;     // tracks ;TYPE=PLATED / ;TYPE=NON_PLATED sections
+  let routing = false;      // true between M15 (tool down) and M16 (tool up) — rout-mode slots
   let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
   const rawCoordLens = [];  // digit-lengths of raw coordinate strings for auto-detection
+
+  // Tool numbers are sometimes zero-padded inconsistently between the tool
+  // definition ("T4C1.0000") and later tool-select/coordinate lines ("T04...").
+  // Normalize to a numeric string so both resolve to the same tools[] entry.
+  const toolKey = (n) => String(parseInt(n, 10));
 
   function applyUnitDefaults() {
     if (!fmtSet) { intDig = metric ? 3 : 2; decDig = metric ? 3 : 4; }
@@ -779,19 +821,30 @@ function parseExcellon(src) {
     if (tdH) {
       let dia = parseFloat(tdH[2]);
       if (!metric) dia *= 25.4;
-      tools[tdH[1]] = { dia, plated: curPlated };
+      tools[toolKey(tdH[1])] = { dia, plated: curPlated };
       if (!line.match(/X/)) continue;
     }
 
     // Tool select only (no coordinates)
     const tSel = line.match(/^T(\d+)$/);
-    if (tSel) { curTool=tSel[1]; continue; }
+    if (tSel) { curTool=toolKey(tSel[1]); continue; }
+
+    if (line==='M15') { routing = true;  continue; }  // tool plunge / rout start
+    if (line==='M16') { routing = false; continue; }  // tool retract / rout end
+
+    // Optional leading G-code (G00 rapid reposition, G01/G02/G03 linear/arc route)
+    // Coordinate lines in rout-mode (slotted) drill files are prefixed with these,
+    // e.g. "G00X031435Y0083" or "G01Y0082" — strip the G-code before matching X/Y.
+    let gcode = null;
+    let coordPart = line;
+    const gM = line.match(/^G0?([0-3])(.*)$/);
+    if (gM) { gcode = gM[1]; coordPart = gM[2]; }
 
     // Coordinate line — X and/or Y may be omitted; missing axis reuses last value
-    const cm = line.match(/^(?:T(\d+))?(?:X([+-]?[\d.]+))?(?:Y([+-]?[\d.]+))?(?:G|M|$)/);
+    const cm = coordPart.match(/^(?:T(\d+))?(?:X([+-]?[\d.]+))?(?:Y([+-]?[\d.]+))?(?:G|M|$)/);
     if (cm && (cm[2] !== undefined || cm[3] !== undefined)) {
       if (cm[1]) {
-        curTool = cm[1];
+        curTool = toolKey(cm[1]);
         const tdI = line.match(/T\d+.*?C([0-9.]+)/i);
         if (tdI && !tools[curTool]) {
           let dia = parseFloat(tdI[1]);
@@ -808,15 +861,33 @@ function parseExcellon(src) {
       }
 
       // Update current position — only overwrite the axis that was specified
+      const prevX = curX, prevY = curY;
       if (cm[2] !== undefined) curX = parseCoord(cm[2]);
       if (cm[3] !== undefined) curY = parseCoord(cm[3]);
 
-      const x    = curX;
-      const y    = curY;
       const tool = tools[curTool] || { dia: 0.8, plated: curPlated };
       const dia  = tool.dia;
       const r    = dia / 2;
 
+      if (gcode === '0') {
+        // G00 rapid reposition — tool up, no cut/drill; just moves the pointer.
+        continue;
+      }
+
+      if (routing && (gcode === '1' || gcode === '2' || gcode === '3')) {
+        // Rout-mode cut: tool is down (M15 issued), draws a slot from the
+        // previous position to the new one, one tool-diameter wide.
+        primitives.push({ kind:'slot', x1:prevX, y1:prevY, x2:curX, y2:curY,
+          dia, isHole:true, holeDia:dia, plated: tool.plated });
+        minX=Math.min(minX, Math.min(prevX,curX)-r); minY=Math.min(minY, Math.min(prevY,curY)-r);
+        maxX=Math.max(maxX, Math.max(prevX,curX)+r); maxY=Math.max(maxY, Math.max(prevY,curY)+r);
+        continue;
+      }
+
+      if (routing) continue; // routing but no recognised move code — skip, don't drill
+
+      // Plain coordinate line (no G-code, not routing) — standard drill hit.
+      const x = curX, y = curY;
       primitives.push({ kind:'flash', x, y,
         ap:{ type:'C', params:[dia] },
         polarity:'D', isHole:true, holeDia:dia, plated:tool.plated });
@@ -912,6 +983,44 @@ class Renderer {
     const RING_W = Math.max(1.5, this._ps(0.08)); // ring stroke ≈ 0.08mm or 1.5px min
 
     for (const p of layer.primitives) {
+      if (p.kind === 'slot' && p.isHole) {
+        const px1 = this._px(p.x1), py1 = this._py(p.y1);
+        const px2 = this._px(p.x2), py2 = this._py(p.y2);
+        const r   = this._ps(p.holeDia / 2);
+        if (r < 0.5) continue;
+
+        // Punch a stadium/capsule shape (thick round-cap stroke) through all layers
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.moveTo(px1, py1); ctx.lineTo(px2, py2);
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+        ctx.lineWidth = r * 2;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        ctx.restore();
+
+        // Draw slot outline ring on top
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.beginPath();
+        ctx.moveTo(px1, py1); ctx.lineTo(px2, py2);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = r * 2 + RING_W;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        // Re-punch the interior so only a ring outline remains, matching round-hole style
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.moveTo(px1, py1); ctx.lineTo(px2, py2);
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+        ctx.lineWidth = r * 2 - RING_W;
+        ctx.lineCap = 'round';
+        if (r * 2 - RING_W > 0) ctx.stroke();
+        ctx.restore();
+        continue;
+      }
+
       if (p.kind !== 'flash' || !p.isHole) continue;
       const px = this._px(p.x), py = this._py(p.y);
       const r  = this._ps(p.holeDia / 2);
@@ -968,6 +1077,11 @@ class Renderer {
     }
     if (p.kind==='line') {
       const r=p.w/2;
+      return { minX:Math.min(p.x1,p.x2)-r, minY:Math.min(p.y1,p.y2)-r,
+               maxX:Math.max(p.x1,p.x2)+r, maxY:Math.max(p.y1,p.y2)+r };
+    }
+    if (p.kind==='slot') {
+      const r=p.holeDia/2;
       return { minX:Math.min(p.x1,p.x2)-r, minY:Math.min(p.y1,p.y2)-r,
                maxX:Math.max(p.x1,p.x2)+r, maxY:Math.max(p.y1,p.y2)+r };
     }
@@ -1233,6 +1347,7 @@ async function loadFiles(fileList) {
       }
     }
 
+    meta.color = assignLayerColor(meta, isDrill, layers);
     const layer={ name, ext, meta, primitives:result.primitives, bounds:result.bounds, visible:true, _isDrillLayer:isDrill };
     layers.push(layer);
     renderer.addLayer(layer);
@@ -2572,6 +2687,7 @@ function clipboardCentroid() {
 function offsetPrim(prim, dx, dy) {
   const c = clonePrim(prim);
   if (c.kind==='flash')  { c.x+=dx; c.y+=dy; }
+  if (c.kind==='slot')   { c.x1+=dx;c.y1+=dy;c.x2+=dx;c.y2+=dy; }
   if (c.kind==='line')   { c.x1+=dx;c.y1+=dy;c.x2+=dx;c.y2+=dy; }
   if (c.kind==='arc')    { c.x1+=dx;c.y1+=dy;c.x2+=dx;c.y2+=dy;c.cx+=dx;c.cy+=dy; }
   if (c.kind==='region') { c.path=c.path.map(pt=>({x:pt.x+dx,y:pt.y+dy})); }
@@ -2721,6 +2837,7 @@ function writeGerber(layer) {
   for (const p of layer.primitives) {
     if (p.kind === 'flash') getAp(p.ap);
     else if (p.kind === 'line' || p.kind === 'arc') getAp(p.ap || { type:'C', params:[p.w||0.05] });
+    else if (p.kind === 'slot') getAp({ type:'C', params:[p.holeDia] });
   }
 
   // Build output
@@ -2769,6 +2886,14 @@ function writeGerber(layer) {
     } else if (p.kind === 'line') {
       const lineAp = p.ap || { type:'C', params:[p.w||0.05] };
       selectAp(lineAp);
+      lines.push('G01*');
+      emitMove(p.x1, p.y1);
+      lines.push(`X${fmtCoord(p.x2)}Y${fmtCoord(p.y2)}D01*`);
+      curX = p.x2; curY = p.y2;
+
+    } else if (p.kind === 'slot') {
+      const slotAp = { type:'C', params:[p.holeDia] };
+      selectAp(slotAp);
       lines.push('G01*');
       emitMove(p.x1, p.y1);
       lines.push(`X${fmtCoord(p.x2)}Y${fmtCoord(p.y2)}D01*`);
@@ -2896,6 +3021,9 @@ function primDistToPoint(p, gx, gy) {
   if (p.kind === 'flash') {
     return Math.hypot(p.x - gx, p.y - gy);
   }
+  if (p.kind === 'slot') {
+    return Math.max(0, distPointToSegment(gx, gy, p.x1, p.y1, p.x2, p.y2) - p.holeDia / 2);
+  }
   if (p.kind === 'line') {
     return distPointToSegment(gx, gy, p.x1, p.y1, p.x2, p.y2);
   }
@@ -2979,6 +3107,18 @@ function showPrimInfo(prim, layer) {
       row('Hole Ø', mm(prim.holeDia));
       row('Radius', mm(prim.holeDia / 2));
     }
+
+  } else if (prim.kind === 'slot') {
+    infoTitle.textContent = 'Routed Slot';
+    sec('ENDPOINTS');
+    row('X1', mm(prim.x1)); row('Y1', mm(prim.y1));
+    row('X2', mm(prim.x2)); row('Y2', mm(prim.y2));
+    sec('DRILL');
+    row('Slot Ø', mm(prim.holeDia));
+    row('Radius', mm(prim.holeDia / 2));
+    const slen = Math.hypot(prim.x2 - prim.x1, prim.y2 - prim.y1);
+    row('Length', mm(slen));
+    row('Plating', prim.plated ? 'Plated' : 'Non-Plated');
 
   } else if (prim.kind === 'line') {
     infoTitle.textContent = 'Line / Track';
@@ -3083,7 +3223,7 @@ const drillFooter    = document.getElementById('drill-footer');
 
 let drillTableOpen   = false;
 let drillHighlights  = [];   // [{prim}] currently highlighted holes
-let drillSelectedDia = null; // currently selected diameter row
+let drillSelectedGroup = null; // currently selected group object (identity, not just diameter)
 
 document.getElementById('drill-close').addEventListener('click', closeDrillTable);
 
@@ -3092,7 +3232,7 @@ function closeDrillTable() {
   drillTableBtn.classList.remove('active');
   drillTableOpen = false;
   drillHighlights = [];
-  drillSelectedDia = null;
+  drillSelectedGroup = null;
   renderMeasOverlay();
 }
 
@@ -3113,13 +3253,17 @@ function openDrillTable() {
 
   if (!allHoles.length) { showToast('No drill holes loaded'); return; }
 
-  // Group by diameter + plated status — prevents double-counting and correctly separates PTH/NPTH
-  const groups = new Map(); // "1.000-PTH" → { dia, count, plated, holes[], color }
+  // Group by diameter + plated status + shape (round vs slot) — prevents
+  // double-counting, correctly separates PTH/NPTH, and keeps slots (routed
+  // with a different tool/process) from being folded into round-hole counts
+  // just because they happen to share the same diameter.
+  const groups = new Map(); // "1.000-PTH-SLOT" → { dia, count, plated, isSlot, holes[], color }
   for (const { prim, layer } of allHoles) {
     const plated = prim.plated !== undefined ? prim.plated : true;
-    const key = prim.holeDia.toFixed(3) + (plated ? '-PTH' : '-NPTH');
+    const isSlot = prim.kind === 'slot';
+    const key = prim.holeDia.toFixed(3) + (plated ? '-PTH' : '-NPTH') + (isSlot ? '-SLOT' : '-RND');
     if (!groups.has(key)) {
-      groups.set(key, { dia: prim.holeDia, count: 0, plated,
+      groups.set(key, { dia: prim.holeDia, count: 0, plated, isSlot,
                         holes: [], color: layer.meta.color });
     }
     const g = groups.get(key);
@@ -3127,9 +3271,9 @@ function openDrillTable() {
     g.holes.push(prim);
   }
 
-  // Sort: PTH before NPTH, then by diameter ascending
+  // Sort: PTH before NPTH, then by diameter ascending, round before slot
   const sorted = [...groups.values()].sort((a, b) =>
-    (b.plated - a.plated) || (a.dia - b.dia));
+    (b.plated - a.plated) || (a.dia - b.dia) || (a.isSlot - b.isSlot));
 
   // IPC-2221A asymmetric drill tolerances
   function getTolerance(dia, plated) {
@@ -3152,6 +3296,7 @@ function openDrillTable() {
     tr.innerHTML = `
       <td><span class="drill-tool-swatch" style="background:${g.color}"></span>T${String(toolNum).padStart(2,'0')}</td>
       <td>${g.dia.toFixed(3)}</td>
+      <td>${g.isSlot ? 'Slot' : 'Round'}</td>
       <td>${g.plated ? 'Plated' : 'Non-Plated'}</td>
       <td>${g.count}</td>
     `;
@@ -3171,8 +3316,8 @@ function openDrillTable() {
 
 function selectDrillRow(tr, group) {
   // Deselect if clicking the same row
-  if (drillSelectedDia === group.dia) {
-    drillSelectedDia = null;
+  if (drillSelectedGroup === group) {
+    drillSelectedGroup = null;
     drillHighlights = [];
     document.querySelectorAll('#drill-tbody tr').forEach(r => r.classList.remove('dt-selected'));
     renderMeasOverlay();
@@ -3182,15 +3327,20 @@ function selectDrillRow(tr, group) {
   // Highlight selection
   document.querySelectorAll('#drill-tbody tr').forEach(r => r.classList.remove('dt-selected'));
   tr.classList.add('dt-selected');
-  drillSelectedDia = group.dia;
+  drillSelectedGroup = group;
   drillHighlights  = group.holes;
 
   // Zoom to fit all holes of this type with 20% padding
   let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
   for (const p of group.holes) {
     const r = p.holeDia / 2;
-    minX=Math.min(minX,p.x-r); minY=Math.min(minY,p.y-r);
-    maxX=Math.max(maxX,p.x+r); maxY=Math.max(maxY,p.y+r);
+    if (p.kind === 'slot') {
+      minX=Math.min(minX,p.x1-r,p.x2-r); minY=Math.min(minY,p.y1-r,p.y2-r);
+      maxX=Math.max(maxX,p.x1+r,p.x2+r); maxY=Math.max(maxY,p.y1+r,p.y2+r);
+    } else {
+      minX=Math.min(minX,p.x-r); minY=Math.min(minY,p.y-r);
+      maxX=Math.max(maxX,p.x+r); maxY=Math.max(maxY,p.y+r);
+    }
   }
   // Add margin
   const mx = (maxX-minX)*0.25 || 2, my = (maxY-minY)*0.25 || 2;
@@ -3212,6 +3362,36 @@ function drawDrillHighlights() {
   if (!drillHighlights.length) return;
 
   for (const p of drillHighlights) {
+    if (p.kind === 'slot') {
+      const px1 = renderer._px(p.x1), py1 = renderer._py(p.y1);
+      const px2 = renderer._px(p.x2), py2 = renderer._py(p.y2);
+      const r   = renderer._ps(p.holeDia / 2);
+
+      measCtx.save();
+      measCtx.globalAlpha  = 0.35;
+      measCtx.strokeStyle  = '#ffdd00';
+      measCtx.shadowColor  = '#ffdd00';
+      measCtx.shadowBlur   = 8;
+      measCtx.lineCap      = 'round';
+      measCtx.lineWidth    = Math.max(r * 2, 4);
+      measCtx.beginPath();
+      measCtx.moveTo(px1, py1); measCtx.lineTo(px2, py2);
+      measCtx.stroke();
+      measCtx.restore();
+
+      measCtx.save();
+      measCtx.strokeStyle  = '#ffdd00';
+      measCtx.shadowColor  = '#ffdd00';
+      measCtx.shadowBlur   = 6;
+      measCtx.lineCap      = 'round';
+      measCtx.lineWidth    = 2;
+      measCtx.beginPath();
+      measCtx.moveTo(px1, py1); measCtx.lineTo(px2, py2);
+      measCtx.stroke();
+      measCtx.restore();
+      continue;
+    }
+
     const px = renderer._px(p.x), py = renderer._py(p.y);
     const r  = renderer._ps(p.holeDia / 2);
 
