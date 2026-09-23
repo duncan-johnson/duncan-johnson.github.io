@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PCB Panelizer</title>
+<style>
+:root{
+  --bg:#f5f6f8; --panel:#ffffff; --ink:#1b1f24; --sub:#5b6470; --line:#d8dce1; --accent:#2f6fed;
+  padding-top: env(safe-area-inset-top,0px); padding-bottom: env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#15171a; --panel:#1e2126; --ink:#eef1f5; --sub:#9aa4b2; --line:#33383f; }
+}
+:root[data-theme="dark"]{ --bg:#15171a; --panel:#1e2126; --ink:#eef1f5; --sub:#9aa4b2; --line:#33383f; }
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:14px;}
+.app{display:flex;min-height:100%;}
+.side{width:340px;flex:0 0 340px;background:var(--panel);border-right:1px solid var(--line);padding:16px;overflow-y:auto;max-height:100vh;}
+.main{flex:1;display:flex;flex-direction:column;align-items:center;padding:20px;gap:12px;overflow:auto;}
+h1{font-size:16px;margin:0 0 12px;}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--sub);margin:18px 0 8px;border-top:1px solid var(--line);padding-top:12px;}
+h2:first-of-type{border-top:none;padding-top:0;}
+label{display:block;font-size:12px;color:var(--sub);margin:6px 0 2px;}
+input[type=number],select,input[type=file]{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font-size:13px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.row4{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.gapline,.rotline{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px dashed var(--line);}
+.gapline span,.rotline span{width:64px;font-size:12px;color:var(--sub);flex-shrink:0;}
+.gapline select{width:auto;flex:1;}
+.gapline input[type=number]{width:64px;flex:0 0 64px;}
+button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;width:100%;margin-top:14px;}
+button:active{opacity:.85;}
+canvas{background:#fff;border:1px solid var(--line);border-radius:8px;max-width:100%;}
+.dims{color:var(--sub);font-size:12px;}
+.note{font-size:11px;color:var(--sub);margin-top:6px;line-height:1.4;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="side">
+    <h1>PCB Panelizer</h1>
+
+    <h2>PCB image</h2>
+    <input type="file" id="imgInput" accept="image/*">
+
+    <h2>PCB dimensions (mm)</h2>
+    <div class="row2">
+      <div><label>Width</label><input type="number" id="pcbW" value="50" min="1" step="0.1"></div>
+      <div><label>Height</label><input type="number" id="pcbH" value="30" min="1" step="0.1"></div>
+    </div>
+
+    <h2>Array</h2>
+    <div class="row2">
+      <div><label>Rows</label><input type="number" id="rows" value="2" min="1" step="1"></div>
+      <div><label>Columns</label><input type="number" id="cols" value="2" min="1" step="1"></div>
+    </div>
+
+    <h2>Margins (mm)</h2>
+    <div class="row4">
+      <div><label>Top</label><input type="number" id="mTop" value="5" min="0" step="0.1"></div>
+      <div><label>Bottom</label><input type="number" id="mBottom" value="5" min="0" step="0.1"></div>
+      <div><label>Left</label><input type="number" id="mLeft" value="5" min="0" step="0.1"></div>
+      <div><label>Right</label><input type="number" id="mRight" value="5" min="0" step="0.1"></div>
+    </div>
+
+    <h2>Spacing (mm)</h2>
+    <div class="row2">
+      <div><label>Between rows</label><input type="number" id="rowSpacing" value="5" min="0" step="0.1"></div>
+      <div><label>Between columns</label><input type="number" id="colSpacing" value="5" min="0" step="0.1"></div>
+    </div>
+
+    <h2>Row rotation</h2>
+    <div id="rowRotWrap"></div>
+
+    <h2>Column rotation</h2>
+    <div id="colRotWrap"></div>
+
+    <h2>Outer edge V-groove</h2>
+    <div class="row4">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);"><input type="checkbox" id="outerTop" checked style="width:auto;">Top</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);"><input type="checkbox" id="outerBottom" checked style="width:auto;">Bottom</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);"><input type="checkbox" id="outerLeft" checked style="width:auto;">Left</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);"><input type="checkbox" id="outerRight" checked style="width:auto;">Right</label>
+    </div>
+
+    <h2>Row separators</h2>
+    <div id="rowGapWrap"></div>
+
+    <h2>Column separators</h2>
+    <div id="colGapWrap"></div>
+
+    <button id="exportBtn">Export PDF (scaled to fit A4)</button>
+    <div class="note">The panel is scaled down to fit a single A4 sheet if needed (portrait or landscape, whichever fits better), and the resulting scale ratio is printed at the bottom of the page. Board footprints stay fixed to the entered PCB dimensions; rotation rotates the artwork within that footprint.</div>
+  </div>
+
+  <div class="main">
+    <canvas id="canvas"></canvas>
+    <div class="dims" id="dimsLabel"></div>
+    <div class="dims" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+      <span><span style="display:inline-block;width:16px;height:2px;background:#d9822b;vertical-align:middle;margin-right:4px;"></span>V-groove</span>
+      <span><span style="display:inline-block;width:16px;height:3px;background:#111418;vertical-align:middle;margin-right:4px;"></span>Routed cut</span>
+      <span><span style="display:inline-block;width:16px;height:3px;background:#2e9e5b;vertical-align:middle;margin-right:4px;"></span>Uncut tab</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let state={img:null, rowRot:[0,0], colRot:[0,0], rowGaps:[{type:'vgroove',length:20}], colGaps:[{type:'vgroove',length:20}]};
+
+function num(id){return parseFloat($(id).value)||0;}
+function getDims(){
+  return {
+    pcbW:num('pcbW'), pcbH:num('pcbH'),
+    rows:Math.max(1,parseInt($('rows').value)||1),
+    cols:Math.max(1,parseInt($('cols').value)||1),
+    mTop:num('mTop'), mBottom:num('mBottom'), mLeft:num('mLeft'), mRight:num('mRight'),
+    rowSpacing:num('rowSpacing'), colSpacing:num('colSpacing')
+  };
+}
+function resizeArr(arr,len,make){ arr=arr.slice(0,len); while(arr.length<len) arr.push(make()); return arr; }
+
+function rebuildDynamic(){
+  const d=getDims();
+  state.rowRot=resizeArr(state.rowRot,d.rows,()=>0);
+  state.colRot=resizeArr(state.colRot,d.cols,()=>0);
+  state.rowGaps=resizeArr(state.rowGaps,Math.max(0,d.rows-1),()=>({type:'vgroove',length:Math.max(5,d.pcbW*0.5)}));
+  state.colGaps=resizeArr(state.colGaps,Math.max(0,d.cols-1),()=>({type:'vgroove',length:Math.max(5,d.pcbH*0.5)}));
+
+  $('rowRotWrap').innerHTML=state.rowRot.map((v,i)=>`
+    <div class="rotline"><span>Row ${i+1}</span>
+      <select data-kind="rowRot" data-i="${i}">
+        ${[0,90,180,270].map(a=>`<option value="${a}" ${a==v?'selected':''}>${a}\u00b0</option>`).join('')}
+      </select></div>`).join('') || '<div class="note">Add rows to set rotation.</div>';
+
+  $('colRotWrap').innerHTML=state.colRot.map((v,i)=>`
+    <div class="rotline"><span>Col ${i+1}</span>
+      <select data-kind="colRot" data-i="${i}">
+        ${[0,90,180,270].map(a=>`<option value="${a}" ${a==v?'selected':''}>${a}\u00b0</option>`).join('')}
+      </select></div>`).join('') || '<div class="note">Add columns to set rotation.</div>';
+
+  $('rowGapWrap').innerHTML=state.rowGaps.map((g,i)=>`
+    <div class="gapline"><span>Row ${i+1}-${i+2}</span>
+      <select data-kind="rowGapType" data-i="${i}">
+        <option value="vgroove" ${g.type=='vgroove'?'selected':''}>V-groove</option>
+        <option value="routed" ${g.type=='routed'?'selected':''}>Routed</option>
+      </select>
+      <input type="number" min="1" step="0.1" data-kind="rowGapLen" data-i="${i}" value="${g.length}" style="display:${g.type=='routed'?'block':'none'}" title="Routed length (mm)">
+    </div>`).join('') || '<div class="note">No gaps (single row).</div>';
+
+  $('colGapWrap').innerHTML=state.colGaps.map((g,i)=>`
+    <div class="gapline"><span>Col ${i+1}-${i+2}</span>
+      <select data-kind="colGapType" data-i="${i}">
+        <option value="vgroove" ${g.type=='vgroove'?'selected':''}>V-groove</option>
+        <option value="routed" ${g.type=='routed'?'selected':''}>Routed</option>
+      </select>
+      <input type="number" min="1" step="0.1" data-kind="colGapLen" data-i="${i}" value="${g.length}" style="display:${g.type=='routed'?'block':'none'}" title="Routed length (mm)">
+    </div>`).join('') || '<div class="note">No gaps (single column).</div>';
+
+  bindDynamic();
+  draw();
+}
+
+function bindDynamic(){
+  document.querySelectorAll('[data-kind]').forEach(el=>{
+    el.oninput=()=>{
+      const kind=el.dataset.kind, i=parseInt(el.dataset.i);
+      if(kind=='rowRot') state.rowRot[i]=parseInt(el.value);
+      if(kind=='colRot') state.colRot[i]=parseInt(el.value);
+      if(kind=='rowGapType'){ state.rowGaps[i].type=el.value; rebuildDynamic(); return; }
+      if(kind=='colGapType'){ state.colGaps[i].type=el.value; rebuildDynamic(); return; }
+      if(kind=='rowGapLen') state.rowGaps[i].length=parseFloat(el.value)||1;
+      if(kind=='colGapLen') state.colGaps[i].length=parseFloat(el.value)||1;
+      draw();
+    };
+  });
+}
+
+function panelSize(d){
+  const w=d.mLeft+d.mRight+d.cols*d.pcbW+(d.cols-1)*d.colSpacing;
+  const h=d.mTop+d.mBottom+d.rows*d.pcbH+(d.rows-1)*d.rowSpacing;
+  return {w,h};
+}
+
+function renderPanel(ctx,px,d,dimText){
+  const {w,h}=panelSize(d);
+  ctx.save();
+  ctx.fillStyle='#ffffff';
+  ctx.fillRect(0,0,w*px,h*px);
+  ctx.strokeStyle='#8a919c';
+  ctx.lineWidth=Math.max(1,0.3*px);
+  ctx.strokeRect(1,1,w*px-2,h*px-2);
+
+  // cells
+  for(let i=0;i<d.rows;i++){
+    for(let j=0;j<d.cols;j++){
+      const x=d.mLeft+j*(d.pcbW+d.colSpacing);
+      const y=d.mTop+i*(d.pcbH+d.rowSpacing);
+      const cx=(x+d.pcbW/2)*px, cy=(y+d.pcbH/2)*px;
+      const ang=((state.rowRot[i]||0)+(state.colRot[j]||0))%360;
+      ctx.save();
+      ctx.translate(cx,cy);
+      ctx.rotate(ang*Math.PI/180);
+      const cw=d.pcbW*px, ch=d.pcbH*px;
+      if(state.img){
+        if(ang%180===90) ctx.drawImage(state.img,-ch/2,-cw/2,ch,cw);
+        else ctx.drawImage(state.img,-cw/2,-ch/2,cw,ch);
+      }else{
+        ctx.fillStyle='#eef1f5';
+        ctx.fillRect(-cw/2,-ch/2,cw,ch);
+        ctx.strokeStyle='#c3c9d1';
+        ctx.beginPath();
+        ctx.moveTo(-cw/2,-ch/2); ctx.lineTo(cw/2,ch/2);
+        ctx.moveTo(cw/2,-ch/2); ctx.lineTo(-cw/2,ch/2);
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.strokeStyle='#4a5157';
+      ctx.lineWidth=Math.max(1,0.25*px);
+      ctx.strokeRect(x*px,y*px,d.pcbW*px,d.pcbH*px);
+    }
+  }
+
+  // outer tooling-strip edges (against the margin/board boundary, all 4 sides)
+  if($('outerTop').checked) drawSeam(ctx,{type:'vgroove'},true,d.mTop*px,px,w*px);
+  if($('outerBottom').checked) drawSeam(ctx,{type:'vgroove'},true,(h-d.mBottom)*px,px,w*px);
+  if($('outerLeft').checked) drawSeam(ctx,{type:'vgroove'},false,d.mLeft*px,px,h*px);
+  if($('outerRight').checked) drawSeam(ctx,{type:'vgroove'},false,(w-d.mRight)*px,px,h*px);
+
+  // row gaps — placed against the PCB edges, not centred in the spacing
+  for(let k=0;k<state.rowGaps.length;k++){
+    const g=state.rowGaps[k];
+    const yA=(d.mTop+k*(d.pcbH+d.rowSpacing)+d.pcbH)*px;       // bottom edge of upper board
+    const yB=(d.mTop+(k+1)*(d.pcbH+d.rowSpacing))*px;           // top edge of lower board
+    drawSeam(ctx,g,true,yA,px,w*px,d.mLeft*px,(w-d.mRight)*px);
+    if(Math.abs(yB-yA)>0.01) drawSeam(ctx,g,true,yB,px,w*px,d.mLeft*px,(w-d.mRight)*px);
+  }
+  // col gaps — placed against the PCB edges, not centred in the spacing
+  for(let k=0;k<state.colGaps.length;k++){
+    const g=state.colGaps[k];
+    const xA=(d.mLeft+k*(d.pcbW+d.colSpacing)+d.pcbW)*px;       // right edge of left board
+    const xB=(d.mLeft+(k+1)*(d.pcbW+d.colSpacing))*px;          // left edge of right board
+    drawSeam(ctx,g,false,xA,px,h*px,d.mTop*px,(h-d.mBottom)*px);
+    if(Math.abs(xB-xA)>0.01) drawSeam(ctx,g,false,xB,px,h*px,d.mTop*px,(h-d.mBottom)*px);
+  }
+
+  if(dimText){
+    ctx.fillStyle='#2f6fed';
+    ctx.font=`${Math.max(10,2.6*px)}px sans-serif`;
+    ctx.fillText(dimText, 6, h*px-6);
+  }
+  ctx.restore();
+}
+
+function drawSeam(ctx,g,horizontal,pos,px,fullExtent,segStart,segEnd){
+  ctx.save();
+  if(g.type==='vgroove'){
+    ctx.strokeStyle='#d9822b';
+    ctx.setLineDash([px*2,px*1.4]);
+    ctx.lineWidth=Math.max(1,0.3*px);
+    ctx.beginPath();
+    if(horizontal){ ctx.moveTo(0,pos); ctx.lineTo(fullExtent,pos); }
+    else { ctx.moveTo(pos,0); ctx.lineTo(pos,fullExtent); }
+    ctx.stroke();
+  }else{
+    const cutLen=Math.min(g.length*px, segEnd-segStart);
+    const mid=(segStart+segEnd)/2;
+    const cutStart=mid-cutLen/2, cutEnd=mid+cutLen/2;
+    // faint reference line across the whole board span
+    ctx.strokeStyle='#c3c9d1';
+    ctx.setLineDash([px,px]);
+    ctx.lineWidth=Math.max(1,0.15*px);
+    ctx.beginPath();
+    if(horizontal){ ctx.moveTo(segStart,pos); ctx.lineTo(segEnd,pos); } else { ctx.moveTo(pos,segStart); ctx.lineTo(pos,segEnd); }
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // uncut tabs either side (green, solid, thick)
+    ctx.strokeStyle='#2e9e5b';
+    ctx.lineWidth=Math.max(2,0.5*px);
+    ctx.beginPath();
+    if(horizontal){ ctx.moveTo(segStart,pos); ctx.lineTo(cutStart,pos); ctx.moveTo(cutEnd,pos); ctx.lineTo(segEnd,pos); }
+    else { ctx.moveTo(pos,segStart); ctx.lineTo(pos,cutStart); ctx.moveTo(pos,cutEnd); ctx.lineTo(pos,segEnd); }
+    ctx.stroke();
+    // routed cut (black, solid, thick)
+    ctx.strokeStyle='#111418';
+    ctx.lineWidth=Math.max(2,0.6*px);
+    ctx.beginPath();
+    if(horizontal){ ctx.moveTo(cutStart,pos); ctx.lineTo(cutEnd,pos); } else { ctx.moveTo(pos,cutStart); ctx.lineTo(pos,cutEnd); }
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function draw(){
+  const d=getDims();
+  const {w,h}=panelSize(d);
+  const maxW=Math.min(900, document.querySelector('.main').clientWidth-20 || 900);
+  const maxH=600;
+  const px=Math.max(0.5, Math.min(maxW/w, maxH/h));
+  const canvas=$('canvas');
+  canvas.width=w*px; canvas.height=h*px;
+  const ctx=canvas.getContext('2d');
+  renderPanel(ctx,px,d,`${w.toFixed(1)} x ${h.toFixed(1)} mm`);
+  $('dimsLabel').textContent=`Panel: ${w.toFixed(1)} mm x ${h.toFixed(1)} mm`;
+}
+
+['pcbW','pcbH','mTop','mBottom','mLeft','mRight','rowSpacing','colSpacing'].forEach(id=>$(id).oninput=draw);
+['outerTop','outerBottom','outerLeft','outerRight'].forEach(id=>$(id).onchange=draw);
+$('rows').oninput=rebuildDynamic;
+$('cols').oninput=rebuildDynamic;
+
+$('imgInput').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{ state.img=img; draw(); };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(f);
+};
+
+function dataUrlToBytes(dataUrl){
+  const base64=dataUrl.split(',')[1];
+  const raw=atob(base64);
+  const bytes=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) bytes[i]=raw.charCodeAt(i);
+  return bytes;
+}
+function escapePdfText(s){ return String(s).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)'); }
+
+// Builds a minimal single-page PDF embedding a JPEG image, with no external library.
+function buildSimplePdf(jpegBytes, imgPxW, imgPxH, imgWmm, imgHmm, offsetXmm, offsetYTopmm, pageWmm, pageHmm, footerText){
+  const mm2pt=72/25.4;
+  const pageWpt=pageWmm*mm2pt, pageHpt=pageHmm*mm2pt;
+  const imgWpt=imgWmm*mm2pt, imgHpt=imgHmm*mm2pt;
+  const xPt=offsetXmm*mm2pt;
+  const yBottomPt=pageHpt-(offsetYTopmm*mm2pt)-imgHpt;
+
+  const encoder=new TextEncoder();
+  const chunks=[]; let pos=0;
+  function push(strOrBytes){ const b=(typeof strOrBytes==='string')?encoder.encode(strOrBytes):strOrBytes; chunks.push(b); pos+=b.length; }
+
+  const offsets=[];
+  push('%PDF-1.4\n');
+  offsets[1]=pos; push('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+  offsets[2]=pos; push('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+  offsets[3]=pos; push(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWpt.toFixed(2)} ${pageHpt.toFixed(2)}] /Resources << /XObject << /Im0 4 0 R >> /Font << /F1 6 0 R >> >> /Contents 5 0 R >>\nendobj\n`);
+  offsets[4]=pos; push(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgPxW} /Height ${imgPxH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`);
+  push(jpegBytes);
+  push('\nendstream\nendobj\n');
+  const content=`q\n${imgWpt.toFixed(2)} 0 0 ${imgHpt.toFixed(2)} ${xPt.toFixed(2)} ${yBottomPt.toFixed(2)} cm\n/Im0 Do\nQ\nBT\n/F1 9 Tf\n20 20 Td\n(${escapePdfText(footerText)}) Tj\nET\n`;
+  const contentBytes=encoder.encode(content);
+  offsets[5]=pos; push(`5 0 obj\n<< /Length ${contentBytes.length} >>\nstream\n`);
+  push(contentBytes);
+  push('\nendstream\nendobj\n');
+  offsets[6]=pos; push('6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n');
+
+  const xrefStart=pos;
+  let xref='xref\n0 7\n0000000000 65535 f \n';
+  for(let i=1;i<=6;i++) xref+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';
+  push(xref);
+  push(`trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`);
+
+  const total=chunks.reduce((a,c)=>a+c.length,0);
+  const out=new Uint8Array(total);
+  let o=0; for(const c of chunks){ out.set(c,o); o+=c.length; }
+  return new Blob([out],{type:'application/pdf'});
+}
+
+$('exportBtn').onclick=async ()=>{
+  try{
+    const d=getDims();
+    const {w,h}=panelSize(d);
+    const px=8; // ~200dpi raster for the panel artwork
+    const off=document.createElement('canvas');
+    off.width=Math.round(w*px); off.height=Math.round(h*px);
+    const ctx=off.getContext('2d');
+    ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,off.width,off.height);
+    renderPanel(ctx,px,d,null); // no baked-in label; scale is printed in the PDF footer
+    const jpegDataUrl=off.toDataURL('image/jpeg',0.92);
+    const jpegBytes=dataUrlToBytes(jpegDataUrl);
+
+    const A4=[210,297]; // portrait mm
+    let orientation='portrait', scale=1;
+    if(w<=A4[0] && h<=A4[1]){ orientation='portrait'; scale=1; }
+    else if(w<=A4[1] && h<=A4[0]){ orientation='landscape'; scale=1; }
+    else{
+      const sPortrait=Math.min(A4[0]/w, A4[1]/h);
+      const sLandscape=Math.min(A4[1]/w, A4[0]/h);
+      if(sLandscape>sPortrait){ orientation='landscape'; scale=sLandscape; } else { orientation='portrait'; scale=sPortrait; }
+    }
+    const pageW=orientation==='landscape'?A4[1]:A4[0];
+    const pageH=orientation==='landscape'?A4[0]:A4[1];
+    const imgW=w*scale, imgH=h*scale;
+    const offsetX=(pageW-imgW)/2;
+    const offsetYTop=Math.max(5,(pageH-15-imgH)/2);
+    const ratio=1/scale;
+    const scaleLabel=Math.abs(ratio-1)<0.001?'1:1':`1:${ratio.toFixed(ratio<10?2:1)}`;
+    const footer=`Panel ${w.toFixed(1)} x ${h.toFixed(1)} mm  -  Scale ${scaleLabel} on A4`;
+
+    const blob=buildSimplePdf(jpegBytes, off.width, off.height, imgW, imgH, offsetX, offsetYTop, pageW, pageH, footer);
+
+    let handled=false;
+    try{
+      if(window.claude && window.claude.use){
+        const downloads=await window.claude.use('downloads');
+        if(downloads){ await downloads.save({filename:'pcb-panel.pdf', data:blob}); handled=true; }
+      }
+    }catch(e){ /* fall through to direct download below */ }
+    if(!handled){
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url; a.download='pcb-panel.pdf';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url),2000);
+    }
+  }catch(err){
+    alert('PDF export failed: '+(err && err.message ? err.message : err));
+    console.error(err);
+  }
+};
+
+rebuildDynamic();
+</script>
+</body>
+</html>
