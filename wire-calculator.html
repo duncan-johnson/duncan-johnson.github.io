@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wire Resistance Calculator</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b2430;--mu:#5d6b7c;--ac:#0b6bcb;--bd:#d9dee5;--hl:#e8f2fd;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12171d;--card:#1b222b;--tx:#e6ebf1;--mu:#93a0af;--ac:#5aa8f5;--bd:#2f3946;--hl:#1d3550}}
+:root[data-theme="dark"]{--bg:#12171d;--card:#1b222b;--tx:#e6ebf1;--mu:#93a0af;--ac:#5aa8f5;--bd:#2f3946;--hl:#1d3550}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px 16px 40px}
+h1{margin:0 0 4px;font-size:1.6rem}
+.by{color:var(--mu);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:18px;margin-bottom:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+label{display:block;font-size:.85rem;color:var(--mu);margin-bottom:4px}
+select,input{width:100%;box-sizing:border-box;padding:9px;font-size:1rem;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}
+.row{display:flex;gap:6px}
+.res{margin-top:18px;padding:14px;background:var(--hl);border-radius:10px}
+.big{font-size:1.9rem;font-weight:700;color:var(--ac)}
+.sm{font-size:.88rem;color:var(--mu)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.85rem;min-width:600px}
+th,td{border:1px solid var(--bd);padding:5px 8px;text-align:right}
+th{background:var(--hl)}
+td.c{text-align:center}
+tr.sel td{background:var(--hl);font-weight:600}
+code{background:var(--bg);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<main>
+<h1>Wire Resistance Calculator</h1>
+<p class="by">Duncan Johnson</p>
+
+<div class="card">
+<div class="grid">
+<div><label for="size">Conductor size</label><select id="size"></select></div>
+<div><label for="len">Length</label><div class="row"><input id="len" type="number" min="0" step="any" value="10"><select id="lu" style="width:80px"><option value="m">m</option><option value="ft">ft</option></select></div></div>
+<div><label for="temp">Temperature</label><div class="row"><input id="temp" type="number" step="any" value="20"><select id="tu" style="width:80px"><option value="C">°C</option><option value="F">°F</option></select></div></div>
+</div>
+<div class="res">
+<div class="sm">Resistance at <span id="tt"></span></div>
+<div class="big" id="out">–</div>
+<div class="sm" id="det"></div>
+</div>
+<p class="sm">Uses <code>R = R<sub>T</sub> [1 + 0.003 93 (t − 20)]</code>, where R<sub>T</sub> is the resistance at 20 °C (from Table G.1, Ω/km × length) and t is the temperature in °C. Single conductor, one way; for a loop (out and return) double the result.</p>
+</div>
+
+<div class="card">
+<h2 style="margin-top:0;font-size:1.15rem">Table G.1 – Comparison of conductor sizes</h2>
+<p class="sm">Annex G (informative), Comparison of typical conductor cross-sectional areas. Table G.1 compares the cross-sectional areas of the American Wire Gauge (AWG) with mm², square inches and circular mils. The selected row is highlighted.</p>
+<div class="scroll"><table id="tbl">
+<thead><tr><th rowspan="2">Wire size<br>mm²</th><th rowspan="2">Gauge No<br>(AWG)</th><th colspan="2">Cross-sectional area</th><th rowspan="2">DC resistance of copper at 20 °C<br>Ω per km</th><th rowspan="2">Circular mils</th></tr>
+<tr><th>mm²</th><th>inches²</th></tr></thead><tbody></tbody></table></div>
+</div>
+
+<p class="sm"><strong>Reference:</strong> IEC 60204-1:2016+AMD1:2021 CSV, <em>Safety of machinery – Electrical equipment of machines – Part 1: General requirements</em>, Annex G, Table G.1 and associated temperature formula. © IEC 2021. Table values are reproduced as printed in the standard, except the inches² value for 10 mm², which is shown as 0.015 500 (the printed 0.001 550 appears to be a typographical error).</p>
+</main>
+<script>
+// [mm2 label, AWG, area mm2, in2, ohm/km, circ mils]
+var D=[["0,2","",0.196,"0.000 304",91.62,"387"],["","24",0.205,"0.000 317",87.60,"404"],["0,3","",0.283,"0.000 438",63.46,"558"],["","22",0.324,"0.000 504",55.44,"640"],["0,5","",0.500,"0.000 775",36.70,"987"],["","20",0.519,"0.000 802",34.45,"1 020"],["0,75","",0.750,"0.001 162",24.80,"1 480"],["","18",0.823,"0.001 272",20.95,"1 620"],["1,0","",1.000,"0.001 550",18.20,"1 973"],["","16",1.31,"0.002 026",13.19,"2 580"],["1,5","",1.500,"0.002 325",12.20,"2 960"],["","14",2.08,"0.003 228",8.442,"4 110"],["2,5","",2.500,"0.003 875",7.56,"4 934"],["","12",3.31,"0.005 129",5.315,"6 530"],["4","",4.000,"0.006 200",4.700,"7 894"],["","10",5.26,"0.008 152",3.335,"10 380"],["6","",6.000,"0.009 300",3.110,"11 841"],["","8",8.37,"0.012 967",2.093,"16 510"],["10","",10.000,"0.015 500",1.840,"19 735"],["","6",13.3,"0.020 610",1.320,"26 240"],["16","",16.000,"0.024 800",1.160,"31 576"],["","4",21.1,"0.032 780",0.8295,"41 740"],["25","",25.000,"0.038 800",0.7340,"49 338"],["","2",33.6,"0.052 100",0.5211,"66 360"],["35","",35.000,"0.054 200",0.5290,"69 073"],["","1",42.4,"0.065 700",0.4139,"83 690"],["50","",47.000,"0.072 800",0.3910,"92 756"]];
+var sel=document.getElementById("size"),tb=document.querySelector("#tbl tbody");
+D.forEach(function(r,i){
+ var o=document.createElement("option");
+ o.value=i;o.textContent=r[0]?r[0].replace(",",".")+" mm²":"AWG "+r[1]+" ("+r[2]+" mm²)";
+ sel.appendChild(o);
+ var tr=document.createElement("tr");tr.id="r"+i;
+ var f=function(v){return v===""?"":v};
+ tr.innerHTML="<td class='c'>"+r[0]+"</td><td class='c'>"+r[1]+"</td><td>"+(r[1]!==""&&r[2]>1?String(r[2]):r[2].toFixed(3)).replace(".",",")+"</td><td>"+r[3].replace(".",",")+"</td><td>"+String(r[4]).replace(".",",")+"</td><td>"+r[5]+"</td>";
+ tb.appendChild(tr);
+});
+sel.value=12;
+function calc(){
+ var i=+sel.value,r=D[i],L=parseFloat(len.value),t=parseFloat(temp.value);
+ document.querySelectorAll("tr.sel").forEach(function(e){e.classList.remove("sel")});
+ document.getElementById("r"+i).classList.add("sel");
+ var tc=tu.value==="F"?(t-32)*5/9:t;
+ var lm=lu.value==="ft"?L*0.3048:L;
+ tt.textContent=isNaN(tc)?"–":tc.toFixed(1)+" °C";
+ if(isNaN(L)||isNaN(tc)||L<0){out.textContent="–";det.textContent="Enter a valid length and temperature.";return}
+ var R20=r[4]*lm/1000,R=R20*(1+0.00393*(tc-20));
+ var u=R<1?[R*1000,"mΩ"]:[R,"Ω"];
+ out.textContent=u[0].toPrecision(4)+" "+u[1];
+ det.textContent="R at 20 °C = "+R20.toPrecision(4)+" Ω ("+r[4]+" Ω/km × "+lm.toFixed(3)+" m); temperature factor = "+(1+0.00393*(tc-20)).toFixed(4);
+}
+["size","len","lu","temp","tu"].forEach(function(id){var e=document.getElementById(id);e.addEventListener("input",calc);e.addEventListener("change",calc)});
+calc();
+</script>
+</body>
+</html>
