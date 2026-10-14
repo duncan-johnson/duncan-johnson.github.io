@@ -432,11 +432,25 @@ function parseGerber(src) {
     if (!m) return;
     const id     = parseInt(m[1], 10);
     const type   = m[2].toUpperCase();
-    const params = m[3] ? m[3].split('X').map(Number) : [];
+    const params = m[3] ? m[3].split(/X/i).map(Number) : [];
 
     // Check if this is a macro reference
-    const macroPrims = macros[m[2]] || macros[type];
+    const macroName  = (m[2] in macros) ? m[2] : type;
+    const macroPrims = macros[macroName];
     if (macroPrims) {
+      // Macros that contain outline (4) or polygon (5) primitives — octagons, chamfered
+      // pads, arbitrary shapes — can't be reduced to a rounded rectangle. Resolve the exact
+      // geometry (variables, rotation, clear exposure) and render it as-is.
+      const codes = macroPrims.map(q => q.code);
+      if ((codes.includes(4) || codes.includes(5)) && !codes.includes(6) && !codes.includes(7)) {
+        const shapes = resolveMacro(macroSrc[macroName] || [], params);
+        const bb = shapesBBox(shapes);
+        if (bb) {
+          const ext = Math.max(Math.abs(bb[0]), Math.abs(bb[1]), Math.abs(bb[2]), Math.abs(bb[3]));
+          apertures[id] = { type:'MACRO', name:macroName, shapes, bbox:bb, params:[2*ext, bb[2]-bb[0], bb[3]-bb[1]] };
+          return;
+        }
+      }
       // Resolve macro to a bounding-box rectangle.
       // Altium pre-rotates all primitive coordinates into the macro body,
       // so computing the union bounding box across all primitives gives the
@@ -591,18 +605,107 @@ function parseGerber(src) {
   let amName  = null;   // currently being parsed macro name
   let amLines = [];     // lines of current macro body
 
+  let macroSrc = {};    // macroName → raw body lines (variables / expressions intact)
+
   function finishMacro() {
     if (!amName) return;
     // Parse macro primitives from amLines
     const prims = [];
     for (const line of amLines) {
+      if (line[0] === '$') continue;               // $n=expr variable assignment
       const parts = line.split(',').map(s => s.trim());
       const code = parseInt(parts[0], 10);
       const nums = parts.slice(1).map(Number);
       prims.push({ code, nums });
     }
     macros[amName] = prims;
+    macroSrc[amName] = amLines.slice();
     amName = null; amLines = [];
+  }
+
+  // ── Full aperture-macro evaluator ──────────────────────────────────────────
+  // Resolves a macro (with $n variables, arithmetic and all outline/polygon
+  // primitives) into a list of shapes relative to the flash origin:
+  //   { exp:1|0, kind:'poly', pts:[[x,y]...] }   or   { exp:1|0, kind:'circ', cx, cy, r }
+  function evalExpr(expr, vars) {
+    let e = String(expr).trim();
+    if (e === '') return 0;
+    e = e.replace(/\$(\d+)/g, (_, n) => '(' + (Number(vars[n]) || 0).toFixed(12) + ')');
+    e = e.replace(/[xX]/g, '*');
+    if (!/^[\d.+\-*\/()\s]+$/.test(e)) return 0;
+    try { const v = Function('"use strict";return (' + e + ')')(); return isFinite(v) ? v : 0; }
+    catch (_) { return 0; }
+  }
+
+  function resolveMacro(lines, adParams) {
+    const vars = {};
+    adParams.forEach((v, k) => { vars[k + 1] = v; });
+    const shapes = [];
+    const rotPt = (x, y, deg) => {
+      if (!deg) return [x, y];
+      const a = deg * Math.PI / 180, c = Math.cos(a), sn = Math.sin(a);
+      return [x * c - y * sn, x * sn + y * c];
+    };
+    for (const line of lines) {
+      if (line[0] === '$') {                        // variable assignment
+        const eq = line.indexOf('=');
+        if (eq > 0) vars[line.slice(1, eq).trim()] = evalExpr(line.slice(eq + 1), vars);
+        continue;
+      }
+      const f = line.split(',');
+      const code = parseInt(f[0], 10);
+      if (!(code > 0)) continue;                    // 0 = comment
+      const n = f.slice(1).map(t => evalExpr(t, vars));
+      const exp = n[0] ? 1 : 0;
+      if (code === 1) {                             // circle: exp, dia, cx, cy, [rot]
+        const [cx, cy] = rotPt(n[2] || 0, n[3] || 0, n[4] || 0);
+        shapes.push({ exp, kind:'circ', cx, cy, r:(n[1] || 0) / 2 });
+      } else if (code === 20) {                     // vector line: exp, w, x1,y1, x2,y2, rot
+        const x1 = n[2], y1 = n[3], x2 = n[4], y2 = n[5], hw = (n[1] || 0) / 2;
+        const len = Math.hypot(x2 - x1, y2 - y1) || 1e-9;
+        const nx = -(y2 - y1) / len * hw, ny = (x2 - x1) / len * hw;
+        shapes.push({ exp, kind:'poly', pts:[[x1+nx,y1+ny],[x2+nx,y2+ny],[x2-nx,y2-ny],[x1-nx,y1-ny]]
+          .map(q => rotPt(q[0], q[1], n[6] || 0)) });
+      } else if (code === 21) {                     // center line: exp, w, h, cx, cy, rot
+        const w = (n[1] || 0) / 2, h = (n[2] || 0) / 2, cx = n[3] || 0, cy = n[4] || 0;
+        shapes.push({ exp, kind:'poly', pts:[[cx-w,cy-h],[cx+w,cy-h],[cx+w,cy+h],[cx-w,cy+h]]
+          .map(q => rotPt(q[0], q[1], n[5] || 0)) });
+      } else if (code === 22) {                     // lower-left line: exp, w, h, x, y, rot
+        const w = n[1] || 0, h = n[2] || 0, x = n[3] || 0, y = n[4] || 0;
+        shapes.push({ exp, kind:'poly', pts:[[x,y],[x+w,y],[x+w,y+h],[x,y+h]]
+          .map(q => rotPt(q[0], q[1], n[5] || 0)) });
+      } else if (code === 4) {                      // outline: exp, nPts, x0,y0 ... xn,yn, rot
+        const cnt = Math.round(n[1] || 0);          // number of segments → cnt+1 points (last == first)
+        const rot = n[2 + 2 * (cnt + 1)] || 0;
+        const pts = [];
+        for (let k = 0; k <= cnt; k++) pts.push(rotPt(n[2 + 2*k] || 0, n[3 + 2*k] || 0, rot));
+        if (pts.length > 1) {
+          const a = pts[0], b = pts[pts.length - 1];
+          if (Math.hypot(a[0]-b[0], a[1]-b[1]) < 1e-9) pts.pop();   // drop closing duplicate
+        }
+        if (pts.length >= 3) shapes.push({ exp, kind:'poly', pts });
+      } else if (code === 5) {                      // polygon: exp, verts, cx, cy, dia, rot
+        const v = Math.max(3, Math.round(n[1] || 0)), cx = n[2] || 0, cy = n[3] || 0, R = (n[4] || 0) / 2;
+        const pts = [];
+        for (let k = 0; k < v; k++) {
+          const a = 2 * Math.PI * k / v;
+          pts.push(rotPt(cx + R * Math.cos(a), cy + R * Math.sin(a), n[5] || 0));
+        }
+        shapes.push({ exp, kind:'poly', pts });
+      }
+    }
+    return shapes;
+  }
+
+  function shapesBBox(shapes) {
+    let x0=Infinity, y0=Infinity, x1=-Infinity, y1=-Infinity;
+    const add = (x, y) => { x0=Math.min(x0,x); x1=Math.max(x1,x); y0=Math.min(y0,y); y1=Math.max(y1,y); };
+    for (const sh of shapes) {
+      if (!sh.exp) continue;
+      if (sh.kind === 'circ') { add(sh.cx - sh.r, sh.cy - sh.r); add(sh.cx + sh.r, sh.cy + sh.r); }
+      else sh.pts.forEach(q => add(q[0], q[1]));
+    }
+    return x0 === Infinity ? null : [x0, y0, x1, y1];
   }
 
   function skipWS() { while(i<len && (text[i]===' '||text[i]==='\n'||text[i]==='\t')) i++; }
@@ -640,8 +743,8 @@ function parseGerber(src) {
           finishMacro();
           amName = part.slice(2).trim();
           amLines = [];
-        } else if(amName && part.match(/^\d/)) {
-          // Numeric line = macro primitive body
+        } else if(amName && part.match(/^[\d$]/)) {
+          // Numeric line = macro primitive body; $n=expr = variable assignment
           amLines.push(part);
         }
       }
@@ -904,6 +1007,49 @@ function parseExcellon(src) {
 // ─────────────────────────────────────────────────────────────────────────────
 //  Renderer
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+//  Aperture-macro path tracer (shared by the renderer, selection and paste ghost).
+//  Dark primitives are wound positive, clear (exposure 0) primitives negative, so a
+//  single nonzero fill leaves clear shapes as holes.
+// ─────────────────────────────────────────────────────────────────────────────
+function traceMacroPath(ctx, rd, px, py, shapes) {
+  ctx.beginPath();
+  for (const sh of shapes) {
+    if (sh.kind === 'circ') {
+      ctx.moveTo(px + (sh.cx + sh.r) * rd.scale, py - sh.cy * rd.scale);
+      ctx.arc(px + sh.cx * rd.scale, py - sh.cy * rd.scale, Math.abs(sh.r * rd.scale), 0, Math.PI*2, !sh.exp);
+      continue;
+    }
+    const pts = sh.pts.map(q => [px + q[0] * rd.scale, py - q[1] * rd.scale]);
+    let area = 0;
+    for (let k = 0; k < pts.length; k++) {
+      const a = pts[k], b = pts[(k + 1) % pts.length];
+      area += a[0]*b[1] - b[0]*a[1];
+    }
+    if (Math.abs(area) < 1e-12) continue;
+    if ((area > 0) !== !!sh.exp) pts.reverse();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+    ctx.closePath();
+  }
+}
+
+// Outline for regular-polygon (P) apertures — same maths as Renderer._flash
+function tracePolygonAperture(ctx, rd, px, py, pr) {
+  const r = rd._ps((pr[0]||0.1)/2);
+  const sides = Math.max(3, Math.round(pr[1]||6));
+  const rot = -((pr[2]||0) * Math.PI/180);
+  ctx.beginPath();
+  for (let k = 0; k < sides; k++) {
+    const a = rot + k*2*Math.PI/sides;
+    const ex = px + r*Math.cos(a), ey = py + r*Math.sin(a);
+    k === 0 ? ctx.moveTo(ex, ey) : ctx.lineTo(ex, ey);
+  }
+  ctx.closePath();
+  const hr = rd._ps((pr[3]||0)/2);
+  if (hr > 0) ctx.arc(px, py, hr, 0, Math.PI*2, true);
+}
+
 class Renderer {
   constructor(canvas) {
     this.canvas  = canvas;
@@ -1072,6 +1218,9 @@ class Renderer {
       else if(ap.type==='O') { hw=(pr[0]||0.1)/2; hh=(pr[1]!==undefined?pr[1]:pr[0]||0.1)/2; }
       else if(ap.type==='S') { hw=hh=(pr[0]||0.1)/2; }
       else if(ap.type==='THERMAL'||ap.type==='P') { hw=hh=(pr[0]||0.5)/2; }
+      else if(ap.type==='MACRO' && ap.bbox) {
+        return { minX:p.x+ap.bbox[0], minY:p.y+ap.bbox[1], maxX:p.x+ap.bbox[2], maxY:p.y+ap.bbox[3] };
+      }
       else { hw=hh=(pr[0]||0.1)/2; }
       return { minX:p.x-hw, minY:p.y-hh, maxX:p.x+hw, maxY:p.y+hh };
     }
@@ -1250,13 +1399,20 @@ class Renderer {
       const r     = this._ps((pr[0]||0.1)/2);
       const sides = Math.max(3, Math.round(pr[1]||6));
       const rot   = -((pr[2]||0) * Math.PI/180);  // negate for Y-flip
+      const hr    = this._ps((pr[3]||0)/2);
       ctx.beginPath();
       for(let k=0;k<sides;k++){
         const a = rot + k*2*Math.PI/sides;
         const ex=px+r*Math.cos(a), ey=py+r*Math.sin(a);
         k===0 ? ctx.moveTo(ex,ey) : ctx.lineTo(ex,ey);
       }
-      ctx.closePath(); ctx.fill();
+      ctx.closePath();
+      if(hr>0) ctx.arc(px, py, hr, 0, Math.PI*2, true);
+      ctx.fill('evenodd');
+
+    } else if(p.ap.type==='MACRO') {
+      traceMacroPath(ctx, this, px, py, p.ap.shapes);
+      ctx.fill('nonzero');
 
     } else if(p.ap.type==='S') {
       const hs = this._ps((pr[0]||0.1)/2);
@@ -2434,6 +2590,12 @@ function _drawPasteGhost(ctx, p) {
         ctx.arc(px,py,ri,a2,a1,true); ctx.closePath();
       }
       ctx.fill(); ctx.lineWidth=1; ctx.stroke();
+    } else if (p.ap.type === 'MACRO') {
+      traceMacroPath(ctx, renderer, px, py, p.ap.shapes);
+      ctx.fill('nonzero'); ctx.lineWidth=1; ctx.stroke();
+    } else if (p.ap.type === 'P') {
+      tracePolygonAperture(ctx, renderer, px, py, pr);
+      ctx.fill('evenodd'); ctx.lineWidth=1; ctx.stroke();
     } else {
       const r = Math.max(renderer._ps((pr[0]||0.1)/2), 1.5);
       ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI*2);
@@ -2518,8 +2680,14 @@ function _drawSelFlash(ctx, p) {
       ctx.closePath();
     }
     ctx.fill(); ctx.stroke();
+  } else if (p.ap.type === 'MACRO') {
+    traceMacroPath(ctx, renderer, px, py, p.ap.shapes);
+    ctx.fill('nonzero'); ctx.stroke();
+  } else if (p.ap.type === 'P') {
+    tracePolygonAperture(ctx, renderer, px, py, pr);
+    ctx.fill('evenodd'); ctx.stroke();
   } else {
-    // P or unknown — circle fallback
+    // unknown — circle fallback
     const r = renderer._ps((pr[0]||0.1)/2);
     ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
   }
@@ -2813,6 +2981,7 @@ function writeGerber(layer) {
     if (ap.type === 'S')       return `R,${pr[0].toFixed(4)}X${pr[0].toFixed(4)}`;
     if (ap.type === 'P')       return `P,${pr[0].toFixed(4)}X${Math.round(pr[1]||6)}X${(pr[2]||0).toFixed(4)}`;
     if (ap.type === 'THERMAL') return `C,${pr[0].toFixed(4)}`;  // export outer as circle
+    if (ap.type === 'MACRO')   return `M,${JSON.stringify(ap.shapes, (k, v) => typeof v === 'number' ? +v.toFixed(6) : v)}`;
     return `C,${(pr[0]||0.1).toFixed(4)}`;
   }
   function apDef(ap, id) {
@@ -2823,6 +2992,15 @@ function writeGerber(layer) {
     if (ap.type === 'S')  return `%ADD${id}R,${pr[0].toFixed(4)}X${pr[0].toFixed(4)}*%`;
     if (ap.type === 'P')  return `%ADD${id}P,${pr[0].toFixed(4)}X${Math.round(pr[1]||6)}X${(pr[2]||0).toFixed(4)}*%`;
     if (ap.type === 'THERMAL') return `%ADD${id}C,${pr[0].toFixed(4)}*%`;
+    if (ap.type === 'MACRO') {
+      const f = v => (+v).toFixed(6);
+      const body = ap.shapes.map(sh => {
+        if (sh.kind === 'circ') return `1,${sh.exp},${f(sh.r*2)},${f(sh.cx)},${f(sh.cy)}`;
+        const pts = sh.pts.concat([sh.pts[0]]);
+        return `4,${sh.exp},${sh.pts.length},${pts.map(q => f(q[0])+','+f(q[1])).join(',')},0`;
+      }).join('*');
+      return `%AMMAC${id}*${body}*%\n%ADD${id}MAC${id}*%`;
+    }
     return `%ADD${id}C,${(pr[0]||0.1).toFixed(4)}*%`;
   }
 
@@ -3095,6 +3273,10 @@ function showPrimInfo(prim, layer) {
       row('Circ. Dia', mm(pr[0]));
       row('Vertices',  Math.round(pr[1] || 6));
       row('Rotation',  (pr[2] || 0).toFixed(2) + '°');
+    } else if (ap.type === 'MACRO') {
+      row('Macro',  ap.name || '');
+      row('Width',  mm(ap.bbox[2] - ap.bbox[0]));
+      row('Height', mm(ap.bbox[3] - ap.bbox[1]));
     } else if (ap.type === 'THERMAL') {
       row('Outer Ø', mm(pr[0]));
       row('Inner Ø', mm(pr[1]));
