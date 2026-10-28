@@ -876,6 +876,7 @@ function parseExcellon(src) {
   let curX = 0, curY = 0;  // current position — updated per axis independently
   let curPlated = true;     // tracks ;TYPE=PLATED / ;TYPE=NON_PLATED sections
   let routing = false;      // true between M15 (tool down) and M16 (tool up) — rout-mode slots
+  let routeG  = null;       // modal route G-code ('1' linear, '2' CW arc, '3' CCW arc) — persists until changed
   let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
   const rawCoordLens = [];  // digit-lengths of raw coordinate strings for auto-detection
 
@@ -976,7 +977,7 @@ function parseExcellon(src) {
     if (tSel) { curTool=toolKey(tSel[1]); continue; }
 
     if (line==='M15') { routing = true;  continue; }  // tool plunge / rout start
-    if (line==='M16') { routing = false; continue; }  // tool retract / rout end
+    if (line==='M16' || line==='M17') { routing = false; continue; }  // tool retract / rout end
 
     // Optional leading G-code (G00 rapid reposition, G01/G02/G03 linear/arc route)
     // Coordinate lines in rout-mode (slotted) drill files are prefixed with these,
@@ -984,7 +985,8 @@ function parseExcellon(src) {
     let gcode = null;
     let coordPart = line;
     const gM = line.match(/^G0?([0-3])(.*)$/);
-    if (gM) { gcode = gM[1]; coordPart = gM[2]; }
+    if (gM) { gcode = gM[1]; coordPart = gM[2]; routeG = gcode; }
+    if (/^G05/.test(line)) routeG = null;   // back to drill mode
 
     // Coordinate line — X and/or Y may be omitted; missing axis reuses last value
     const cm = coordPart.match(/^(?:T(\d+))?(?:X([+-]?[\d.]+))?(?:Y([+-]?[\d.]+))?(?:G|M|$)/);
@@ -1020,7 +1022,10 @@ function parseExcellon(src) {
         continue;
       }
 
-      if (routing && (gcode === '1' || gcode === '2' || gcode === '3')) {
+      // G01/G02/G03 are modal: "G01X100" followed by bare "Y200" / "X300Y50" lines continue the
+      // same linear route, so a coordinate line without a G-code inherits the last one.
+      const moveG = gcode !== null ? gcode : routeG;
+      if (routing && (moveG === '1' || moveG === '2' || moveG === '3')) {
         // Rout-mode cut: tool is down (M15 issued), draws a slot from the
         // previous position to the new one, one tool-diameter wide.
         primitives.push({ kind:'slot', x1:prevX, y1:prevY, x2:curX, y2:curY,
