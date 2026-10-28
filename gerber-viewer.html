@@ -394,10 +394,14 @@ function parseGerber(src) {
   let X = 0, Y = 0;
   let unit        = 'MM';
   let fmtXi = 2, fmtXd = 5, fmtYi = 2, fmtYd = 5;
+  let zeroSupp    = 'L';     // L = leading zeros omitted (default), T = trailing zeros omitted
+  const unitScale = () => unit === 'IN' ? 25.4 : 1;   // everything is stored internally in mm
+  let lastD = 2;             // modal D code (01 draw / 02 move / 03 flash)
   let interpolation = 'L';   // L CW CCW
   let quadrant      = 'S';   // S M
   let regionMode    = false;
   let regionPath    = [];
+  let regionContours = [];   // finished contours of the current G36…G37 block
   let polarity      = 'D';   // D=dark C=clear
 
   const primitives = [];
@@ -408,11 +412,11 @@ function parseGerber(src) {
     const neg = raw[0] === '-';
     const digits = raw.replace(/^[+-]/, '');
     const total = intDigits + decDigits;
-    // Gerber: leading zeros suppressed (most common) → pad on the LEFT
-    const padded = digits.padStart(total, '0');
+    // Leading zeros omitted (FSL, most common) → pad on the LEFT; trailing omitted (FST) → pad on the RIGHT
+    const padded = zeroSupp === 'T' ? digits.padEnd(total, '0') : digits.padStart(total, '0');
     const intPart  = padded.slice(0, intDigits)  || '0';
     const fracPart = padded.slice(intDigits);
-    const val = parseFloat(intPart + '.' + fracPart);
+    const val = parseFloat(intPart + '.' + fracPart) * unitScale();
     return neg ? -val : val;
   }
   function expandX(raw) { return expand(raw, fmtXi, fmtXd); }
@@ -426,6 +430,7 @@ function parseGerber(src) {
 
   // ── aperture definition parser
   function parseAD(body) {
+    const f = unitScale();   // aperture dimensions are in file units → convert to mm
     // e.g.  D10C,0.254    D11R,1.0X0.5X0.2    D12O,0.5X0.3    D13P,1.0X6X0.0
     //       D103THD103    (macro reference)
     const m = body.match(/^D(\d+)([A-Z_][A-Z0-9_]*),?(.*)$/i);
@@ -444,6 +449,10 @@ function parseGerber(src) {
       const codes = macroPrims.map(q => q.code);
       if ((codes.includes(4) || codes.includes(5)) && !codes.includes(6) && !codes.includes(7)) {
         const shapes = resolveMacro(macroSrc[macroName] || [], params);
+        if (f !== 1) shapes.forEach(sh => {
+          if (sh.kind === 'circ') { sh.cx *= f; sh.cy *= f; sh.r *= f; }
+          else sh.pts = sh.pts.map(q => [q[0]*f, q[1]*f]);
+        });
         const bb = shapesBBox(shapes);
         if (bb) {
           const ext = Math.max(Math.abs(bb[0]), Math.abs(bb[1]), Math.abs(bb[2]), Math.abs(bb[3]));
@@ -463,7 +472,7 @@ function parseGerber(src) {
 
         if (code === 7) {
           // Thermal relief: x, y, outer_dia, inner_dia, gap, rot
-          apertures[id] = { type:'THERMAL', params:[nums[2], nums[3], nums[4], nums[5]] };
+          apertures[id] = { type:'THERMAL', params:[nums[2]*f, nums[3]*f, nums[4]*f, nums[5]] };
           return;
         }
 
@@ -521,14 +530,16 @@ function parseGerber(src) {
         }
         if (cornerR === null) cornerR = Math.min(w, h) * 0.10;
         // params: [w, h, offX, offY, cornerRadius]
-        apertures[id] = { type:'O', params:[w, h, offX, offY, cornerR] };
+        apertures[id] = { type:'O', params:[w*f, h*f, offX*f, offY*f, cornerR*f] };
       } else {
         apertures[id] = { type:'C', params:[0.5] };
       }
       return;
     }
 
-    apertures[id] = { type, params };
+    // Standard apertures: scale every length; P (polygon) keeps vertex count [1] and rotation [2]
+    const scaled = params.map((v, k) => (type === 'P' && (k === 1 || k === 2)) ? v : v * f);
+    apertures[id] = { type, params: scaled };
   }
 
   // ── draw operations
@@ -587,12 +598,39 @@ function parseGerber(src) {
     return pts;
   }
 
-  function closeRegion() {
-    if (regionPath.length > 2) {
-      primitives.push({ kind:'region', path:[...regionPath], polarity });
-      regionPath.forEach(p => extendBounds(p.x,p.y,0));
-    }
+  // A D02 move inside G36…G37 ends the current contour and starts a new one.
+  function flushContour() {
+    if (regionPath.length > 2) regionContours.push(regionPath);
     regionPath = [];
+  }
+
+  function pointInPoly(x, y, poly) {
+    let inside = false;
+    for (let a = 0, b = poly.length - 1; a < poly.length; b = a++) {
+      const pa = poly[a], pb = poly[b];
+      if ((pa.y > y) !== (pb.y > y) && x < (pb.x - pa.x) * (y - pa.y) / (pb.y - pa.y) + pa.x) inside = !inside;
+    }
+    return inside;
+  }
+
+  function closeRegion() {
+    flushContour();
+    const cs = regionContours;
+    regionContours = [];
+    // Each contour becomes its own region primitive. A contour nested inside an odd number of
+    // other contours is a hole (island-in-pour cut-out), so it's emitted with inverted polarity.
+    const items = cs.map(path => {
+      let depth = 0;
+      for (const other of cs) {
+        if (other !== path && pointInPoly(path[0].x, path[0].y, other)) depth++;
+      }
+      return { path, depth };
+    }).sort((a, b) => a.depth - b.depth);
+    for (const it of items) {
+      const pol = (it.depth % 2) ? (polarity === 'D' ? 'C' : 'D') : polarity;
+      primitives.push({ kind:'region', path:[...it.path], polarity:pol });
+      if (it.depth % 2 === 0) it.path.forEach(q => extendBounds(q.x, q.y, 0));
+    }
   }
 
   // ── tokenise: split on * but keep % blocks together
@@ -729,8 +767,9 @@ function parseGerber(src) {
       for(const part of parts) {
         if(part.startsWith('FS')) {
           // FSLAX25Y25 or FSLAX46Y46 etc.
-          const m = part.match(/FS[LT][AI]?X(\d)(\d)Y(\d)(\d)/i);
-          if(m){ fmtXi=+m[1]; fmtXd=+m[2]; fmtYi=+m[3]; fmtYd=+m[4]; }
+          const m = part.match(/FS([LTD])?[AI]?X(\d)(\d)Y(\d)(\d)/i);
+          if(m){ zeroSupp = (m[1]||'L').toUpperCase()==='T' ? 'T' : 'L';
+                 fmtXi=+m[2]; fmtXd=+m[3]; fmtYi=+m[4]; fmtYd=+m[5]; }
         } else if(part.startsWith('MO')) {
           unit = part.slice(2,4).toUpperCase()==='IN'?'IN':'MM';
         } else if(part.startsWith('LP')) {
@@ -753,9 +792,11 @@ function parseGerber(src) {
     }
 
     // ── Data block: read until *
-    const block = readUntil('*').trim();
+    let block = readUntil('*').trim();
     if(i<len && text[i]==='*') i++; // consume *
     if(!block) continue;
+    // Legacy "G54D10" (aperture select with deprecated G54 prefix) → "D10"
+    block = block.replace(/^G0*5[45](?=D\d)/i, '');
 
     // G04 comment
     if(block.startsWith('G04') || block.startsWith('G4')) continue;
@@ -763,7 +804,7 @@ function parseGerber(src) {
     if(block==='M02'||block==='M00'||block==='M2'||block==='M0') break;
 
     // Region mode
-    if(block==='G36'){ regionMode=true; regionPath=[]; continue; }
+    if(block==='G36'){ regionMode=true; regionPath=[]; regionContours=[]; continue; }
     if(block==='G37'){ closeRegion(); regionMode=false; continue; }
 
     // Units (legacy)
@@ -781,7 +822,7 @@ function parseGerber(src) {
       if(g===1) interpolation='L';
       else if(g===2) interpolation='CW';
       else if(g===3) interpolation='CCW';
-      else if(g===36){ regionMode=true; regionPath=[]; continue; }
+      else if(g===36){ regionMode=true; regionPath=[]; regionContours=[]; continue; }
       else if(g===37){ closeRegion(); regionMode=false; continue; }
       else if(g===70){ unit='IN'; continue; }
       else if(g===71){ unit='MM'; continue; }
@@ -797,14 +838,16 @@ function parseGerber(src) {
 
     // Coordinate + D code
     // Pattern: optional G, then optional X, Y, I, J, then D01/02/03
-    const cm = block.match(/(?:G0*[0-9]+)?(?:X([+-]?\d+))?(?:Y([+-]?\d+))?(?:I([+-]?\d+))?(?:J([+-]?\d+))?D0*(1|2|3)$/);
-    if(cm) {
+    // The D code is optional: RS-274 makes it modal, so "X2672Y-4241*" repeats the previous D01/D02/D03.
+    const cm = block.match(/(?:G0*[0-9]+)?(?:X([+-]?\d+))?(?:Y([+-]?\d+))?(?:I([+-]?\d+))?(?:J([+-]?\d+))?(?:D0*(1|2|3))?$/);
+    if(cm && cm.slice(1,6).some(v => v!==undefined)) {
       const nx = cm[1]!==undefined ? expandX(cm[1]) : X;
       const ny = cm[2]!==undefined ? expandY(cm[2]) : Y;
       const I  = cm[3]!==undefined ? expandX(cm[3]) : 0;
       const J  = cm[4]!==undefined ? expandY(cm[4]) : 0;
-      const d  = parseInt(cm[5],10);
-      if(d===2) { X=nx; Y=ny; }                  // move
+      const d  = cm[5]!==undefined ? parseInt(cm[5],10) : lastD;
+      lastD = d;
+      if(d===2) { if(regionMode) flushContour(); X=nx; Y=ny; }   // move (starts a new contour inside a region)
       else if(d===1) { opDraw(nx,ny,I,J); X=nx; Y=ny; }  // draw
       else if(d===3) { opFlash(nx,ny);    X=nx; Y=ny; }  // flash
       continue;
