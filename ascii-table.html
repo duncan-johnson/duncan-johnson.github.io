@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Extended ASCII Table</title>
+<style>
+:root{--bg:#f7f7f5;--fg:#1c1c1a;--mut:#6b6b66;--card:#fff;--line:#e2e2dd;--acc:#0a6cff;--sel:#dbe9ff;--ctl:#a05a00;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161615;--fg:#ecece8;--mut:#9a9a93;--card:#1f1f1d;--line:#333330;--acc:#5aa2ff;--sel:#1e3350;--ctl:#e0a050;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#161615;--fg:#ecece8;--mut:#9a9a93;--card:#1f1f1d;--line:#333330;--acc:#5aa2ff;--sel:#1e3350;--ctl:#e0a050;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{padding:20px 16px 8px;max-width:980px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}
+p.sub{margin:0;color:var(--mut);font-size:13px}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding:10px 16px;max-width:980px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:10}
+input,select{flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg);font:inherit}
+button.f{padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--fg);font:inherit;font-size:13px;cursor:pointer}
+button.f.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.wrap{max-width:980px;margin:0 auto;padding:0 16px 80px}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th{position:sticky;top:0;background:var(--card);text-align:left;font-size:12px;color:var(--mut);padding:8px 10px;border-bottom:1px solid var(--line);text-transform:uppercase;letter-spacing:.04em}
+td{padding:6px 10px;border-bottom:1px solid var(--line);font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;cursor:pointer;white-space:nowrap}
+td.d{font-family:system-ui,sans-serif;white-space:normal;color:var(--mut);cursor:pointer}
+td.ch{font-size:18px;font-weight:600;text-align:center;width:64px}
+td.ch.c{font-size:11px;color:var(--ctl);font-weight:600}
+tr.sel td{background:var(--sel)}
+td:hover{outline:1px solid var(--acc);outline-offset:-1px}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:20}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+.cnt{font-size:12px;color:var(--mut);margin-left:auto}
+</style>
+</head>
+<body>
+<header>
+<h1>Extended ASCII Table</h1>
+<p class="sub">Codes 0–255 in ISO 8859-1 or Windows-1252 (choose below; they differ only in 128–159). Click any cell to select the row and copy that value to the clipboard.</p>
+</header>
+<div class="bar">
+<select id="cp" aria-label="Code page" style="flex:0 0 auto;min-width:0"><option value="8859">ISO 8859-1 (Latin-1)</option><option value="1252">Windows-1252</option></select>
+<input id="q" type="search" placeholder="Search decimal, hex, character or description…">
+<button class="f on" data-r="all">All</button>
+<button class="f" data-r="ctl">Control</button>
+<button class="f" data-r="std">Standard</button>
+<button class="f" data-r="ext">Extended</button>
+<span class="cnt" id="cnt"></span>
+</div>
+<div class="wrap"><div class="tbl"><table>
+<thead><tr><th>Dec</th><th>Oct</th><th>Hex</th><th>Binary</th><th>Char</th><th>Description</th></tr></thead>
+<tbody id="tb"></tbody></table></div></div>
+<div id="toast"></div>
+<script>
+var CTL="NUL Null|SOH Start of heading|STX Start of text|ETX End of text|EOT End of transmission|ENQ Enquiry|ACK Acknowledge|BEL Bell|BS Backspace|HT Horizontal tab|LF Line feed|VT Vertical tab|FF Form feed|CR Carriage return|SO Shift out|SI Shift in|DLE Data link escape|DC1 Device control 1 (XON)|DC2 Device control 2|DC3 Device control 3 (XOFF)|DC4 Device control 4|NAK Negative acknowledge|SYN Synchronous idle|ETB End of transmission block|CAN Cancel|EM End of medium|SUB Substitute|ESC Escape|FS File separator|GS Group separator|RS Record separator|US Unit separator".split("|");
+var C1="PAD Padding character|HOP High octet preset|BPH Break permitted here|NBH No break here|IND Index|NEL Next line|SSA Start of selected area|ESA End of selected area|HTS Horizontal tab set|HTJ Horizontal tab with justification|VTS Vertical tab set|PLD Partial line down|PLU Partial line up|RI Reverse index|SS2 Single shift two|SS3 Single shift three|DCS Device control string|PU1 Private use one|PU2 Private use two|STS Set transmit state|CCH Cancel character|MW Message waiting|SPA Start of protected area|EPA End of protected area|SOS Start of string|SGCI Single graphic character introducer|SCI Single character introducer|CSI Control sequence introducer|ST String terminator|OSC Operating system command|PM Privacy message|APC Application program command".split("|");
+var P={32:"Space",33:"Exclamation mark",34:"Quotation mark",35:"Number sign",36:"Dollar sign",37:"Percent sign",38:"Ampersand",39:"Apostrophe",40:"Left parenthesis",41:"Right parenthesis",42:"Asterisk",43:"Plus sign",44:"Comma",45:"Hyphen-minus",46:"Full stop",47:"Solidus (slash)",58:"Colon",59:"Semicolon",60:"Less-than sign",61:"Equals sign",62:"Greater-than sign",63:"Question mark",64:"Commercial at",91:"Left square bracket",92:"Reverse solidus (backslash)",93:"Right square bracket",94:"Circumflex accent",95:"Low line (underscore)",96:"Grave accent",123:"Left curly bracket",124:"Vertical line (pipe)",125:"Right curly bracket",126:"Tilde"};
+var L1="No-break space|Inverted exclamation mark|Cent sign|Pound sign|Currency sign|Yen sign|Broken bar|Section sign|Diaeresis|Copyright sign|Feminine ordinal indicator|Left double angle quotation mark|Not sign|Soft hyphen|Registered sign|Macron|Degree sign|Plus-minus sign|Superscript two|Superscript three|Acute accent|Micro sign|Pilcrow sign|Middle dot|Cedilla|Superscript one|Masculine ordinal indicator|Right double angle quotation mark|Vulgar fraction one quarter|Vulgar fraction one half|Vulgar fraction three quarters|Inverted question mark".split("|");
+var U="A grave|A acute|A circumflex|A tilde|A diaeresis|A ring above|*Latin capital letter AE|C cedilla|E grave|E acute|E circumflex|E diaeresis|I grave|I acute|I circumflex|I diaeresis|*Latin capital letter Eth|N tilde|O grave|O acute|O circumflex|O tilde|O diaeresis|*Multiplication sign|O with stroke|U grave|U acute|U circumflex|U diaeresis|Y acute|*Latin capital letter Thorn".split("|");
+var SHORT={0:"",127:"DEL",160:"NBSP",173:"SHY"};
+var cpg="8859";
+var W={128:[0x20AC,"Euro sign"],130:[0x201A,"Single low-9 quotation mark"],131:[0x192,"Latin small letter f with hook"],132:[0x201E,"Double low-9 quotation mark"],133:[0x2026,"Horizontal ellipsis"],134:[0x2020,"Dagger"],135:[0x2021,"Double dagger"],136:[0x2C6,"Modifier letter circumflex accent"],137:[0x2030,"Per mille sign"],138:[0x160,"Latin capital letter S with caron"],139:[0x2039,"Single left-pointing angle quotation mark"],140:[0x152,"Latin capital ligature OE"],142:[0x17D,"Latin capital letter Z with caron"],145:[0x2018,"Left single quotation mark"],146:[0x2019,"Right single quotation mark"],147:[0x201C,"Left double quotation mark"],148:[0x201D,"Right double quotation mark"],149:[0x2022,"Bullet"],150:[0x2013,"En dash"],151:[0x2014,"Em dash"],152:[0x2DC,"Small tilde"],153:[0x2122,"Trade mark sign"],154:[0x161,"Latin small letter s with caron"],155:[0x203A,"Single right-pointing angle quotation mark"],156:[0x153,"Latin small ligature oe"],158:[0x17E,"Latin small letter z with caron"],159:[0x178,"Latin capital letter Y with diaeresis"]};
+function desc(n){
+ if(cpg=="1252"&&n>=128&&n<160)return W[n]?W[n][1]:"Undefined (unassigned in Windows-1252)";
+ if(n<32)return CTL[n].split(" ").slice(1).join(" ");
+ if(n==127)return "Delete";
+ if(n>=128&&n<160)return C1[n-128].split(" ").slice(1).join(" ")+" (C1 control)";
+ if(n>=32&&n<127){
+  if(P[n])return P[n];
+  if(n>=48&&n<=57)return "Digit "+["zero","one","two","three","four","five","six","seven","eight","nine"][n-48];
+  if(n>=65&&n<=90)return "Latin capital letter "+String.fromCharCode(n);
+  return "Latin small letter "+String.fromCharCode(n);
+ }
+ if(n<192)return L1[n-160];
+ var lower=n>=224,i=(lower?n-32:n)-192;
+ if(n==223)return "Latin small letter sharp s";
+ if(n==255)return "Latin small letter y with diaeresis";
+ var u=U[i],s;
+ if(u[0]=="*")s=u.slice(1);
+ else{var p=u.split(" ");s="Latin capital letter "+p[0]+" with "+(p.slice(1).join(" "))}
+ s=s.replace("O with with stroke","O with stroke");
+ return lower?s.replace("capital","small").replace("Multiplication sign","Division sign").replace("AE","ae").replace("Eth","eth").replace("Thorn","thorn"):s;
+}
+var rows=[];
+function build(){
+ rows=[];
+ for(var n=0;n<256;n++){
+  var w=cpg=="1252"&&n>=128&&n<160,cp=n,ctl=n<32||(n>=127&&n<160),lab;
+  if(w){if(W[n]){cp=W[n][0];ctl=false;lab=String.fromCharCode(cp)}else{ctl=true;lab="n/a"}}
+  else lab=n<32?CTL[n].split(" ")[0]:n==127?"DEL":n>=128&&n<160?C1[n-128].split(" ")[0]:n==160?"NBSP":n==173?"SHY":String.fromCharCode(n);
+  rows.push({n:n,cp:cp,undef:w&&!W[n],ctl:ctl||n==160||n==173,lab:lab,desc:desc(n),
+   cls:n<128?(n<32||n==127?"ctl":"std"):"ext",
+   dec:String(n),oct:n.toString(8).padStart(3,"0"),hex:n.toString(16).toUpperCase().padStart(2,"0"),bin:n.toString(2).padStart(8,"0")});
+ }
+}
+build();
+var range="all",tb=document.getElementById("tb"),q=document.getElementById("q"),cnt=document.getElementById("cnt"),toast=document.getElementById("toast"),tt;
+function render(){
+ var t=q.value.trim().toLowerCase(),h="",k=0;
+ rows.forEach(function(r){
+  if(range=="ctl"&&r.cls!="ctl")return;
+  if(range=="std"&&r.cls!="std")return;
+  if(range=="ext"&&r.cls!="ext")return;
+  if(t&&(r.dec+" "+r.oct+" "+r.hex.toLowerCase()+" "+r.bin+" "+r.lab.toLowerCase()+" "+r.desc.toLowerCase()).indexOf(t)<0)return;
+  k++;
+  var e=r.lab.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+  h+='<tr data-n="'+r.n+'"><td data-v="'+r.dec+'">'+r.dec+'</td><td data-v="'+r.oct+'">'+r.oct+'</td><td data-v="'+r.hex+'">'+r.hex+'</td><td data-v="'+r.bin+'">'+r.bin+'</td><td class="ch'+(r.ctl?' c':'')+'" data-ch="1">'+e+'</td><td class="d" data-v="'+r.desc.replace(/"/g,"&quot;")+'">'+r.desc+'</td></tr>';
+ });
+ tb.innerHTML=h;cnt.textContent=k+" of 256";
+}
+function copy(s,label){
+ function ok(){toast.textContent="Copied "+label;toast.classList.add("show");clearTimeout(tt);tt=setTimeout(function(){toast.classList.remove("show")},1400)}
+ function fb(){var a=document.createElement("textarea");a.value=s;a.style.position="fixed";a.style.opacity="0";document.body.appendChild(a);a.select();try{document.execCommand("copy")}catch(e){}document.body.removeChild(a);ok()}
+ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(s).then(ok,fb)}else fb();
+}
+tb.addEventListener("click",function(e){
+ var td=e.target.closest("td"),tr=e.target.closest("tr");if(!td)return;
+ var prev=tb.querySelector("tr.sel");if(prev)prev.classList.remove("sel");tr.classList.add("sel");
+ var n=+tr.dataset.n,v;
+ if(td.dataset.ch){if(rows[n].undef){copy(String.fromCharCode(n),'(undefined)');return}v=String.fromCharCode(rows[n].cp)}else v=td.dataset.v;
+ var shown=td.dataset.ch?(rows[n].lab+" (char)"):v;
+ copy(v,shown);
+});
+document.querySelectorAll("button.f").forEach(function(b){b.onclick=function(){
+ document.querySelectorAll("button.f").forEach(function(x){x.classList.remove("on")});b.classList.add("on");range=b.dataset.r;render()}});
+q.addEventListener("input",render);
+document.getElementById("cp").onchange=function(){cpg=this.value;build();render()};
+render();
+</script>
+</body>
+</html>
